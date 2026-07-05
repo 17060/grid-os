@@ -333,6 +333,53 @@ static int try_read_serial_char(char *out) {
     return 1;
 }
 
+/* After a serial ESC byte, look for an ANSI escape sequence (ESC [ A etc.)
+ * so arrow keys work over -serial stdio. Returns a CONSOLE_SC_* code, or 0
+ * if no sequence followed (bare Esc keypress). */
+static int serial_try_read_ansi(void) {
+    uint32_t spins = 0;
+    int b = -1;
+    while (spins < 200000u) {
+        b = serial_read_byte();
+        if (b >= 0) {
+            break;
+        }
+        spins++;
+    }
+    if (b != '[') {
+        return 0;
+    }
+    spins = 0;
+    b = -1;
+    while (spins < 200000u) {
+        b = serial_read_byte();
+        if (b >= 0) {
+            break;
+        }
+        spins++;
+    }
+    switch (b) {
+    case 'A': return CONSOLE_SC_UP;
+    case 'B': return CONSOLE_SC_DOWN;
+    case 'C': return CONSOLE_SC_RIGHT;
+    case 'D': return CONSOLE_SC_LEFT;
+    case 'H': return CONSOLE_SC_HOME;
+    case 'F': return CONSOLE_SC_END;
+    case '3':
+        spins = 0;
+        while (spins < 200000u) {
+            int t = serial_read_byte();
+            if (t >= 0) {
+                break;
+            }
+            spins++;
+        }
+        return CONSOLE_SC_DEL;
+    default:
+        return 0;
+    }
+}
+
 char console_read_char(void) {
     for (;;) {
         int scancode = console_try_read_scancode();
@@ -391,6 +438,13 @@ int console_read_key(void) {
 
         char serial_c;
         if (try_read_serial_char(&serial_c)) {
+            if (serial_c == 27) {
+                int seq = serial_try_read_ansi();
+                if (seq != 0) {
+                    return seq;
+                }
+                return 27;
+            }
             return (int)(unsigned char)serial_c;
         }
     }

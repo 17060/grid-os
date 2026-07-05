@@ -40,10 +40,12 @@ static void zero_page(uint64_t *page) {
 }
 
 static void enable_nxe(void) {
-    uint64_t efer;
-    __asm__ volatile("rdmsr" : "=A"(efer) : "c"(0xC0000080));
-    efer |= (1ULL << 11);
-    __asm__ volatile("wrmsr" : : "c"(0xC0000080), "A"(efer));
+    /* "=A" does not bind edx:eax on x86-64 — use explicit registers so the
+     * EFER write does not put garbage in the reserved high half (#GP). */
+    uint32_t lo, hi;
+    __asm__ volatile("rdmsr" : "=a"(lo), "=d"(hi) : "c"(0xC0000080));
+    lo |= (1u << 11);
+    __asm__ volatile("wrmsr" : : "c"(0xC0000080), "a"(lo), "d"(hi));
 }
 
 static void set_page_entry(uint64_t *table, size_t index, uint64_t phys, uint64_t flags) {

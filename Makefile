@@ -41,9 +41,10 @@ QEMU_VIRTIO   = -device virtio-blk-pci,drive=grid0
 QEMU_NET      = -netdev user,id=net0 -device virtio-net-pci,netdev=net0
 QEMU_SERIAL   = -serial stdio
 QEMU_DISPLAY  = -display default
-QEMU_COMMON   = -no-reboot -no-shutdown -device isa-debug-exit
+# -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
+QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke disk seed-disk install-prog clean
+.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog clean
 
 all: $(TARGET)
 
@@ -139,9 +140,24 @@ test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 		$(QEMU_NET) -display none -serial none $(QEMU_COMMON) & \
 	e=$$!; \
 	sleep 8; \
-	if kill -0 $$e 2>/dev/null; then kill $$e 2>/dev/null; wait $$e 2>/dev/null; else exit 1; fi
+	if kill -0 $$e 2>/dev/null; then kill $$e 2>/dev/null; wait $$e 2>/dev/null || true; else echo "QEMU died during smoke test"; exit 1; fi
 
-test: test-host test-qemu-smoke
+# Full end-to-end: boot into the GridBASIC IDE, open the grid> prompt over
+# serial, run the interpreter self-test, then poweroff (isa-debug-exit -> 3).
+test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
+	@(sleep 5; printf '\033'; sleep 1; printf 'basictest\n'; sleep 3; printf '\n'; \
+	  sleep 1; printf '\033'; sleep 1; printf 'poweroff\n'; sleep 5) | \
+	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
+		-kernel build/grid-os.elf $(QEMU_DRIVE_TEST) $(QEMU_VIRTIO) \
+		$(QEMU_NET) $(QEMU_SERIAL) -display none $(QEMU_COMMON) \
+		> build/test-e2e.log 2>&1; \
+	rc=$$?; \
+	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
+	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
+	grep -q 'Derezzing' build/test-e2e.log || { echo "poweroff banner missing"; exit 1; }; \
+	echo "e2e OK"
+
+test: test-host test-qemu-smoke test-e2e
 
 clean:
 	rm -rf build

@@ -40,6 +40,8 @@ typedef struct {
     int top;        /* first visible line */
     char path[64];  /* current file path or "" */
     int dirty;
+    char status[96];     /* pending status message for the shell row */
+    uint8_t status_attr;
 } ide_t;
 
 static ide_t ide;
@@ -204,8 +206,11 @@ static void draw_footer(ide_t *e) {
 }
 
 static void draw_shell_row(ide_t *e) {
-    (void)e;
     console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
+    if (e->status[0]) {
+        console_write_at(0, IDE_CMD_ROW, e->status, e->status_attr);
+        return;
+    }
     console_write_at(0, IDE_CMD_ROW, IDE_SHELL_PROMPT, GRID_COL_DIM);
     console_write_at(IDE_SHELL_PROMPT_LEN, IDE_CMD_ROW, "Esc", GRID_COL_DIM);
 }
@@ -222,7 +227,8 @@ static void ide_redraw(ide_t *e) {
 /* ---- colon command bar ---- */
 
 static void ide_status(ide_t *e, const char *msg, uint8_t attr) {
-    (void)e;
+    scopy(e->status, sizeof(e->status), msg);
+    e->status_attr = attr;
     console_fill_row(IDE_CMD_ROW, ' ', attr);
     console_write_at(0, IDE_CMD_ROW, msg, attr);
 }
@@ -443,6 +449,7 @@ static void run_shell_line(ide_t *e, char *line) {
 
 static void handle_command(ide_t *e) {
     char cmd[100];
+    e->status[0] = '\0';   /* opening the prompt clears the old status */
     read_cmd(cmd, sizeof(cmd), IDE_SHELL_PROMPT);
     if (cmd[0] == '\0') {
         return;
@@ -464,6 +471,7 @@ int basic_ide(const char *path) {
     ide.n = 1; ide.lines[0][0] = '\0';
     ide.row = 0; ide.col = 0; ide.top = 0; ide.dirty = 0;
     ide.path[0] = '\0';
+    ide.status[0] = '\0'; ide.status_attr = GRID_COL_DIM;
     if (path && path[0]) {
         char buf[8192]; size_t got = 0;
         if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) == 0) {
