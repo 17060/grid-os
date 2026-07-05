@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DISK="$ROOT/build/grid.img"
+
+usage() {
+  cat <<'EOF'
+gridctl — host helper for Grid OS arcade disk
+
+  gridctl status        show host build + disk status
+  gridctl disk          create build/grid.img (16MB Flynn disk)
+  gridctl seed          write GFS2FLYN programs + welcome.grid to disk
+  gridctl install PROG  install build/PROG.elf to /programs/PROG on disk
+  gridctl portal-push PATH FILE  send FILE to Grid OS portal recv over COM1
+  gridctl run           boot Grid OS (q35 + virtio-blk, GUI window)
+  gridctl run-headless  terminal shell over serial (no GUI)
+  gridctl test          headless smoke test (status + poweroff)
+  gridctl run-legacy    boot with legacy IDE disk (older QEMU profiles)
+  gridctl wipe          delete arcade disk (fresh frontier)
+  gridctl hexdump       show FLYNGRID signature sector
+  gridctl gfs           show GFS2FLYN superblock sector
+
+Inside Grid OS:
+  vault put motd "The Grid is open"
+  vault sync            persist to arcade disk
+  ls /programs          on-disk ring-3 archive
+  spawn gridsh          load from /programs/gridsh
+  portal export         GridLink vault frame on COM1
+  portal recv             receive /programs/* over GridLink
+  ide                   Grid Workshop — 1980s IDE (GridScript)
+  gfs seed              re-seed Flynn archive (needs STORAGE cap)
+EOF
+}
+
+portal_push() {
+  local vfs_path="$1"
+  local host_file="$2"
+  if [[ ! -f "$host_file" ]]; then
+    echo "Missing file: $host_file" >&2
+    exit 1
+  fi
+  local size
+  size=$(wc -c < "$host_file" | tr -d ' ')
+  echo "GridLink push: $host_file -> $vfs_path ($size B)"
+  echo "Start Grid OS with: make run-headless"
+  echo "Then in another terminal run this command while Grid OS shows 'portal recv'."
+  echo
+  printf '#GRIDLINK/1.0/FILE%s\n' "$vfs_path"
+  echo "$size"
+  cat "$host_file"
+  echo '#GRIDLINK/END'
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  status)
+    echo "Grid OS host status"
+    echo "  Project:  $ROOT"
+    if [[ -f "$ROOT/build/grid-os.bin" ]]; then
+      echo "  Kernel:   built ($(wc -c < "$ROOT/build/grid-os.bin" | tr -d ' ') bytes)"
+    else
+      echo "  Kernel:   not built (run: make)"
+    fi
+    if [[ -f "$DISK" ]]; then
+      echo "  Disk:     $DISK ($(wc -c < "$DISK" | tr -d ' ') bytes)"
+    else
+      echo "  Disk:     missing (run: gridctl disk && gridctl seed)"
+    fi
+    if command -v qemu-system-x86_64 >/dev/null 2>&1; then
+      echo "  QEMU:     $(qemu-system-x86_64 --version | head -1)"
+      echo "  Run:      make run (GUI) | make run-headless (serial shell)"
+    else
+      echo "  QEMU:     not found"
+    fi
+    ;;
+  disk)
+    make -C "$ROOT" disk
+    echo "Created $DISK"
+    ;;
+  seed)
+    make -C "$ROOT" seed-disk
+    ;;
+  install)
+    prog="${2:-}"
+    if [[ -z "$prog" ]]; then
+      echo "Usage: gridctl install <prog>" >&2
+      exit 1
+    fi
+    make -C "$ROOT" "install-prog" "PROG=$prog"
+    ;;
+  portal-push)
+    if [[ $# -lt 3 ]]; then
+      echo "Usage: gridctl portal-push <vfs-path> <host-file>" >&2
+      exit 1
+    fi
+    portal_push "$2" "$3"
+    ;;
+  run)
+    make -C "$ROOT" run
+    ;;
+  run-headless)
+    make -C "$ROOT" run-headless
+    ;;
+  test)
+    make -C "$ROOT" test
+    ;;
+  run-legacy)
+    make -C "$ROOT" run-legacy
+    ;;
+  wipe)
+    rm -f "$DISK"
+    echo "Arcade disk wiped."
+    ;;
+  hexdump)
+    if [[ ! -f "$DISK" ]]; then
+      echo "No disk at $DISK — run: gridctl disk" >&2
+      exit 1
+    fi
+    dd if="$DISK" bs=512 skip=31 count=1 status=none | hexdump -C | head
+    ;;
+  gfs)
+    if [[ ! -f "$DISK" ]]; then
+      echo "No disk at $DISK — run: gridctl disk" >&2
+      exit 1
+    fi
+    dd if="$DISK" bs=512 skip=64 count=1 status=none | hexdump -C | head
+    ;;
+  ""|help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "Unknown command: $cmd" >&2
+    usage
+    exit 1
+    ;;
+esac
