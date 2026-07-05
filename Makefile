@@ -40,7 +40,7 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/program.o build/serial.o build/disk.o build/pci.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
-               build/timer.o build/link.o build/net.o build/tcp.o build/irc.o \
+               build/timer.o build/link.o build/net.o build/tcp.o build/irc.o build/http.o \
                build/basic.o build/basic_ide.o build/ai.o build/btc.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
 
@@ -64,10 +64,12 @@ endif
 # the window. tools/qemu_hdmi_4k.sh also tries to resize the window on macOS.
 QEMU_VGA_4K     = -device VGA,xres=3840,yres=2160,edid=on
 QEMU_NAME_4K    = -name "Grid OS — HDMI 4K (3840x2160)"
+QEMU_VGA_HD     = -device VGA,xres=1920,yres=1080,edid=on
+QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-4k run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge clean
 
 all: $(TARGET)
 
@@ -141,6 +143,9 @@ run: $(TARGET) $(DISK_IMAGE)
 
 run-4k: $(TARGET) $(DISK_IMAGE)
 	./tools/qemu_hdmi_4k.sh
+
+run-hd: $(TARGET) $(DISK_IMAGE)
+	./tools/qemu_hdmi_hd.sh
 
 run-vga: $(TARGET) $(DISK_IMAGE)
 	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

@@ -7,6 +7,7 @@
 #include "grid.h"
 #include "gfs.h"
 #include "gridfs.h"
+#include "http.h"
 #include "ide.h"
 #include "iso.h"
 #include "irc.h"
@@ -149,6 +150,7 @@ static void cmd_help(void) {
     console_write_line("  log [tail]        Audit trail");
     console_write_line("  portal [export|import|recv]  GridLink serial portal");
     console_write_line("  net [status|ping <ip>]       Grid network (virtio-net)");
+    console_write_line("  http get <ip> <path>         HTTP/1.0 GET (port 80)");
     console_write_line("  irc connect <ip> <port> <nick>   Connect IRC session");
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
@@ -753,6 +755,91 @@ const char *shell_history_at(int index) {
         return "";
     }
     return shell_history[index];
+}
+
+static void write_int(int value) {
+    char tmp[16];
+    int t = 0;
+    if (value == 0) {
+        console_write_char('0');
+        return;
+    }
+    if (value < 0) {
+        console_write_char('-');
+        value = -value;
+    }
+    while (value > 0) {
+        tmp[t++] = (char)('0' + (value % 10));
+        value /= 10;
+    }
+    while (t > 0) {
+        console_write_char(tmp[--t]);
+    }
+}
+
+static void cmd_http(int argc, char *argv[]) {
+    if (argc < 4 || !equals(argv[1], "get")) {
+        console_write_line("HTTP commands:");
+        console_write_line("  http get <ip> <path>    Fetch URL path (port 80, HTTP/1.0)");
+        console_write_line("Example: http get 10.0.2.2 /");
+        return;
+    }
+
+    uint32_t ip;
+    if (net_parse_ip(argv[2], &ip) != 0) {
+        console_set_color(GRID_COL_ERROR);
+        console_write_line("Usage: http get <ip> <path>  (path must start with /)");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+
+    const char *path = argv[3];
+    if (path[0] != '/') {
+        console_set_color(GRID_COL_ERROR);
+        console_write_line("Path must start with /");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+
+    if (!net_present()) {
+        console_set_color(GRID_COL_ERROR);
+        console_write_line("No network device. Boot with: make run (virtio-net-pci).");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+
+    static char body[2048];
+    console_write("HTTP GET ");
+    console_write(argv[2]);
+    console_write_line(path);
+    int n = http_get(ip, 80, path, body, sizeof(body));
+    if (n < 0) {
+        console_set_color(GRID_COL_ERROR);
+        console_write_line("HTTP request failed (timeout or connection error).");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+
+    console_set_color(GRID_COL_OK);
+    console_write("Received ");
+    write_int(n);
+    console_write_line(" bytes:");
+    console_set_color(GRID_COL_DEFAULT);
+
+    for (int i = 0; i < n && i < 1800; ++i) {
+        char c = body[i];
+        if (c == '\r') {
+            continue;
+        }
+        if (c == '\n' || (c >= 32 && c < 127)) {
+            console_write_char(c);
+        }
+    }
+    if (n > 1800) {
+        console_write_line("\n... (truncated)");
+    } else {
+        console_write_char('\n');
+    }
 }
 
 static void cmd_net(int argc, char *argv[]) {
@@ -1561,6 +1648,8 @@ void shell_dispatch_line(char *line) {
         cmd_portal(argc, argv);
     } else if (equals(argv[0], "net")) {
         cmd_net(argc, argv);
+    } else if (equals(argv[0], "http")) {
+        cmd_http(argc, argv);
     } else if (equals(argv[0], "irc")) {
         cmd_irc(argc, argv);
     } else if (equals(argv[0], "basic")) {

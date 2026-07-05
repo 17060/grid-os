@@ -2,6 +2,8 @@
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
+**New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
+
 ## What's new in 6.0 — GridBASIC
 
 - **Advanced BASIC language** — a real interpreter (`kernel/basic.c`) deeply interwoven into the Grid: a tokenizing lexer, recursive-descent expression evaluator, numeric + string values, arrays (`DIM`), and the classic control flow you'd expect.

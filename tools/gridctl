@@ -15,8 +15,10 @@ gridctl — host helper for Grid OS arcade disk
   gridctl portal-push PATH FILE  send FILE to Grid OS portal recv over COM1
   gridctl run           boot Grid OS (q35 + virtio-blk, GUI window)
   gridctl run-4k        boot with 4K HDMI window (scaled VGA text)
+  gridctl run-hd        boot with HD HDMI window (1920x1080)
   gridctl run-headless  terminal shell over serial (no GUI)
   gridctl test          headless smoke test (status + poweroff)
+  gridctl backup [file] save disk + kernel tarball
   gridctl run-legacy    boot with legacy IDE disk (older QEMU profiles)
   gridctl wipe          delete arcade disk (fresh frontier)
   gridctl hexdump       show FLYNGRID signature sector
@@ -103,11 +105,29 @@ case "$cmd" in
   run-4k)
     make -C "$ROOT" run-4k
     ;;
+  run-hd)
+    make -C "$ROOT" run-hd
+    ;;
   run-headless)
     make -C "$ROOT" run-headless
     ;;
   test)
     make -C "$ROOT" test
+    ;;
+  backup)
+    dest="${2:-grid-os-backup-$(date +%Y%m%d-%H%M%S).tar.gz}"
+    make -C "$ROOT" disk 2>/dev/null || true
+    files=()
+    [[ -f "$ROOT/build/grid.img" ]] && files+=("build/grid.img")
+    [[ -f "$ROOT/build/grid-os.bin" ]] && files+=("build/grid-os.bin")
+    [[ -f "$ROOT/README.md" ]] && files+=("README.md")
+    [[ -d "$ROOT/docs" ]] && files+=("docs")
+    if [[ ${#files[@]} -eq 0 ]]; then
+      echo "Nothing to back up — run: make disk seed-disk" >&2
+      exit 1
+    fi
+    tar czf "$dest" -C "$ROOT" "${files[@]}"
+    echo "Backed up to $dest"
     ;;
   run-legacy)
     make -C "$ROOT" run-legacy
