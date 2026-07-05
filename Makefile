@@ -69,7 +69,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge save-macos-arm64 clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge save-macos-arm64 standalone-macos clean
 
 all: $(TARGET)
 
@@ -205,6 +205,10 @@ btc-bridge:
 save-macos-arm64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh
 	./tools/save_mac_silicon.sh
+
+standalone-macos: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/build_standalone_mac.sh
+	./tools/build_standalone_mac.sh
 
 clean:
 	rm -rf build
