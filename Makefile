@@ -42,10 +42,15 @@ QEMU_NET      = -netdev user,id=net0 -device virtio-net-pci,netdev=net0
 QEMU_SERIAL   = -serial stdio
 # zoom-to-fit lets the VGA text console scale when the window is resized
 QEMU_DISPLAY  = -display cocoa,zoom-to-fit=on
+# HDMI 4K: EDID reports 3840x2160; cocoa zoom-to-fit scales 80x25 VGA text to fill
+# the window. tools/qemu_hdmi_4k.sh also tries to resize the window on macOS.
+QEMU_VGA_4K     = -device VGA,xres=3840,yres=2160,edid=on
+QEMU_DISPLAY_4K = -display cocoa,zoom-to-fit=on
+QEMU_NAME_4K    = -name "Grid OS — HDMI 4K (3840x2160)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge clean
+.PHONY: all run run-4k run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge clean
 
 all: $(TARGET)
 
@@ -116,6 +121,9 @@ run: $(TARGET) $(DISK_IMAGE)
 	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
 		-kernel build/grid-os.elf $(QEMU_DRIVE) $(QEMU_VIRTIO) \
 		$(QEMU_NET) $(QEMU_SERIAL) $(QEMU_DISPLAY) $(QEMU_COMMON)
+
+run-4k: $(TARGET) $(DISK_IMAGE)
+	./tools/qemu_hdmi_4k.sh
 
 run-vga: $(TARGET) $(DISK_IMAGE)
 	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

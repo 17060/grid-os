@@ -642,6 +642,10 @@ static void cmd_status(void) {
     console_write("PS/2 keyboard");
     console_write_line(" + shift, PS/2 mouse");
     console_set_color(GRID_COL_DEFAULT);
+    console_write("  Display:       ");
+    console_set_color(GRID_COL_OK);
+    console_write_line("VGA text 80x25 (make run-4k for 4K HDMI window)");
+    console_set_color(GRID_COL_DEFAULT);
     console_write("  Network:       ");
     console_set_color(net_present() ? GRID_COL_OK : GRID_COL_DIM);
     console_write_line(net_present() ? "virtio-net online (10.0.2.15)" : "offline");
