@@ -1,12 +1,24 @@
-CC      = x86_64-elf-gcc
-LD      = x86_64-elf-ld
-OBJCOPY = x86_64-elf-objcopy
+# Prefer the osdev cross toolchain; fall back to host gcc/ld on Linux CI.
+ifeq ($(shell command -v x86_64-elf-gcc 2>/dev/null),)
+  CC      = gcc
+  LD      = ld
+  OBJCOPY = objcopy
+  HOST_GCC = 1
+else
+  CC      = x86_64-elf-gcc
+  LD      = x86_64-elf-ld
+  OBJCOPY = x86_64-elf-objcopy
+endif
 NASM    = nasm
 QEMU    = qemu-system-x86_64
 
-CFLAGS  = -std=c11 -ffreestanding -fno-stack-protector -fno-pic -mno-red-zone \
+CFLAGS  = -std=c11 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone \
           -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -O2 \
           -Ikernel/include
+ifdef HOST_GCC
+  LDFLAGS += -no-pie
+  USER_CFLAGS = -fno-pie
+endif
 ASFLAGS = -f elf64
 LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
 # GridBASIC (kernel/basic.c) uses 64-bit fixed-point math with __int128
@@ -40,12 +52,17 @@ QEMU_DRIVE_TEST = -drive if=none,id=grid0,file=$(DISK_TEST_IMAGE),format=raw
 QEMU_VIRTIO   = -device virtio-blk-pci,drive=grid0
 QEMU_NET      = -netdev user,id=net0 -device virtio-net-pci,netdev=net0
 QEMU_SERIAL   = -serial stdio
-# zoom-to-fit lets the VGA text console scale when the window is resized
-QEMU_DISPLAY  = -display cocoa,zoom-to-fit=on
+# zoom-to-fit lets the VGA text console scale when the window is resized (macOS cocoa)
+ifeq ($(shell uname -s 2>/dev/null),Darwin)
+  QEMU_DISPLAY  = -display cocoa,zoom-to-fit=on
+  QEMU_DISPLAY_4K = -display cocoa,zoom-to-fit=on
+else
+  QEMU_DISPLAY  = -display gtk,zoom-to-fit=on
+  QEMU_DISPLAY_4K = -display gtk,zoom-to-fit=on
+endif
 # HDMI 4K: EDID reports 3840x2160; cocoa zoom-to-fit scales 80x25 VGA text to fill
 # the window. tools/qemu_hdmi_4k.sh also tries to resize the window on macOS.
 QEMU_VGA_4K     = -device VGA,xres=3840,yres=2160,edid=on
-QEMU_DISPLAY_4K = -display cocoa,zoom-to-fit=on
 QEMU_NAME_4K    = -name "Grid OS — HDMI 4K (3840x2160)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
@@ -102,7 +119,7 @@ build/console.o: kernel/console.c | build
 
 define USER_PROG_RULE
 build/$(1).elf: user/$(1).c user/linker.ld user/usys.h | build
-	$(CC) $(CFLAGS) -Iuser -T user/linker.ld user/$(1).c -o $$@ -nostdlib -Wl,-e,_start
+	$(CC) $(CFLAGS) $(USER_CFLAGS) -Iuser -T user/linker.ld user/$(1).c -o $$@ -nostdlib -Wl,-e,_start $(if $(HOST_GCC),-no-pie,)
 
 build/$(1).bin: build/$(1).elf
 	$(OBJCOPY) -O binary $$< $$@
