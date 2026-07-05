@@ -61,6 +61,14 @@ make disk seed-disk
 make run
 ```
 
+**4K HDMI display (scaled VGA in a 3840×2160 window):**
+
+```bash
+make run-4k
+```
+
+Grid OS still renders at the classic **80×25 VGA text** console inside the guest. There is no physical HDMI port in QEMU — `make run-4k` opens a **3840×2160 cocoa window** with `zoom-to-fit=on`, so the text console scales up to fill the display. QEMU’s VGA device reports 4K via EDID; on macOS the launcher also tries to resize the window (grant **Accessibility** to Terminal/Cursor if the window stays small — you can drag-resize manually with zoom-to-fit enabled).
+
 **Terminal-only (shell over serial):**
 
 ```bash
@@ -80,6 +88,7 @@ Host helper:
 ./tools/gridctl seed
 ./tools/gridctl install gridsh   # update one program on disk
 ./tools/gridctl run              # GUI
+./tools/gridctl run-4k           # 4K HDMI window (scaled VGA)
 ./tools/gridctl run-headless     # serial shell
 ```
 
