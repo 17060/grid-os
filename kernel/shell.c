@@ -1,5 +1,6 @@
 #include "basic.h"
 #include "console.h"
+#include "shell.h"
 #include "disk.h"
 #include "grid.h"
 #include "gfs.h"
@@ -28,6 +29,11 @@ static char shell_history[SHELL_HISTORY_MAX][SHELL_INPUT_MAX];
 static int shell_history_count = 0;
 
 static uint8_t shell_theme = GRID_COL_DEFAULT;
+static int shell_in_basic_ide = 0;
+
+void shell_set_in_basic_ide(int active) {
+    shell_in_basic_ide = active ? 1 : 0;
+}
 
 static int equals(const char *a, const char *b) {
     while (*a && *b) {
@@ -803,6 +809,10 @@ static void cmd_irc(int argc, char *argv[]) {
 }
 
 static void cmd_basic(int argc, char *argv[]) {
+    if (shell_in_basic_ide && (argc < 2 || equals(argv[1], "ide"))) {
+        console_write_line("Already in GridBASIC — edit above, shell below.");
+        return;
+    }
     if (argc < 2) {
         basic_ide(0);
         return;
@@ -1126,9 +1136,17 @@ static void cmd_wait(void) {
     console_set_color(GRID_COL_DEFAULT);
 }
 
-static void dispatch_command(char *line) {
+void shell_dispatch_line(char *line) {
     char *argv[SHELL_ARGS_MAX];
-    int argc = parse_args(line, argv, SHELL_ARGS_MAX);
+    int argc;
+
+    sanitize_line(line);
+    if (trim_length(line) == 0) {
+        return;
+    }
+
+    shell_push_history(line);
+    argc = parse_args(line, argv, SHELL_ARGS_MAX);
 
     if (argc == 0) {
         return;
@@ -1209,30 +1227,6 @@ static void dispatch_command(char *line) {
 }
 
 void shell_run(void) {
-    char line[SHELL_INPUT_MAX];
-
     console_set_serial_mirror(1);
-    print_banner();
-    cmd_disc();
-    console_write_line("");
-    console_write_line("Type 'help' to explore the frontier.");
-    console_write_line("Type 'ide' for Grid Workbench — GEM desktop and AmigaDOS CLI.");
-    console_write_line("");
-
-    for (;;) {
-        console_set_color(shell_theme);
-        console_write("grid> ");
-        console_set_color(GRID_COL_DEFAULT);
-        console_read_line_hist(line, sizeof(line), shell_history, SHELL_HISTORY_MAX,
-                               &shell_history_count);
-
-        sanitize_line(line);
-        if (trim_length(line) == 0) {
-            continue;
-        }
-
-        shell_push_history(line);
-
-        dispatch_command(line);
-    }
+    basic_ide(0);
 }

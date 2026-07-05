@@ -2,6 +2,7 @@
 
 #include "console.h"
 #include "gfs.h"
+#include "shell.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -10,14 +11,15 @@
  *
  * A line-oriented editor for GridBASIC programs. Lines are kept in an
  * in-memory buffer. Editing keys: arrows, Home/End, Enter (split line),
- * Backspace (merge up at col 0), Del. Escape opens a colon command bar:
- *   :run            run the current buffer
- *   :save <name>    write to GFS /programs/<name>.bas (or absolute path)
- *   :load <name>    read from GFS
- *   :new            clear the buffer
- *   :list           print the buffer (paused)
- *   :quit  (or :q)  exit the IDE
- *   :help           command help
+ * Backspace (merge up at col 0), Del. Escape opens the embedded Grid shell
+ * prompt on the bottom row (grid>):
+ *   grid> help          Flynn Grid shell commands
+ *   grid> :run          run the current buffer
+ *   grid> :save <name>  write to GFS /programs/<name>.bas
+ *   grid> :load <name>  read from GFS
+ *   grid> :new          clear the buffer
+ *   grid> :list         print the buffer (paused)
+ *   grid> :help         IDE editing help
  * ========================================================================== */
 
 #define IDE_MAX_LINES  400
@@ -27,6 +29,8 @@
 #define IDE_BODY_BOT   (CONSOLE_ROWS - 3)
 #define IDE_FOOTER_ROW (CONSOLE_ROWS - 2)
 #define IDE_CMD_ROW    (CONSOLE_ROWS - 1)
+#define IDE_SHELL_PROMPT "grid> "
+#define IDE_SHELL_PROMPT_LEN 6
 
 typedef struct {
     char lines[IDE_MAX_LINES][IDE_LINE_LEN];
@@ -179,7 +183,7 @@ static void draw_body(ide_t *e) {
 
 static void draw_footer(ide_t *e) {
     console_fill_row(IDE_FOOTER_ROW, ' ', GRID_COL_MENU);
-    const char *bar = " ESC: command   Arrows: move   Enter: new line   Del/Bksp: edit ";
+    const char *bar = " ESC: grid> command   Arrows: move   Enter: new line   Del/Bksp: edit ";
     console_write_at(0, IDE_FOOTER_ROW, bar, GRID_COL_MENU);
     char st[64];
     int n = 0;
@@ -199,11 +203,19 @@ static void draw_footer(ide_t *e) {
     console_write_at(CONSOLE_COLS - 16, IDE_FOOTER_ROW, st, GRID_COL_MENU);
 }
 
+static void draw_shell_row(ide_t *e) {
+    (void)e;
+    console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
+    console_write_at(0, IDE_CMD_ROW, IDE_SHELL_PROMPT, GRID_COL_DIM);
+    console_write_at(IDE_SHELL_PROMPT_LEN, IDE_CMD_ROW, "Esc", GRID_COL_DIM);
+}
+
 static void ide_redraw(ide_t *e) {
     console_clear();
     draw_header(e);
     draw_body(e);
     draw_footer(e);
+    draw_shell_row(e);
     console_reset_cursor(6 + (size_t)e->col, (size_t)(IDE_BODY_TOP + (e->row - e->top)));
 }
 
@@ -216,26 +228,27 @@ static void ide_status(ide_t *e, const char *msg, uint8_t attr) {
 }
 
 static void read_cmd(char *out, size_t cap, const char *prompt) {
+    size_t prompt_len = slen(prompt);
     console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
     console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
     size_t len = 0;
-    int col = (int)slen(prompt);
+    int col = (int)prompt_len;
     for (;;) {
         int k = console_read_key();
         if (k >= 0x100) {
-            if (k == CONSOLE_SC_LEFT && col > (int)slen(prompt)) { col--; continue; }
-            if (k == CONSOLE_SC_RIGHT && (size_t)col < slen(prompt) + len) { col++; continue; }
-            if (k == CONSOLE_SC_HOME) { col = (int)slen(prompt); continue; }
-            if (k == CONSOLE_SC_END) { col = (int)slen(prompt) + (int)len; continue; }
+            if (k == CONSOLE_SC_LEFT && col > (int)prompt_len) { col--; continue; }
+            if (k == CONSOLE_SC_RIGHT && (size_t)col < prompt_len + len) { col++; continue; }
+            if (k == CONSOLE_SC_HOME) { col = (int)prompt_len; continue; }
+            if (k == CONSOLE_SC_END) { col = (int)prompt_len + (int)len; continue; }
             if (k == CONSOLE_SC_DEL) {
-                if ((size_t)col < slen(prompt) + len) {
-                    size_t idx = (size_t)col - slen(prompt);
+                if ((size_t)col < prompt_len + len) {
+                    size_t idx = (size_t)col - prompt_len;
                     for (size_t i = idx; i < len; ++i) out[i] = out[i + 1];
                     len--; out[len] = '\0';
-                    console_write_at((size_t)slen(prompt), IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+                    console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
                     console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
                     console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
-                    console_write_at((size_t)slen(prompt), IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+                    console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
                 }
                 continue;
             }
@@ -245,23 +258,23 @@ static void read_cmd(char *out, size_t cap, const char *prompt) {
         if (c == '\n') { out[len] = '\0'; return; }
         if (c == 27) { out[0] = '\0'; return; }   /* Esc cancels */
         if (c == '\b') {
-            if (col > (int)slen(prompt) && len > 0) {
-                size_t idx = (size_t)col - slen(prompt) - 1;
+            if (col > (int)prompt_len && len > 0) {
+                size_t idx = (size_t)col - prompt_len - 1;
                 for (size_t i = idx; i < len - 1; ++i) out[i] = out[i + 1];
                 len--; out[len] = '\0'; col--;
                 console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
                 console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
-                console_write_at((size_t)slen(prompt), IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+                console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
             }
             continue;
         }
         if (c >= 32 && c < 127 && len + 1 < cap) {
-            size_t idx = (size_t)col - slen(prompt);
+            size_t idx = (size_t)col - prompt_len;
             for (size_t i = len + 1; i > idx; --i) out[i] = out[i - 1];
             out[idx] = c; len++; col++;
             console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
             console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
-            console_write_at((size_t)slen(prompt), IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+            console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
         }
     }
 }
@@ -374,14 +387,16 @@ static void cmd_help(void) {
     console_write_line("  Enter                 split line (new line below)");
     console_write_line("  Backspace             delete char / merge line up");
     console_write_line("  Delete                delete char / merge line down");
-    console_write_line("  Esc                   open colon command bar");
-    console_write_line("Commands (Esc, then type):");
+    console_write_line("  Esc                   open grid> command line");
+    console_write_line("Commands (Esc, then type at grid>):");
     console_write_line("  :run                  run the program in the buffer");
     console_write_line("  :save <name>          write to /programs/<name>.bas");
     console_write_line("  :load <name>          read /programs/<name>.bas");
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
-    console_write_line("  :quit / :q            exit the IDE");
+    console_write_line("  :help                 this IDE help");
+    console_write_line("  help                  Flynn Grid shell commands");
+    console_write_line("  poweroff              exit Grid OS");
     console_write_line("GridBASIC statements:");
     console_write_line("  PRINT expr;expr   LET v=expr   INPUT v   DIM A(10)");
     console_write_line("  IF c THEN s ELSE s  FOR i=a TO b STEP s .. NEXT [i]");
@@ -396,12 +411,12 @@ static void cmd_help(void) {
     (void)console_read_key();
 }
 
-static int handle_command(ide_t *e) {
-    char cmd[100];
-    read_cmd(cmd, sizeof(cmd), ": ");
-    if (cmd[0] == '\0') { return 1; }   /* cancelled */
+static int handle_ide_command(ide_t *e, const char *cmd) {
     if (sequal(cmd, "run") || sequal(cmd, "r")) { run_buffer(e); return 1; }
-    if (sequal(cmd, "quit") || sequal(cmd, "q")) { return 0; }
+    if (sequal(cmd, "quit") || sequal(cmd, "q")) {
+        ide_status(e, "use grid> poweroff to exit", GRID_COL_WARN);
+        return 1;
+    }
     if (sequal(cmd, "new")) {
         e->n = 1; e->lines[0][0] = '\0'; e->row = 0; e->col = 0; e->top = 0;
         e->path[0] = '\0'; e->dirty = 0;
@@ -413,11 +428,39 @@ static int handle_command(ide_t *e) {
     if (starts_with(cmd, "load ")) { cmd_load(e, cmd + 5); return 1; }
     if (starts_with(cmd, "save")) { cmd_save(e, cmd + 4); return 1; }
     if (starts_with(cmd, "load")) { cmd_load(e, cmd + 4); return 1; }
-    ide_status(e, "unknown command (try :help)", GRID_COL_ERROR);
-    return 1;
+    return 0;
+}
+
+static void run_shell_line(ide_t *e, char *line) {
+    console_clear();
+    shell_dispatch_line(line);
+    console_set_color(GRID_COL_DIM);
+    console_write_line("--- press any key to return to GridBASIC ---");
+    console_set_color(GRID_COL_DEFAULT);
+    (void)console_read_key();
+    ide_redraw(e);
+}
+
+static void handle_command(ide_t *e) {
+    char cmd[100];
+    read_cmd(cmd, sizeof(cmd), IDE_SHELL_PROMPT);
+    if (cmd[0] == '\0') {
+        return;
+    }
+
+    if (cmd[0] == ':') {
+        if (handle_ide_command(e, cmd + 1)) {
+            return;
+        }
+        ide_status(e, "unknown :command (try :help)", GRID_COL_ERROR);
+        return;
+    }
+
+    run_shell_line(e, cmd);
 }
 
 int basic_ide(const char *path) {
+    shell_set_in_basic_ide(1);
     ide.n = 1; ide.lines[0][0] = '\0';
     ide.row = 0; ide.col = 0; ide.top = 0; ide.dirty = 0;
     ide.path[0] = '\0';
@@ -444,11 +487,11 @@ int basic_ide(const char *path) {
     while (running) {
         int k = console_read_key();
         if (k == 27) {
-            if (!handle_command(&ide)) running = 0;
+            handle_command(&ide);
             ide_redraw(&ide);
             continue;
         }
-        if (k == (int)CONSOLE_CTRL_C) { running = 0; continue; }
+        if (k == (int)CONSOLE_CTRL_C) { continue; }
         if (k >= 0x100) {
             switch (k) {
             case CONSOLE_SC_UP:    ide.row--; clamp_cursor(&ide); break;
@@ -499,6 +542,7 @@ int basic_ide(const char *path) {
             continue;
         }
     }
+    shell_set_in_basic_ide(0);
     console_clear();
     return 0;
 }

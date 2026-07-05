@@ -43,7 +43,7 @@ QEMU_SERIAL   = -serial stdio
 QEMU_DISPLAY  = -display default
 QEMU_COMMON   = -no-reboot -no-shutdown -device isa-debug-exit
 
-.PHONY: all run run-vga run-headless run-legacy test disk seed-disk install-prog clean
+.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke disk seed-disk install-prog clean
 
 all: $(TARGET)
 
@@ -129,10 +129,19 @@ run-legacy: $(TARGET) $(DISK_IMAGE)
 	$(QEMU) -kernel build/grid-os.elf -drive file=$(DISK_IMAGE),if=ide,format=raw \
 		$(QEMU_SERIAL) -no-reboot -no-shutdown
 
-test: $(TARGET) $(DISK_TEST_IMAGE)
-	(sleep 5; printf 'status\n'; sleep 1; printf 'poweroff\n') | $(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
+test-host:
+	@cc -std=c11 -Ikernel/include -O2 -o build/basic_host tools/basic_host_test.c kernel/basic.c
+	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
+
+test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
+	@$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
 		-kernel build/grid-os.elf $(QEMU_DRIVE_TEST) $(QEMU_VIRTIO) \
-		$(QEMU_NET) $(QEMU_SERIAL) -display none $(QEMU_COMMON)
+		$(QEMU_NET) -display none -serial none $(QEMU_COMMON) & \
+	e=$$!; \
+	sleep 8; \
+	if kill -0 $$e 2>/dev/null; then kill $$e 2>/dev/null; wait $$e 2>/dev/null; else exit 1; fi
+
+test: test-host test-qemu-smoke
 
 clean:
 	rm -rf build

@@ -374,21 +374,25 @@ int console_read_scancode(void) {
 int console_read_key(void) {
     for (;;) {
         int scancode = console_try_read_scancode();
-        if (scancode < 0) {
-            continue;
+        if (scancode >= 0) {
+            if (scancode >= 0x100) {
+                return scancode;   /* special key */
+            }
+            uint8_t code = (uint8_t)scancode;
+            if (code == 0x2Au || code == 0x36u || code == 0x1Du) {
+                continue;
+            }
+            char c = translate_scancode(code);
+            if (c == 0) {
+                continue;
+            }
+            return (int)(unsigned char)c;
         }
-        if (scancode >= 0x100) {
-            return scancode;   /* special key */
+
+        char serial_c;
+        if (try_read_serial_char(&serial_c)) {
+            return (int)(unsigned char)serial_c;
         }
-        uint8_t code = (uint8_t)scancode;
-        if (code == 0x2Au || code == 0x36u || code == 0x1Du) {
-            continue;
-        }
-        char c = translate_scancode(code);
-        if (c == 0) {
-            continue;
-        }
-        return (int)(unsigned char)c;
     }
 }
 
