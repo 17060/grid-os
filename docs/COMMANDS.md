@@ -163,6 +163,10 @@ Host bridge: run `make btc-bridge` on the host (TCP port 8767). Requires Bitcoin
 | `:ai models` | `:ai model` | Bridge model info |
 | `:ai help` | `:ai ?` | AI help panel |
 | `:ai <prompt>` | | Shorthand — bare prompt sent to AI |
+| `:vault list` | | List vault nodes (fullscreen) |
+| `:vault get <key>` | | Read vault node (status bar) |
+| `:vault put <key> <val>` | | Store vault node |
+| `:vault sync` | | Persist vault to arcade disk |
 | `:btc help` / `:btc info` / `:btc balance` | | Bitcoin RPC via host bridge |
 | `btc send <addr> <amt>` | | Send coins (fullscreen shell output) |
 | `:irc connect <ip> <port> <nick>` | | Connect IRC (same as `irc connect`) |
