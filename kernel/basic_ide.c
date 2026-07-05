@@ -247,15 +247,48 @@ static void ide_status(ide_t *e, const char *msg, uint8_t attr) {
     console_write_at(0, IDE_CMD_ROW, msg, attr);
 }
 
-static void read_cmd(char *out, size_t cap, const char *prompt) {
-    size_t prompt_len = slen(prompt);
+static void redraw_cmd_row(const char *prompt, size_t prompt_len, const char *out) {
     console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
     console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
+    console_write_at((int)prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+}
+
+static void read_cmd(char *out, size_t cap, const char *prompt) {
+    size_t prompt_len = slen(prompt);
+    redraw_cmd_row(prompt, prompt_len, "");
     size_t len = 0;
     int col = (int)prompt_len;
+    int history_browse = shell_history_len();
     for (;;) {
         int k = console_read_key();
         if (k >= 0x100) {
+            if (k == CONSOLE_SC_UP || k == CONSOLE_SC_DOWN) {
+                int count = shell_history_len();
+                if (count > 0) {
+                    if (k == CONSOLE_SC_UP) {
+                        if (history_browse > 0) {
+                            history_browse--;
+                        }
+                    } else if (history_browse < count) {
+                        history_browse++;
+                    }
+                    if (history_browse < count) {
+                        const char *h = shell_history_at(history_browse);
+                        len = 0;
+                        while (h[len] && len + 1 < cap) {
+                            out[len] = h[len];
+                            len++;
+                        }
+                        out[len] = '\0';
+                    } else {
+                        out[0] = '\0';
+                        len = 0;
+                    }
+                    col = (int)prompt_len + (int)len;
+                    redraw_cmd_row(prompt, prompt_len, out);
+                }
+                continue;
+            }
             if (k == CONSOLE_SC_LEFT && col > (int)prompt_len) { col--; continue; }
             if (k == CONSOLE_SC_RIGHT && (size_t)col < prompt_len + len) { col++; continue; }
             if (k == CONSOLE_SC_HOME) { col = (int)prompt_len; continue; }
@@ -265,10 +298,8 @@ static void read_cmd(char *out, size_t cap, const char *prompt) {
                     size_t idx = (size_t)col - prompt_len;
                     for (size_t i = idx; i < len; ++i) out[i] = out[i + 1];
                     len--; out[len] = '\0';
-                    console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
-                    console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
-                    console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
-                    console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+                    history_browse = shell_history_len();
+                    redraw_cmd_row(prompt, prompt_len, out);
                 }
                 continue;
             }
@@ -282,9 +313,8 @@ static void read_cmd(char *out, size_t cap, const char *prompt) {
                 size_t idx = (size_t)col - prompt_len - 1;
                 for (size_t i = idx; i < len - 1; ++i) out[i] = out[i + 1];
                 len--; out[len] = '\0'; col--;
-                console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
-                console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
-                console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+                history_browse = shell_history_len();
+                redraw_cmd_row(prompt, prompt_len, out);
             }
             continue;
         }
@@ -292,9 +322,8 @@ static void read_cmd(char *out, size_t cap, const char *prompt) {
             size_t idx = (size_t)col - prompt_len;
             for (size_t i = len + 1; i > idx; --i) out[i] = out[i - 1];
             out[idx] = c; len++; col++;
-            console_fill_row(IDE_CMD_ROW, ' ', GRID_COL_DEFAULT);
-            console_write_at(0, IDE_CMD_ROW, prompt, GRID_COL_OK);
-            console_write_at(prompt_len, IDE_CMD_ROW, out, GRID_COL_DEFAULT);
+            history_browse = shell_history_len();
+            redraw_cmd_row(prompt, prompt_len, out);
         }
     }
 }
@@ -434,7 +463,9 @@ static void cmd_ai(ide_t *e, const char *args) {
                       ":ai ask <prompt>     ask the AI\n"
                       ":ai explain          explain current line\n"
                       ":ai complete         complete buffer\n"
+                      ":ai fix <code>       suggest fixed code\n"
                       ":ai models           list bridge model info\n"
+                      ":ai <prompt>         shorthand for ask\n"
                       "Or: grid> ai ask ... (Flynn shell)");
         return;
     }

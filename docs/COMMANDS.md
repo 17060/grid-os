@@ -111,7 +111,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `ai explain [line]` | Explain a GridBASIC line |
 | `ai fix <code>` | Suggest fixed GridBASIC source |
 | `ai complete <code>` | Complete a code fragment |
-| `ai models` | Show bridge model info |
+| `ai models` / `ai model` | Show bridge model info |
 
 Host bridge: run `make ai-bridge` on the host (TCP port 8766, OpenAI-compatible or Ollama).
 
@@ -158,22 +158,26 @@ Host bridge: run `make btc-bridge` on the host (TCP port 8767). Requires Bitcoin
 | `:ai ask <prompt>` | | Ask the AI |
 | `:ai explain` | | Explain current editor line |
 | `:ai complete` | | Suggest completion for buffer |
-| `:ai models` | | Bridge model info |
+| `:ai fix <code>` | | Suggest fixed GridBASIC code |
+| `:ai models` | `:ai model` | Bridge model info |
+| `:ai help` | `:ai ?` | AI help panel |
+| `:ai <prompt>` | | Shorthand — bare prompt sent to AI |
 | `:btc help` / `:btc info` / `:btc balance` | | Bitcoin RPC via host bridge |
 | `btc send <addr> <amt>` | | Send coins (fullscreen shell output) |
 | `:irc connect <ip> <port> <nick>` | | Connect IRC (same as `irc connect`) |
 | `:irc join <#chan>` / `:irc say` / `:irc read` | | IRC session from IDE |
-| `:quit` | `:q` | Exit IDE |
+| `:quit` | `:q` | Shows hint — use `grid> poweroff` to exit OS |
 
 ### Editing keys
 
 | Key | Action |
 |-----|--------|
 | Arrows / Home / End | Move cursor |
-| Enter | Split line |
+| Up / Down | Recall prior `grid>` commands (shared shell history) |
+| Enter | Split line (editor) or submit command (`grid>`) |
 | Backspace | Delete char / merge line up |
 | Delete | Delete char / merge line down |
-| Esc | Open colon command bar |
+| Esc | Open colon command bar (cancel empty command with Esc again) |
 
 ---
 
