@@ -744,6 +744,17 @@ static void shell_push_history(const char *line) {
     shell_history_count++;
 }
 
+int shell_history_len(void) {
+    return shell_history_count;
+}
+
+const char *shell_history_at(int index) {
+    if (index < 0 || index >= shell_history_count) {
+        return "";
+    }
+    return shell_history[index];
+}
+
 static void cmd_net(int argc, char *argv[]) {
     if (argc == 1 || equals(argv[1], "status")) {
         net_print_status();
