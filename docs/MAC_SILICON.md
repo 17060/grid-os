@@ -26,7 +26,34 @@ make run              # cocoa GUI window
 
 **4K / HD resize:** launchers call AppleScript to resize the QEMU window. Grant **Accessibility** to Terminal or Cursor in **System Settings → Privacy & Security → Accessibility**, or drag-resize manually (`zoom-to-fit` scales the console).
 
-## Save a Mac Silicon bundle
+## Standalone single file (Apple Silicon)
+
+One double-clickable file — no git clone, no `make`. Only **QEMU** required:
+
+```bash
+make standalone-macos
+# → dist/GridOS-6.1-macOS-AppleSilicon.command
+```
+
+Copy that **one file** to your Mac, then:
+
+```bash
+brew install qemu
+chmod +x GridOS-6.1-macOS-AppleSilicon.command
+./GridOS-6.1-macOS-AppleSilicon.command
+# or double-click in Finder
+```
+
+Options:
+
+```bash
+GRIDOS_MODE=hd  ./GridOS-*.command    # 1920×1080 window
+GRIDOS_MODE=4k  ./GridOS-*.command    # 3840×2160 window
+```
+
+Payload extracts once to `~/.grid-os/standalone-<version>/`.
+
+## Save a Mac Silicon bundle (full source tarball)
 
 Creates a tarball with the built kernel, seeded Flynn disk, and source — ready to archive or share:
 
