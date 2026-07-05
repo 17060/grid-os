@@ -65,6 +65,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `net` / `net status` | virtio-net + IP status |
 | `net ping <ip>` | ICMP echo (e.g. `10.0.2.2`) |
 | `net poll` | Drain receive queue |
+| `http get <ip> <path>` | HTTP/1.0 GET on port 80 |
 | `irc connect <ip> <port> <nick>` | Connect persistent IRC session |
 | `irc join <#chan>` | Join channel |
 | `irc say <#chan> <msg>` | Send PRIVMSG |

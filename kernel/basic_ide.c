@@ -3,8 +3,11 @@
 #include "ai.h"
 #include "console.h"
 #include "gfs.h"
+#include "grid.h"
 #include "irc.h"
+#include "security.h"
 #include "shell.h"
+#include "storage.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -149,6 +152,114 @@ static void ensure_visible(ide_t *e) {
     if (e->top < 0) e->top = 0;
 }
 
+static int is_kw_char(char c) {
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') || c == '$' || c == '.' || c == '%';
+}
+
+static int is_basic_keyword(const char *w) {
+    static const char *kws[] = {
+        "PRINT", "LET", "IF", "THEN", "ELSE", "FOR", "TO", "STEP", "NEXT",
+        "WHILE", "WEND", "REPEAT", "UNTIL", "GOTO", "GOSUB", "RETURN",
+        "INPUT", "DIM", "REM", "END", "STOP", "AND", "OR", "NOT", "MOD", "DIV", 0
+    };
+    for (int i = 0; kws[i]; ++i) {
+        const char *k = kws[i];
+        const char *p = w;
+        while (*k && *p && *k == *p) {
+            k++;
+            p++;
+        }
+        if (*k == 0 && !is_kw_char(*p)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static const char *find_comment(const char *line) {
+    const char *p = line;
+    while (*p == ' ') {
+        p++;
+    }
+    while (*p >= '0' && *p <= '9') {
+        p++;
+    }
+    while (*p == ' ') {
+        p++;
+    }
+    if (p[0] == 'R' && p[1] == 'E' && p[2] == 'M' &&
+        (p[3] == ' ' || p[3] == '\t' || p[3] == '\0')) {
+        return p;
+    }
+    if (*p == '\'') {
+        return p;
+    }
+    return 0;
+}
+
+static void draw_code_line(size_t y, const char *line) {
+    const char *comment = find_comment(line);
+    if (comment && comment == line) {
+        console_write_at(6, y, line, GRID_COL_DIM);
+        return;
+    }
+
+    int x = 6;
+    const char *p = line;
+    while (*p && x < CONSOLE_COLS) {
+        if (comment && p >= comment) {
+            console_write_at(x, y, p, GRID_COL_DIM);
+            return;
+        }
+        if (*p == ' ' || *p == '\t') {
+            console_write_at(x++, y, " ", GRID_COL_DEFAULT);
+            p++;
+            continue;
+        }
+        if (*p == '"') {
+            char buf[IDE_LINE_LEN];
+            size_t i = 0;
+            buf[i++] = *p++;
+            while (*p && *p != '"' && i + 1 < sizeof(buf)) {
+                buf[i++] = *p++;
+            }
+            if (*p == '"') {
+                buf[i++] = *p++;
+            }
+            buf[i] = '\0';
+            console_write_at(x, y, buf, GRID_COL_WARN);
+            x += (int)slen(buf);
+            continue;
+        }
+        if (*p == '?') {
+            console_write_at(x++, y, "?", GRID_COL_TITLE);
+            p++;
+            continue;
+        }
+        if (!is_kw_char(*p)) {
+            char cbuf[2] = { *p, '\0' };
+            console_write_at(x++, y, cbuf, GRID_COL_DEFAULT);
+            p++;
+            continue;
+        }
+        char word[48];
+        size_t wi = 0;
+        while (is_kw_char(*p) && wi + 1 < sizeof(word)) {
+            word[wi++] = *p++;
+        }
+        word[wi] = '\0';
+        uint8_t attr = GRID_COL_DEFAULT;
+        if (starts_with(word, "GRID.")) {
+            attr = GRID_COL_OK;
+        } else if (is_basic_keyword(word)) {
+            attr = GRID_COL_TITLE;
+        }
+        console_write_at(x, y, word, attr);
+        x += (int)wi;
+    }
+}
+
 static void draw_header(ide_t *e) {
     console_fill_row(IDE_HEADER_ROW, ' ', GRID_COL_TITLE);
     char hdr[80];
@@ -188,7 +299,7 @@ static void draw_body(ide_t *e) {
         while (nb[nn]) num[nn] = nb[nn], nn++;
         num[nn] = '\0';
         console_write_at(0, y, num, GRID_COL_DIM);
-        console_write_at(6, y, e->lines[ln], GRID_COL_DEFAULT);
+        draw_code_line(y, e->lines[ln]);
     }
 }
 
@@ -543,6 +654,66 @@ static int split_words(char *line, char *argv[], int max_args) {
     return argc;
 }
 
+static int handle_vault_ide(ide_t *e, const char *line) {
+    if (!security_require_capability(CAP_STORAGE, "vault")) {
+        ide_status(e, "vault denied (need STORAGE cap)", GRID_COL_ERROR);
+        return 1;
+    }
+
+    char buf[96];
+    scopy(buf, sizeof(buf), line);
+    if (starts_with(buf, "vault ")) {
+        scopy(buf, sizeof(buf), line + 6);
+    } else if (sequal(buf, "vault")) {
+        ide_status(e, "vault list|get|put|sync", GRID_COL_WARN);
+        return 1;
+    }
+
+    char *argv[6];
+    int argc = split_words(buf, argv, 6);
+    if (argc == 0) {
+        ide_status(e, "vault list|get|put|sync", GRID_COL_WARN);
+        return 1;
+    }
+
+    if (sequal(argv[0], "list")) {
+        run_shell_line(e, "vault list");
+        return 1;
+    }
+    if (sequal(argv[0], "get") && argc >= 2) {
+        const char *value = storage_get(argv[1]);
+        if (!value) {
+            ide_status(e, "vault: node not found", GRID_COL_ERROR);
+            return 1;
+        }
+        char msg[96];
+        scopy(msg, sizeof(msg), argv[1]);
+        scopy(msg + slen(msg), sizeof(msg) - slen(msg), "=");
+        scopy(msg + slen(msg), sizeof(msg) - slen(msg), value);
+        ide_status(e, msg, GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "put") && argc >= 3) {
+        if (storage_put(argv[1], argv[2]) != 0) {
+            ide_status(e, "vault put failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "vault node stored", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "sync")) {
+        if (storage_sync_disk() != 0) {
+            ide_status(e, "vault sync failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "vault synced to disk", GRID_COL_OK);
+        return 1;
+    }
+
+    ide_status(e, "vault list|get|put|sync", GRID_COL_WARN);
+    return 1;
+}
+
 static int handle_irc_ide(ide_t *e, const char *line) {
     char buf[96];
     scopy(buf, sizeof(buf), line);
@@ -712,6 +883,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "ai ")) { cmd_ai(e, cmd + 3); return 1; }
     if (sequal(cmd, "btc")) { run_shell_line(e, "btc"); return 1; }
     if (starts_with(cmd, "btc ")) { run_shell_line(e, cmd); return 1; }
+    if (sequal(cmd, "vault") || starts_with(cmd, "vault ")) { return handle_vault_ide(e, cmd); }
     if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) { return handle_irc_ide(e, cmd); }
     return 0;
 }
@@ -750,6 +922,10 @@ static void handle_command(ide_t *e) {
     }
     if (sequal(cmd, "btc") || starts_with(cmd, "btc ")) {
         run_shell_line(e, cmd);
+        return;
+    }
+    if (sequal(cmd, "vault") || starts_with(cmd, "vault ")) {
+        handle_vault_ide(e, cmd);
         return;
     }
 

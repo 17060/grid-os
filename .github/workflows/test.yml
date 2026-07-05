@@ -1,0 +1,24 @@
+name: Grid OS CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nasm qemu-system-x86 gcc
+
+      - name: Build and test
+        run: |
+          make
+          make disk seed-disk
+          make test
