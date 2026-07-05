@@ -4,6 +4,8 @@
 
 **New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
 
+**Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` creates a portable bundle.
+
 ## What's new in 6.0 — GridBASIC
 
 - **Advanced BASIC language** — a real interpreter (`kernel/basic.c`) deeply interwoven into the Grid: a tokenizing lexer, recursive-descent expression evaluator, numeric + string values, arrays (`DIM`), and the classic control flow you'd expect.
