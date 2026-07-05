@@ -1,6 +1,7 @@
 #include "basic.h"
 #include "console.h"
 #include "shell.h"
+#include "ai.h"
 #include "disk.h"
 #include "grid.h"
 #include "gfs.h"
@@ -149,6 +150,7 @@ static void cmd_help(void) {
     console_write_line("  net [status|ping <ip>]       Grid network (virtio-net)");
     console_write_line("  irc <ip> <port> <nick> <#ch> Join an IRC server (TCP)");
     console_write_line("  basic [ide|run <f>|help]     GridBASIC language + IDE");
+    console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  iso               ISO research zone commands");
     console_write_line("  vault             Persistent grid storage");
     console_write_line("  serial            COM1 serial I/O");
@@ -840,6 +842,87 @@ static void cmd_basic(int argc, char *argv[]) {
     console_set_color(GRID_COL_DEFAULT);
 }
 
+static void cmd_ai(int argc, char *argv[]) {
+    char resp[640];
+    char prompt[384];
+    size_t p = 0;
+
+    if (argc < 2) {
+        console_write_line("Grid AI commands:");
+        console_write_line("  ai ask <prompt>       Ask the AI");
+        console_write_line("  ai explain [line]     Explain a BASIC line");
+        console_write_line("  ai fix <code>         Suggest fixed code");
+        console_write_line("  ai complete <code>    Complete a fragment");
+        console_write_line("  ai models             Bridge model info");
+        console_write_line("Host: make ai-bridge (TCP :8766 or COM1 GRIDAI frames)");
+        return;
+    }
+
+    if (equals(argv[1], "models") || equals(argv[1], "model")) {
+        ai_models(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+
+    prompt[0] = '\0';
+    if (argc >= 3) {
+        for (int i = 2; i < argc; ++i) {
+            if (i > 2 && p + 1 < sizeof(prompt)) {
+                prompt[p++] = ' ';
+            }
+            const char *w = argv[i];
+            while (*w && p + 1 < sizeof(prompt)) {
+                prompt[p++] = *w++;
+            }
+        }
+        prompt[p] = '\0';
+    }
+
+    if (equals(argv[1], "ask")) {
+        if (prompt[0] == '\0') {
+            console_write_line("Usage: ai ask <prompt>");
+            return;
+        }
+        ai_ask(prompt, resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "explain")) {
+        ai_explain(prompt, resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "fix")) {
+        if (prompt[0] == '\0') {
+            console_write_line("Usage: ai fix <code>");
+            return;
+        }
+        ai_fix(prompt, resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "complete")) {
+        ai_complete(prompt, resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+
+    /* shorthand: ai <prompt> */
+    p = 0;
+    for (int i = 1; i < argc; ++i) {
+        if (i > 1 && p + 1 < sizeof(prompt)) {
+            prompt[p++] = ' ';
+        }
+        const char *w = argv[i];
+        while (*w && p + 1 < sizeof(prompt)) {
+            prompt[p++] = *w++;
+        }
+    }
+    prompt[p] = '\0';
+    ai_ask(prompt, resp, sizeof(resp));
+    console_write_line(resp);
+}
+
 static void cmd_basictest(void) {
     /* Deterministic interpreter self-test (no file input required).
      * Uses computed output that cannot appear in the source text, so we can
@@ -1185,6 +1268,8 @@ void shell_dispatch_line(char *line) {
         cmd_basic(argc, argv);
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
+    } else if (equals(argv[0], "ai")) {
+        cmd_ai(argc, argv);
     } else if (equals(argv[0], "log")) {
         cmd_log(argc, argv);
     } else if (equals(argv[0], "ls")) {

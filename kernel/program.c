@@ -181,9 +181,10 @@ void program_save_context(const uint64_t *regs) {
     p->ctx.r10 = regs[5];
     p->ctx.r9  = regs[6];
     p->ctx.r8  = regs[7];
-    p->ctx.rdi = regs[8];
-    p->ctx.rsi = regs[9];
-    p->ctx.rbp = regs[10];
+    /* isr_timer push order puts rbp below rdi/rsi on the stack */
+    p->ctx.rbp = regs[8];
+    p->ctx.rdi = regs[9];
+    p->ctx.rsi = regs[10];
     p->ctx.rdx = regs[11];
     p->ctx.rcx = regs[12];
     p->ctx.rbx = regs[13];
@@ -213,9 +214,13 @@ static void finish_return(void) {
 }
 
 void program_check_return(void) {
-    if (return_requested) {
+    /* Only unwind to the kernel caller when a user program is actually
+     * active; a stray kernel-mode fault must not jump through a stale
+     * kernel_return_rsp (that turns one fault into an endless loop). */
+    if (return_requested && syscall_active_program()) {
         finish_return();
     }
+    return_requested = 0;
 }
 
 int program_spawn(const char *name, const void *image, size_t image_size, uint64_t entry_offset) {

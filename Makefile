@@ -29,7 +29,7 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
                build/timer.o build/link.o build/net.o build/tcp.o build/irc.o \
-               build/basic.o build/basic_ide.o build/shell.o $(USER_EMBED)
+               build/basic.o build/basic_ide.o build/ai.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
 
 QEMU_MACHINE  = q35,acpi=off
@@ -40,11 +40,12 @@ QEMU_DRIVE_TEST = -drive if=none,id=grid0,file=$(DISK_TEST_IMAGE),format=raw
 QEMU_VIRTIO   = -device virtio-blk-pci,drive=grid0
 QEMU_NET      = -netdev user,id=net0 -device virtio-net-pci,netdev=net0
 QEMU_SERIAL   = -serial stdio
-QEMU_DISPLAY  = -display default
+# zoom-to-fit lets the VGA text console scale when the window is resized
+QEMU_DISPLAY  = -display cocoa,zoom-to-fit=on
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog clean
+.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge clean
 
 all: $(TARGET)
 
@@ -143,9 +144,12 @@ test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 	if kill -0 $$e 2>/dev/null; then kill $$e 2>/dev/null; wait $$e 2>/dev/null || true; else echo "QEMU died during smoke test"; exit 1; fi
 
 # Full end-to-end: boot into the GridBASIC IDE, open the grid> prompt over
-# serial, run the interpreter self-test, then poweroff (isa-debug-exit -> 3).
+# serial, run the interpreter self-test, spawn the ring-3 gridsh sandbox and
+# exit it cleanly, then poweroff (isa-debug-exit -> 3).
 test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	@(sleep 5; printf '\033'; sleep 1; printf 'basictest\n'; sleep 3; printf '\n'; \
+	  sleep 1; printf '\033'; sleep 1; printf 'spawn gridsh\n'; sleep 2; \
+	  printf 'disc\n'; sleep 1; printf 'exit\n'; sleep 2; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'poweroff\n'; sleep 5) | \
 	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
 		-kernel build/grid-os.elf $(QEMU_DRIVE_TEST) $(QEMU_VIRTIO) \
@@ -154,10 +158,16 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	rc=$$?; \
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
 	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
+	grep -q 'Disc:' build/test-e2e.log || { echo "gridsh disc output missing"; exit 1; }; \
+	grep -q 'End of line' build/test-e2e.log || { echo "gridsh clean exit missing"; exit 1; }; \
+	if grep -q 'Program fault' build/test-e2e.log; then echo "unexpected program fault"; exit 1; fi; \
 	grep -q 'Derezzing' build/test-e2e.log || { echo "poweroff banner missing"; exit 1; }; \
 	echo "e2e OK"
 
 test: test-host test-qemu-smoke test-e2e
+
+ai-bridge:
+	python3 tools/gridai_bridge.py
 
 clean:
 	rm -rf build

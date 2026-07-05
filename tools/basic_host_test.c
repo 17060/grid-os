@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "basic.h"
+#include "ai.h"
 
 /* ---- console stubs ---- */
 void console_write(const char *t)      { fputs(t, stdout); fflush(stdout); }
@@ -41,6 +42,32 @@ int program_spawn_named(const char *n)        { (void)n; return 0; }
 
 /* ---- log stub ---- */
 void log_event(const char *m)                 { (void)m; }
+
+/* ---- ai stubs (offline path only in host test) ---- */
+int ai_ask(const char *prompt, char *out, size_t cap) {
+    (void)prompt;
+    if (cap) { snprintf(out, cap, "offline-host-test"); }
+    return 0;
+}
+int ai_explain(const char *line, char *out, size_t cap) {
+    (void)line;
+    if (cap) { snprintf(out, cap, "explain-stub"); }
+    return 0;
+}
+int ai_fix(const char *code, char *out, size_t cap) {
+    (void)code;
+    if (cap) { snprintf(out, cap, "fix-stub"); }
+    return 0;
+}
+int ai_complete(const char *code, char *out, size_t cap) {
+    (void)code;
+    if (cap) { snprintf(out, cap, "complete-stub"); }
+    return 0;
+}
+int ai_models(char *out, size_t cap) {
+    if (cap) { snprintf(out, cap, "stub"); }
+    return 0;
+}
 
 int main(void) {
     static char buf[65536];

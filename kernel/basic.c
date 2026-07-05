@@ -1,5 +1,6 @@
 #include "basic.h"
 
+#include "ai.h"
 #include "console.h"
 #include "gfs.h"
 #include "log.h"
@@ -536,6 +537,21 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
     if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.0 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     { return make_num(BASIC_SCALE); }
+    if (strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$")) {
+        if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
+        char b[512]; ai_ask(argv[0].s, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.AI.EXPLAIN$")) {
+        if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
+        char b[512]; ai_explain(argv[0].s, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.AI.FIX$")) {
+        if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
+        char b[512]; ai_fix(argv[0].s, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.AI.MODELS$")) {
+        char b[160]; ai_models(b, sizeof(b)); return make_str(b);
+    }
     set_error("FUNC: unknown function");
     return make_num(0);
 }
@@ -549,7 +565,10 @@ static int is_builtin_name(const char *name) {
         strequal(name, "PI") ||
         strequal(name, "GRID.TIME") || strequal(name, "GRID.RND") ||
         strequal(name, "GRID.PING") || strequal(name, "GRID.SERIAL.READ$") ||
-        strequal(name, "GRID.STATUS$") || strequal(name, "GRID.CAP")) {
+        strequal(name, "GRID.STATUS$") || strequal(name, "GRID.CAP") ||
+        strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$") ||
+        strequal(name, "GRID.AI.EXPLAIN$") || strequal(name, "GRID.AI.FIX$") ||
+        strequal(name, "GRID.AI.MODELS$")) {
         return 1;
     }
     return 0;
@@ -727,6 +746,7 @@ static void exec_print(void) {
     int last_was_sep = 0;
     int suppress_nl = 0;
     while (cur()->type != T_NEWLINE && cur()->type != T_EOF &&
+           !(cur()->type == T_OP && cur()->op == ':') &&
            !(cur()->type == T_KW && (cur()->kw == KW_ELSE || cur()->kw == KW_END || cur()->kw == KW_STOP))) {
         if (match_op(';')) { last_was_sep = 1; suppress_nl = 1; continue; }
         if (match_op(',')) {
@@ -737,6 +757,7 @@ static void exec_print(void) {
             continue;
         }
         value_t v = eval_expr();
+        if (g_error) return;   /* bad expression: bail instead of looping forever */
         print_value(&v, 0, &column);
         last_was_sep = 0;
         suppress_nl = 0;
@@ -1014,6 +1035,11 @@ static void exec_statement(void) {
         exec_assign();
         return;
     }
+    if (t->type == T_OP && t->op == '?') {   /* ? is PRINT shorthand */
+        advance();
+        exec_print();
+        return;
+    }
     set_error("SYNTAX: unexpected token");
 }
 
@@ -1023,6 +1049,7 @@ static void run_loop(void) {
         token_t *t = cur();
         if (t->type == T_EOF) break;
         if (t->type == T_NEWLINE) { g_cur++; continue; }
+        if (t->type == T_OP && t->op == ':') { g_cur++; continue; }  /* statement separator */
         exec_statement();
         if (g_error) break;
     }
@@ -1162,7 +1189,7 @@ void basic_print_version(void) {
     console_write_line("GridBASIC 6.0 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
-    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* bindings");
+    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* bindings");
 }
 
 /* keep append_char referenced */

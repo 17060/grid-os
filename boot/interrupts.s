@@ -27,7 +27,20 @@ idt_load:
     lidt [rdi]
     ret
 
+; User code clobbers every GPR, so the kernel's callee-saved registers
+; must be stashed on the kernel stack before entering ring 3 and restored
+; by enter_usermode_return (the C caller expects them preserved).
+%macro SAVE_KERNEL_CALLEE_SAVED 0
+    push rbx
+    push rbp
+    push r12
+    push r13
+    push r14
+    push r15
+%endmacro
+
 enter_usermode:
+    SAVE_KERNEL_CALLEE_SAVED
     mov [rel kernel_return_rsp], rsp
     mov cr3, rdx
     push USER_DS
@@ -39,6 +52,7 @@ enter_usermode:
 
 ; rdi = pointer to user_ctx_t, rsi = pml4 physical
 enter_usermode_resume:
+    SAVE_KERNEL_CALLEE_SAVED
     mov [rel kernel_return_rsp], rsp
     mov cr3, rsi
 
@@ -75,46 +89,67 @@ enter_usermode_resume:
 
 enter_usermode_return:
     mov rsp, [rel kernel_return_rsp]
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbp
+    pop rbx
     ret
 
+; int 0x80 ABI: rax=number, rdi/rsi/rdx=args, rax=return.
+; The user side only declares rcx/r11 clobbered, so every other GPR
+; must survive the syscall — save the full set around the C handler.
 isr_syscall:
-    mov r10, rdi
-    mov r11, rsi
-    mov r12, rdx
-    mov r13, rax
-
-    push r15
-    push r14
-    push r13
-    push r12
-    push r11
-    push r10
-    push rbp
     push rbx
+    push rbp
+    push rdi
+    push rsi
+    push rdx
+    push rcx
+    push r8
+    push r9
+    push r10
+    push r11
+    push r12
+    push r13
+    push r14
+    push r15
+    sub rsp, 8                ; 14 pushes + 8 keeps the call 16-byte aligned
 
-    mov rdi, r13
-    mov rsi, r10
-    mov rdx, r11
-    mov rcx, r12
+    ; syscall_handler(number, arg1, arg2, arg3) — order avoids clobbering
+    mov rcx, rdx
+    mov rdx, rsi
+    mov rsi, rdi
+    mov rdi, rax
     call syscall_handler
 
-    pop rbx
-    pop rbp
-    pop r10
-    pop r11
-    pop r12
-    pop r13
-    pop r14
+    add rsp, 8
     pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop r9
+    pop r8
+    pop rcx
+    pop rdx
+    pop rsi
+    pop rdi
+    pop rbp
+    pop rbx
 
     call program_check_return
     iretq
 
+; Vectors 13/14 push a CPU error code — drop it before iretq.
 isr_gp_fault:
     push rax
     extern idt_handle_gp_fault
     call idt_handle_gp_fault
     pop rax
+    add rsp, 8
     call program_check_return
     iretq
 
@@ -123,6 +158,7 @@ isr_page_fault:
     extern idt_handle_page_fault
     call idt_handle_page_fault
     pop rax
+    add rsp, 8
     call program_check_return
     iretq
 
@@ -165,8 +201,15 @@ isr_timer:
     call program_save_context
 
     ; Abandon the user-mode iret and return to the kernel caller
-    ; (the instruction after enter_usermode / enter_usermode_resume).
+    ; (the instruction after enter_usermode / enter_usermode_resume),
+    ; restoring the callee-saved registers stashed on entry.
     mov rsp, [rel kernel_return_rsp]
+    pop r15
+    pop r14
+    pop r13
+    pop r12
+    pop rbp
+    pop rbx
     ret
 
 .restore_user:

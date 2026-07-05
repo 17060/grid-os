@@ -11,6 +11,8 @@
 - **Grid bindings (deep interweaving)** — BASIC programs reach into the OS:
   - Statements: `GRID.CLS`, `GRID.COLOR n`, `GRID.LOG msg`, `GRID.WAIT ticks`, `GRID.SPAWN "name"`, `GRID.SERIAL.WRITE s$`
   - Functions: `GRID.TIME`, `GRID.RND(n)`, `GRID.PING(ip$)`, `GRID.STATUS$`, `GRID.SERIAL.READ$`
+  - AI: `GRID.AI.ASK$`, `GRID.AI.EXPLAIN$`, `GRID.AI.FIX$`, `GRID.AI.COMPLETE$`, `GRID.AI.MODELS$`
+- **Grid AI** — IDE `:ai` commands, shell `ai`, and GRID.AI.* bindings; host LLM via `make ai-bridge` (TCP :8766) with offline keyword fallback
 - **`basic` shell command** — `basic` (open IDE), `basic ide [file]`, `basic run <file>`, `basic help`.
 - Sample program seeded at `/programs/hello.bas`.
 
@@ -88,11 +90,7 @@ net ping 10.0.2.2     # ICMP echo to the QEMU gateway
 irc 10.0.2.2 6667 gridtest #gridos   # join an IRC server over TCP
 basic run /programs/hello.bas        # run a GridBASIC program
 basic                                # open the GridBASIC IDE
-spawn bg gridloop     # long-running preempt demo
-jobs
-wait                  # block until jobs finish (gridloop resumes across slices)
-portal export         # GridLink vault frame on COM1
-portal recv           # install /programs/* from host over serial
+ai ask write a for loop              # Grid AI (offline or with bridge)
 poweroff              # exit QEMU cleanly
 ide                   # Grid Workbench (needs GUI — use make run)
 ```
@@ -117,6 +115,51 @@ make run-headless
 # terminal 2
 ./tools/gridctl portal-push /programs/lightcycle build/lightcycle.elf | ...
 ```
+
+## Grid AI (LLM bridge)
+
+Grid OS cannot run LLMs in-kernel. A host bridge forwards prompts to OpenAI-compatible APIs or local Ollama.
+
+**Terminal 1 — start the bridge:**
+
+```bash
+# Ollama (default: http://127.0.0.1:11434/v1, model llama3.2)
+make ai-bridge
+
+# OpenAI-compatible
+export OPENAI_API_KEY=sk-...
+export GRIDAI_API_URL=https://api.openai.com/v1
+export GRIDAI_MODEL=gpt-4o-mini
+make ai-bridge
+```
+
+**Terminal 2 — run Grid OS:**
+
+```bash
+make run
+```
+
+In the GridBASIC IDE (boots by default), press **Esc** and type:
+
+```
+:ai ask write a for loop that prints 1 to 5
+:ai explain
+:ai complete
+```
+
+Or at the embedded `grid>` prompt: `ai ask ...`, `ai explain PRINT I`, `ai models`.
+
+From GridBASIC source:
+
+```basic
+10 PRINT GRID.AI.ASK$("how do I loop?")
+20 PRINT GRID.AI.EXPLAIN$("FOR I = 1 TO 5")
+30 END
+```
+
+Without the bridge, offline keyword help still works for `PRINT`, `FOR`, `IF`, `GRID.*`, etc.
+
+Protocol: framed `GRIDAI/1.0/<ACTION>` lines over TCP `10.0.2.2:8766` (QEMU gateway) or COM1 serial.
 
 ## Ring-3 programs
 

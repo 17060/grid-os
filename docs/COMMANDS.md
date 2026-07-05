@@ -97,6 +97,19 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `basic help` / `basic ?` | GridBASIC version + syntax summary |
 | `basictest` | Deterministic interpreter self-test |
 
+### Grid AI
+
+| Command | Description |
+|---------|-------------|
+| `ai` | Show AI command summary |
+| `ai ask <prompt>` | Ask the AI (host bridge or offline help) |
+| `ai explain [line]` | Explain a GridBASIC line |
+| `ai fix <code>` | Suggest fixed GridBASIC source |
+| `ai complete <code>` | Complete a code fragment |
+| `ai models` | Show bridge model info |
+
+Host bridge: run `make ai-bridge` on the host (TCP port 8766, OpenAI-compatible or Ollama).
+
 ### UI & misc
 
 | Command | Description |
@@ -117,6 +130,10 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `:new` | | Clear buffer |
 | `:list` | `:l` | Print program |
 | `:help` | `:h`, `:?` | IDE help |
+| `:ai ask <prompt>` | | Ask the AI |
+| `:ai explain` | | Explain current editor line |
+| `:ai complete` | | Suggest completion for buffer |
+| `:ai models` | | Bridge model info |
 | `:quit` | `:q` | Exit IDE |
 
 ### Editing keys
@@ -159,6 +176,8 @@ On the GEM desktop, keys **1–8** launch icons.
 ### Statement keywords
 
 `PRINT` / `?` · `LET` · `IF` · `THEN` · `ELSE` · `FOR` · `TO` · `STEP` · `NEXT` · `WHILE` · `WEND` · `REPEAT` · `UNTIL` · `GOTO` · `GOSUB` · `RETURN` · `INPUT` · `DIM` · `REM` · `'` · `END` · `STOP`
+
+Multiple statements on one line are separated with `:` (e.g. `X = 1: PRINT X`).
 
 ### Expression keywords
 
@@ -205,6 +224,10 @@ String concat: `+` (when either side is a string)
 | `GRID.SERIAL.READ$` | One line from COM1 |
 | `GRID.STATUS$` | Status string |
 | `GRID.CAP` | Capability flag (1) |
+| `GRID.AI.ASK$(prompt$)` | AI answer (alias: `GRID.AI.COMPLETE$`) |
+| `GRID.AI.EXPLAIN$(line$)` | Explain a BASIC line |
+| `GRID.AI.FIX$(code$)` | Suggest fixed code |
+| `GRID.AI.MODELS$` | Bridge / offline model info |
 
 ### Example program
 

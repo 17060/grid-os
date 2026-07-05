@@ -1,5 +1,6 @@
 #include "basic.h"
 
+#include "ai.h"
 #include "console.h"
 #include "gfs.h"
 #include "shell.h"
@@ -20,6 +21,9 @@
  *   grid> :new          clear the buffer
  *   grid> :list         print the buffer (paused)
  *   grid> :help         IDE editing help
+ *   grid> :ai ask ...   AI prompt (host bridge or offline help)
+ *   grid> :ai explain   explain current line
+ *   grid> :ai complete  suggest completion for buffer
  * ========================================================================== */
 
 #define IDE_MAX_LINES  400
@@ -383,6 +387,83 @@ static void cmd_list(ide_t *e) {
     (void)e;
 }
 
+static void show_ai_panel(const char *title, const char *text) {
+    console_clear();
+    console_set_color(GRID_COL_TITLE);
+    console_write_line(title);
+    console_set_color(GRID_COL_DEFAULT);
+    if (text && text[0]) {
+        char line[200];
+        size_t p = 0;
+        for (size_t i = 0; ; ++i) {
+            char c = text[i];
+            if (c == '\n' || c == '\0') {
+                line[p] = '\0';
+                if (p > 0) {
+                    console_write_line(line);
+                }
+                p = 0;
+                if (c == '\0') {
+                    break;
+                }
+            } else if (p + 1 < sizeof(line)) {
+                line[p++] = c;
+            }
+        }
+    }
+    console_set_color(GRID_COL_DIM);
+    console_write_line("--- press any key ---");
+    console_set_color(GRID_COL_DEFAULT);
+    (void)console_read_key();
+}
+
+static void cmd_ai(ide_t *e, const char *args) {
+    char resp[640];
+    if (args[0] == '\0' || sequal(args, "help") || sequal(args, "?")) {
+        show_ai_panel("=== Grid AI (IDE) ===",
+                      ":ai ask <prompt>     ask the AI\n"
+                      ":ai explain          explain current line\n"
+                      ":ai complete         complete buffer\n"
+                      ":ai models           list bridge model info\n"
+                      "Or: grid> ai ask ... (Flynn shell)");
+        return;
+    }
+    if (starts_with(args, "ask ")) {
+        ai_ask(args + 4, resp, sizeof(resp));
+        show_ai_panel("=== AI ask ===", resp);
+        return;
+    }
+    if (sequal(args, "ask")) {
+        ide_status(e, ":ai ask <prompt>", GRID_COL_WARN);
+        return;
+    }
+    if (sequal(args, "explain")) {
+        ai_explain(e->lines[e->row], resp, sizeof(resp));
+        show_ai_panel("=== AI explain ===", resp);
+        return;
+    }
+    if (sequal(args, "complete")) {
+        char src[4096];
+        serialize(e, src, sizeof(src));
+        ai_complete(src, resp, sizeof(resp));
+        show_ai_panel("=== AI complete ===", resp);
+        return;
+    }
+    if (sequal(args, "models") || sequal(args, "model")) {
+        ai_models(resp, sizeof(resp));
+        show_ai_panel("=== AI models ===", resp);
+        return;
+    }
+    if (starts_with(args, "fix ")) {
+        ai_fix(args + 4, resp, sizeof(resp));
+        show_ai_panel("=== AI fix ===", resp);
+        return;
+    }
+    /* bare prompt shorthand: :ai write a for loop */
+    ai_ask(args, resp, sizeof(resp));
+    show_ai_panel("=== AI ===", resp);
+}
+
 static void cmd_help(void) {
     console_clear();
     console_set_color(GRID_COL_TITLE);
@@ -401,6 +482,9 @@ static void cmd_help(void) {
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
     console_write_line("  :help                 this IDE help");
+    console_write_line("  :ai ask <prompt>      AI help (host bridge or offline)");
+    console_write_line("  :ai explain           explain current line");
+    console_write_line("  :ai complete          suggest completion for buffer");
     console_write_line("  help                  Flynn Grid shell commands");
     console_write_line("  poweroff              exit Grid OS");
     console_write_line("GridBASIC statements:");
@@ -411,6 +495,7 @@ static void cmd_help(void) {
     console_write_line("  GRID.CLS  GRID.COLOR n  GRID.LOG msg  GRID.WAIT ticks");
     console_write_line("  GRID.SPAWN \"name\"  GRID.SERIAL.WRITE s$");
     console_write_line("  GRID.TIME  GRID.RND(n)  GRID.PING(ip$)  GRID.STATUS$");
+    console_write_line("  GRID.AI.ASK$(p$)  GRID.AI.EXPLAIN$(l$)  GRID.AI.FIX$(c$)");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
     console_set_color(GRID_COL_DEFAULT);
@@ -434,6 +519,8 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "load ")) { cmd_load(e, cmd + 5); return 1; }
     if (starts_with(cmd, "save")) { cmd_save(e, cmd + 4); return 1; }
     if (starts_with(cmd, "load")) { cmd_load(e, cmd + 4); return 1; }
+    if (sequal(cmd, "ai")) { cmd_ai(e, ""); return 1; }
+    if (starts_with(cmd, "ai ")) { cmd_ai(e, cmd + 3); return 1; }
     return 0;
 }
 

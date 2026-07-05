@@ -140,11 +140,10 @@ void mouse_poll(void) {
         return;
     }
 
-    while (inb(0x64) & 0x01) {
-        value = read_data();
-        if (value < 0) {
-            return;
-        }
+    /* only consume AUX (mouse) bytes — draining keyboard bytes here would
+     * eat keystrokes (status bit 5 distinguishes the source) */
+    while ((inb(0x64) & 0x21) == 0x21) {
+        value = (int)inb(0x60);
 
         if (packet_index == 0 && !(value & 0x08)) {
             continue;

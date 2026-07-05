@@ -137,9 +137,12 @@ void console_reset_cursor(size_t x, size_t y) {
 }
 
 static int ps2_has_data(void) {
+    /* bit 0: output buffer full; bit 5: byte is from the AUX (mouse) port.
+     * Only claim keyboard data, or mouse packets get read as scancodes
+     * (mouse bytes 0x08.. map to '7','8','o','\'' and spray the prompt). */
     uint8_t status;
     __asm__ volatile("inb %1, %0" : "=a"(status) : "Nd"(0x64));
-    return (status & 0x01) != 0;
+    return (status & 0x21) == 0x01;
 }
 
 void console_set_idle_tick(void (*fn)(void)) {

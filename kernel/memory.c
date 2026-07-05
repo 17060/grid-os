@@ -197,7 +197,11 @@ uint64_t *memory_create_user_tables(void) {
 
     set_page_entry(user_pml4, 0, (uint64_t)user_pdpt, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
     set_page_entry(user_pdpt, 0, (uint64_t)user_pd, PAGE_PRESENT | PAGE_WRITE | PAGE_USER);
+    /* Supervisor identity map of 0–4 MB so kernel text/data/bss (1 MB..~2.4 MB)
+     * stays reachable for interrupts and syscalls while user CR3 is active.
+     * USER_CODE_VADDR (4 MB) starts at pd[2], so nothing user-visible here. */
     set_page_entry(user_pd, 0, 0, PAGE_PRESENT | PAGE_WRITE | (1ULL << 7));
+    set_page_entry(user_pd, 1, 0x200000ULL, PAGE_PRESENT | PAGE_WRITE | (1ULL << 7));
 
     return user_pml4;
 }
@@ -259,7 +263,8 @@ int memory_map_user_rx(uint64_t *pml4, uint64_t vaddr, const void *src, size_t l
             ((uint8_t *)page)[i] = (i < chunk) ? bytes[i] : 0;
         }
 
-        if (map_pt_flags(pml4, addr, (uint64_t)page, PAGE_NX) != 0) {
+        /* RX = read + execute, W^X: no PAGE_WRITE and no PAGE_NX */
+        if (map_pt_flags(pml4, addr, (uint64_t)page, 0) != 0) {
             return -1;
         }
 
