@@ -148,7 +148,10 @@ static void cmd_help(void) {
     console_write_line("  log [tail]        Audit trail");
     console_write_line("  portal [export|import|recv]  GridLink serial portal");
     console_write_line("  net [status|ping <ip>]       Grid network (virtio-net)");
-    console_write_line("  irc <ip> <port> <nick> <#ch> Join an IRC server (TCP)");
+    console_write_line("  irc connect <ip> <port> <nick>   Connect IRC session");
+    console_write_line("  irc join|part|say|read|status   Manage IRC session");
+    console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
+    console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
     console_write_line("  basic [ide|run <f>|help]     GridBASIC language + IDE");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  iso               ISO research zone commands");
@@ -781,33 +784,191 @@ static void cmd_net(int argc, char *argv[]) {
     console_write_line("  net status        Show virtio-net + IP + packet counts");
     console_write_line("  net ping <ip>     Send ICMP echo (e.g. 10.0.2.2)");
     console_write_line("  net poll          Drain the receive queue");
+    console_write_line("  irc connect <ip> <port> <nick>  Connect to IRC server");
+    console_write_line("  irc join <#chan>                Join channel");
+    console_write_line("  irc say <#chan> <message>       Send PRIVMSG");
+    console_write_line("  irc read                        Print queued messages");
+    console_write_line("  irc status                      Show connection info");
+    console_write_line("  irc quit|disconnect|nick ...    Session control");
+    console_write_line("  irc <ip> <port> <nick> <#ch>    Legacy one-shot listen");
+}
+
+static uint16_t parse_port_str(const char *text) {
+    uint32_t port = 0;
+    if (!text) {
+        return 0;
+    }
+    for (size_t i = 0; text[i]; ++i) {
+        if (text[i] < '0' || text[i] > '9') {
+            return 0;
+        }
+        port = port * 10u + (uint32_t)(text[i] - '0');
+        if (port > 65535u) {
+            return 0;
+        }
+    }
+    return (uint16_t)port;
+}
+
+static void join_shell_args(int start, int argc, char *argv[], char *out, size_t cap) {
+    size_t n = 0;
+    for (int i = start; i < argc; ++i) {
+        if (i > start && n + 1 < cap) {
+            out[n++] = ' ';
+        }
+        const char *p = argv[i];
+        while (*p && n + 1 < cap) {
+            out[n++] = *p++;
+        }
+    }
+    out[n] = '\0';
+}
+
+static void irc_print_queue(void) {
+    irc_poll();
+    char line[IRC_LINE_MAX];
+    int any = 0;
+    while (irc_read(line, sizeof(line)) > 0) {
+        any = 1;
+        console_write_line(line);
+    }
+    if (!any) {
+        console_set_color(GRID_COL_DIM);
+        console_write_line("(no IRC messages)");
+        console_set_color(GRID_COL_DEFAULT);
+    }
 }
 
 static void cmd_irc(int argc, char *argv[]) {
-    if (argc < 5) {
-        console_write_line("Usage: irc <server-ip> <port> <nick> <#channel>");
-        console_write_line("Example: irc 10.0.2.2 6667 gridtest #gridos");
-        return;
-    }
-
-    uint32_t port = 0;
-    for (size_t i = 0; argv[2][i]; ++i) {
-        if (argv[2][i] < '0' || argv[2][i] > '9') {
+    if (argc >= 2 && equals(argv[1], "connect")) {
+        if (argc < 5) {
+            console_write_line("Usage: irc connect <server-ip> <port> <nick>");
+            return;
+        }
+        uint16_t port = parse_port_str(argv[3]);
+        if (port == 0) {
             console_set_color(GRID_COL_ERROR);
             console_write_line("Bad port.");
             console_set_color(GRID_COL_DEFAULT);
             return;
         }
-        port = port * 10u + (uint32_t)(argv[2][i] - '0');
-    }
-    if (port == 0 || port > 65535u) {
-        console_set_color(GRID_COL_ERROR);
-        console_write_line("Bad port.");
+        if (irc_connect(argv[2], port, argv[4]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC: connect failed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write_line("IRC: connected.");
         console_set_color(GRID_COL_DEFAULT);
         return;
     }
+    if (argc >= 2 && equals(argv[1], "join")) {
+        if (argc < 3) {
+            console_write_line("Usage: irc join <#channel>");
+            return;
+        }
+        if (irc_join(argv[2]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC: join failed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_write("IRC: joined ");
+        console_write_line(argv[2]);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "part")) {
+        if (argc < 3) {
+            console_write_line("Usage: irc part <#channel>");
+            return;
+        }
+        if (irc_part(argv[2]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC: part failed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_write("IRC: parted ");
+        console_write_line(argv[2]);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "say")) {
+        if (argc < 4) {
+            console_write_line("Usage: irc say <#channel> <message>");
+            return;
+        }
+        char msg[256];
+        join_shell_args(3, argc, argv, msg, sizeof(msg));
+        if (irc_say(argv[2], msg) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC: say failed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_write_line("IRC: sent.");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "read")) {
+        irc_poll();
+        irc_print_queue();
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "status")) {
+        irc_poll();
+        char st[IRC_LINE_MAX];
+        irc_status(st, sizeof(st));
+        console_write_line(st);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "nick")) {
+        if (argc < 3) {
+            console_write_line("Usage: irc nick <name>");
+            return;
+        }
+        if (irc_nick(argv[2]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC: nick failed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_write("IRC: nick set to ");
+        console_write_line(argv[2]);
+        return;
+    }
+    if (argc >= 2 && (equals(argv[1], "quit") || equals(argv[1], "disconnect"))) {
+        if (equals(argv[1], "quit")) {
+            irc_quit("Grid OS shell");
+        } else {
+            irc_disconnect();
+        }
+        console_write_line("IRC: session closed.");
+        return;
+    }
 
-    irc_session(argv[1], (uint16_t)port, argv[3], argv[4], 60000u);
+    if (argc >= 5) {
+        uint16_t port = parse_port_str(argv[2]);
+        if (port == 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Bad port.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        irc_session(argv[1], port, argv[3], argv[4], 60000u);
+        return;
+    }
+
+    console_write_line("IRC commands:");
+    console_write_line("  irc connect <ip> <port> <nick>  Connect persistent session");
+    console_write_line("  irc join <#chan>                Join a channel");
+    console_write_line("  irc part <#chan>                Leave a channel");
+    console_write_line("  irc say <#chan> <message>       Send chat message");
+    console_write_line("  irc read                        Print queued messages");
+    console_write_line("  irc status                      Connection status");
+    console_write_line("  irc nick <name>                 Change nick");
+    console_write_line("  irc quit                        Send QUIT and disconnect");
+    console_write_line("  irc disconnect                  Drop TCP session");
+    console_write_line("  irc <ip> <port> <nick> <#ch>    Legacy one-shot listen");
 }
 
 static void cmd_basic(int argc, char *argv[]) {

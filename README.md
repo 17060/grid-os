@@ -18,10 +18,10 @@
 
 ## What's new in 5.1
 
-- **IRC client** — `irc <server-ip> <port> <nick> <#channel>` joins a real IRC server over TCP
+- **IRC client** — persistent TCP IRC session from shell, GridBASIC IDE (`Esc` → `irc connect …`), and `GRID.IRC.*` bindings
 - **Minimal TCP stack** (`kernel/tcp.c`) — SYN/ACK/FIN state machine, sequence numbers, ACKs, on-the-wire checksums
 - **ARP cache + raw IP send** — the gateway (10.0.2.2) is resolved once and reused as the L2 next-hop; QEMU user-net NATs outbound TCP to the internet
-- **`irc` command** — registers (NICK/USER), joins a channel, answers PING/PONG, prints `PRIVMSG` lines, quits cleanly
+- **`irc` command** — connect/join/say/read/status; legacy one-shot `irc ip port nick #chan`; PING/PONG; 16-line message queue
 
 ## What's new in 5.0
 
@@ -87,9 +87,12 @@ Host helper:
 status                # kernel, disk, network, input
 net status            # virtio-net MAC, IP, packet counts
 net ping 10.0.2.2     # ICMP echo to the QEMU gateway
-irc 10.0.2.2 6667 gridtest #gridos   # join an IRC server over TCP
-basic run /programs/hello.bas        # run a GridBASIC program
-basic                                # open the GridBASIC IDE
+irc connect 10.0.2.2 6667 gridbot   # connect persistent IRC session
+irc join #gridos                  # join channel
+irc say #gridos hello from Grid OS
+irc read                          # print queued messages
+basic                             # open GridBASIC IDE (Esc → irc connect …)
+basic run /programs/hello.bas     # run a GridBASIC program
 ai ask write a for loop              # Grid AI (offline or with bridge)
 poweroff              # exit QEMU cleanly
 ide                   # Grid Workbench (needs GUI — use make run)

@@ -65,7 +65,12 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `net` / `net status` | virtio-net + IP status |
 | `net ping <ip>` | ICMP echo (e.g. `10.0.2.2`) |
 | `net poll` | Drain receive queue |
-| `irc <ip> <port> <nick> <#ch>` | Join IRC server (TCP) |
+| `irc connect <ip> <port> <nick>` | Connect persistent IRC session |
+| `irc join <#chan>` | Join channel |
+| `irc say <#chan> <msg>` | Send PRIVMSG |
+| `irc read` | Print queued IRC lines |
+| `irc status` / `irc quit` / `irc nick <name>` | Session control |
+| `irc <ip> <port> <nick> <#ch>` | Legacy one-shot join + listen |
 | `portal` | GridLink portal status |
 | `portal export` | Export vault frame on COM1 |
 | `portal import` | Receive vault from host |
@@ -134,6 +139,8 @@ Host bridge: run `make ai-bridge` on the host (TCP port 8766, OpenAI-compatible 
 | `:ai explain` | | Explain current editor line |
 | `:ai complete` | | Suggest completion for buffer |
 | `:ai models` | | Bridge model info |
+| `:irc connect <ip> <port> <nick>` | | Connect IRC (same as `irc connect`) |
+| `:irc join <#chan>` / `:irc say` / `:irc read` | | IRC session from IDE |
 | `:quit` | `:q` | Exit IDE |
 
 ### Editing keys
@@ -228,6 +235,22 @@ String concat: `+` (when either side is a string)
 | `GRID.AI.EXPLAIN$(line$)` | Explain a BASIC line |
 | `GRID.AI.FIX$(code$)` | Suggest fixed code |
 | `GRID.AI.MODELS$` | Bridge / offline model info |
+
+### GRID.IRC.* bindings
+
+| Statement / function | Description |
+|---------------------|-------------|
+| `GRID.IRC.CONNECT` server$, port, nick$ | Connect to IRC server |
+| `GRID.IRC.CONNECT$(server$, port, nick$)` | Returns `"ok"` or error |
+| `GRID.IRC.JOIN` channel$ | JOIN channel |
+| `GRID.IRC.PART` channel$ | PART channel |
+| `GRID.IRC.SAY` / `GRID.IRC.MSG` target$, msg$ | PRIVMSG |
+| `GRID.IRC.NICK` nick$ | Change nick |
+| `GRID.IRC.QUIT` | Send QUIT and disconnect |
+| `GRID.IRC.POLL` | Drain TCP / process server lines |
+| `GRID.IRC.DISCONNECT` | Drop session |
+| `GRID.IRC.READ$` | Next queued line (empty if none) |
+| `GRID.IRC.STATUS$` | Connection summary string |
 
 ### Example program
 

@@ -9,6 +9,7 @@
 
 #include "basic.h"
 #include "ai.h"
+#include "irc.h"
 
 /* ---- console stubs ---- */
 void console_write(const char *t)      { fputs(t, stdout); fflush(stdout); }
@@ -28,6 +29,22 @@ int gfs_write_file(const char *p, const void *d, size_t n)         { (void)p;(vo
 int net_parse_ip(const char *t, uint32_t *o) { (void)t; if(o)*o=0; return -1; }
 int net_ping(uint32_t ip)                    { (void)ip; return 1; }
 int net_present(void)                         { return 1; }
+
+/* ---- irc stubs ---- */
+int irc_connect(const char *h, uint16_t p, const char *n) { (void)h;(void)p;(void)n; return 0; }
+void irc_disconnect(void)                      { }
+int irc_join(const char *c)                    { (void)c; return 0; }
+int irc_part(const char *c)                    { (void)c; return 0; }
+int irc_say(const char *t, const char *m)      { (void)t;(void)m; return 0; }
+int irc_nick(const char *n)                    { (void)n; return 0; }
+int irc_quit(const char *r)                    { (void)r; return 0; }
+void irc_poll(void)                            { }
+size_t irc_read(char *b, size_t cap)           { if(cap&&b)b[0]=0; return 0; }
+void irc_status(char *b, size_t cap)           { if(cap)snprintf(b,cap,"disconnected"); }
+int irc_is_connected(void)                     { return 0; }
+int irc_session(const char *h, uint16_t p, const char *n, const char *c, uint32_t d) {
+    (void)h;(void)p;(void)n;(void)c;(void)d; return 0;
+}
 
 /* ---- serial stubs ---- */
 void serial_write(const char *t)             { (void)t; }

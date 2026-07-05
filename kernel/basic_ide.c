@@ -3,6 +3,7 @@
 #include "ai.h"
 #include "console.h"
 #include "gfs.h"
+#include "irc.h"
 #include "shell.h"
 
 #include <stddef.h>
@@ -191,6 +192,11 @@ static void draw_footer(ide_t *e) {
     console_fill_row(IDE_FOOTER_ROW, ' ', GRID_COL_MENU);
     const char *bar = " ESC: grid> command   Arrows: move   Enter: new line   Del/Bksp: edit ";
     console_write_at(0, IDE_FOOTER_ROW, bar, GRID_COL_MENU);
+    if (irc_is_connected()) {
+        char st[48];
+        irc_status(st, sizeof(st));
+        console_write_at(0, IDE_FOOTER_ROW, st, GRID_COL_OK);
+    }
     char st[64];
     int n = 0;
     const char *s = " Ln ";
@@ -464,6 +470,150 @@ static void cmd_ai(ide_t *e, const char *args) {
     show_ai_panel("=== AI ===", resp);
 }
 
+static uint16_t ide_parse_port(const char *text) {
+    uint32_t port = 0;
+    if (!text) {
+        return 0;
+    }
+    for (size_t i = 0; text[i]; ++i) {
+        if (text[i] < '0' || text[i] > '9') {
+            return 0;
+        }
+        port = port * 10u + (uint32_t)(text[i] - '0');
+        if (port > 65535u) {
+            return 0;
+        }
+    }
+    return (uint16_t)port;
+}
+
+static int split_words(char *line, char *argv[], int max_args) {
+    int argc = 0;
+    char *p = line;
+    while (*p && argc < max_args) {
+        while (*p == ' ') {
+            p++;
+        }
+        if (!*p) {
+            break;
+        }
+        argv[argc++] = p;
+        while (*p && *p != ' ') {
+            p++;
+        }
+        if (*p) {
+            *p++ = '\0';
+        }
+    }
+    return argc;
+}
+
+static int handle_irc_ide(ide_t *e, const char *line) {
+    char buf[96];
+    scopy(buf, sizeof(buf), line);
+    if (starts_with(buf, "irc ")) {
+        scopy(buf, sizeof(buf), line + 4);
+    } else if (sequal(buf, "irc")) {
+        ide_status(e, "irc connect|join|say|read|status|quit", GRID_COL_WARN);
+        return 1;
+    }
+    char *argv[6];
+    int argc = split_words(buf, argv, 6);
+    if (argc == 0) {
+        ide_status(e, "irc connect|join|say|read|status|quit", GRID_COL_WARN);
+        return 1;
+    }
+    if (sequal(argv[0], "connect")) {
+        if (argc < 4) {
+            ide_status(e, "usage: irc connect ip port nick", GRID_COL_ERROR);
+            return 1;
+        }
+        uint16_t port = ide_parse_port(argv[2]);
+        if (port == 0 || irc_connect(argv[1], port, argv[3]) != 0) {
+            ide_status(e, "IRC connect failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "IRC connected", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "join")) {
+        if (argc < 2 || irc_join(argv[1]) != 0) {
+            ide_status(e, "IRC join failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "IRC joined channel", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "part")) {
+        if (argc < 2 || irc_part(argv[1]) != 0) {
+            ide_status(e, "IRC part failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "IRC parted channel", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "say")) {
+        if (argc < 3) {
+            ide_status(e, "usage: irc say #chan msg", GRID_COL_ERROR);
+            return 1;
+        }
+        char msg[160];
+        size_t n = 0;
+        for (int i = 2; i < argc && n + 1 < sizeof(msg); ++i) {
+            if (i > 2 && n + 1 < sizeof(msg)) {
+                msg[n++] = ' ';
+            }
+            const char *p = argv[i];
+            while (*p && n + 1 < sizeof(msg)) {
+                msg[n++] = *p++;
+            }
+        }
+        msg[n] = '\0';
+        if (irc_say(argv[1], msg) != 0) {
+            ide_status(e, "IRC say failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "IRC message sent", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "read")) {
+        irc_poll();
+        char linebuf[IRC_LINE_MAX];
+        if (irc_read(linebuf, sizeof(linebuf)) == 0) {
+            ide_status(e, "no IRC messages", GRID_COL_DIM);
+            return 1;
+        }
+        ide_status(e, linebuf, GRID_COL_DEFAULT);
+        return 1;
+    }
+    if (sequal(argv[0], "status")) {
+        irc_poll();
+        char st[IRC_LINE_MAX];
+        irc_status(st, sizeof(st));
+        ide_status(e, st, GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "nick")) {
+        if (argc < 2 || irc_nick(argv[1]) != 0) {
+            ide_status(e, "IRC nick failed", GRID_COL_ERROR);
+            return 1;
+        }
+        ide_status(e, "IRC nick changed", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "quit") || sequal(argv[0], "disconnect")) {
+        if (sequal(argv[0], "quit")) {
+            irc_quit("GridBASIC IDE");
+        } else {
+            irc_disconnect();
+        }
+        ide_status(e, "IRC disconnected", GRID_COL_DIM);
+        return 1;
+    }
+    ide_status(e, "unknown irc command", GRID_COL_ERROR);
+    return 1;
+}
+
 static void cmd_help(void) {
     console_clear();
     console_set_color(GRID_COL_TITLE);
@@ -496,6 +646,8 @@ static void cmd_help(void) {
     console_write_line("  GRID.SPAWN \"name\"  GRID.SERIAL.WRITE s$");
     console_write_line("  GRID.TIME  GRID.RND(n)  GRID.PING(ip$)  GRID.STATUS$");
     console_write_line("  GRID.AI.ASK$(p$)  GRID.AI.EXPLAIN$(l$)  GRID.AI.FIX$(c$)");
+    console_write_line("  GRID.IRC.CONNECT ip$,port,nick$  GRID.IRC.JOIN/SAY/POLL/READ$");
+    console_write_line("  irc connect|join|say|read|status  (also :irc ... at grid>)");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
     console_set_color(GRID_COL_DEFAULT);
@@ -521,6 +673,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "load")) { cmd_load(e, cmd + 4); return 1; }
     if (sequal(cmd, "ai")) { cmd_ai(e, ""); return 1; }
     if (starts_with(cmd, "ai ")) { cmd_ai(e, cmd + 3); return 1; }
+    if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) { return handle_irc_ide(e, cmd); }
     return 0;
 }
 
@@ -547,6 +700,11 @@ static void handle_command(ide_t *e) {
             return;
         }
         ide_status(e, "unknown :command (try :help)", GRID_COL_ERROR);
+        return;
+    }
+
+    if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) {
+        handle_irc_ide(e, cmd);
         return;
     }
 

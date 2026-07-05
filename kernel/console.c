@@ -1,4 +1,5 @@
 #include "console.h"
+#include "irc.h"
 #include "grid.h"
 #include "mouse.h"
 #include "net.h"
@@ -155,6 +156,7 @@ static void console_idle(void) {
         idle_tick_fn();
     }
     net_poll();
+    irc_poll();
     if (!ps2_has_data()) {
         sched_service();
     }

@@ -4,6 +4,7 @@
 #include "console.h"
 #include "gfs.h"
 #include "log.h"
+#include "irc.h"
 #include "net.h"
 #include "program.h"
 #include "serial.h"
@@ -332,13 +333,14 @@ static int tokenize(const char *src) {
             }
             if (src[i] == '$' || src[i] == '%') {
                 t.text[n++] = src[i]; i++;
-            } else if (src[i] == '.') {
-                /* dotted namespace like GRID.PING — keep the dot and next word */
-                if (n < (int)sizeof(t.text) - 4) t.text[n++] = '.';
-                i++;
-                while (is_alnum(src[i])) {
-                    if (n < (int)sizeof(t.text) - 2) t.text[n++] = to_upper(src[i]);
+            } else {
+                while (src[i] == '.') {
+                    if (n < (int)sizeof(t.text) - 4) t.text[n++] = '.';
                     i++;
+                    while (is_alnum(src[i])) {
+                        if (n < (int)sizeof(t.text) - 2) t.text[n++] = to_upper(src[i]);
+                        i++;
+                    }
                 }
                 if (src[i] == '$') { t.text[n++] = '$'; i++; }
             }
@@ -552,6 +554,18 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.AI.MODELS$")) {
         char b[160]; ai_models(b, sizeof(b)); return make_str(b);
     }
+    if (strequal(name, "GRID.IRC.READ$")) {
+        char b[IRC_LINE_MAX]; irc_read(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.IRC.STATUS$")) {
+        char b[IRC_LINE_MAX]; irc_status(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.IRC.CONNECT$")) {
+        if (!(argc >= 3 && argv[0].is_str && argv[2].is_str)) { return make_str("error: bad args"); }
+        uint16_t port = (uint16_t)(to_num(&argv[1]) / BASIC_SCALE);
+        if (port == 0) { return make_str("error: bad port"); }
+        return make_str(irc_connect(argv[0].s, port, argv[2].s) == 0 ? "ok" : "error: connect failed");
+    }
     set_error("FUNC: unknown function");
     return make_num(0);
 }
@@ -568,7 +582,9 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.STATUS$") || strequal(name, "GRID.CAP") ||
         strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$") ||
         strequal(name, "GRID.AI.EXPLAIN$") || strequal(name, "GRID.AI.FIX$") ||
-        strequal(name, "GRID.AI.MODELS$")) {
+        strequal(name, "GRID.AI.MODELS$") ||
+        strequal(name, "GRID.IRC.READ$") || strequal(name, "GRID.IRC.STATUS$") ||
+        strequal(name, "GRID.IRC.CONNECT$")) {
         return 1;
     }
     return 0;
@@ -860,6 +876,54 @@ static void exec_grid_stmt(void) {
     if (strequal(name, "GRID.COLOR")) { value_t v = eval_expr(); console_set_color((uint8_t)(to_num(&v) / BASIC_SCALE)); return; }
     if (strequal(name, "GRID.WAIT")) { value_t v = eval_expr(); uint32_t ticks = (uint32_t)(to_num(&v) / BASIC_SCALE); uint32_t start = timer_ticks(); while (timer_ticks() - start < ticks && g_running) { /* spin */ } return; }
     if (strequal(name, "GRID.PRINT")) { /* alias with extra newline */ value_t v = eval_expr(); int col=0; print_value(&v,0,&col); console_write_line(""); return; }
+    if (strequal(name, "GRID.IRC.CONNECT")) {
+        value_t host = eval_expr(); if (!match_op(',')) { set_error("IRC.CONNECT: need ,"); return; }
+        value_t portv = eval_expr(); if (!match_op(',')) { set_error("IRC.CONNECT: need ,"); return; }
+        value_t nick = eval_expr();
+        char hs[64], ns[40];
+        if (host.is_str) { size_t j=0; while(host.s[j]&&j<sizeof(hs)-1){hs[j]=host.s[j];j++;} hs[j]='\0'; }
+        else { num_to_string(host.n, hs, sizeof(hs)); }
+        if (nick.is_str) { size_t j=0; while(nick.s[j]&&j<sizeof(ns)-1){ns[j]=nick.s[j];j++;} ns[j]='\0'; }
+        else { num_to_string(nick.n, ns, sizeof(ns)); }
+        uint16_t port = (uint16_t)(to_num(&portv) / BASIC_SCALE);
+        if (irc_connect(hs, port, ns) != 0) { set_error("IRC: connect failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRC.JOIN")) {
+        value_t v = eval_expr(); char ch[64];
+        if (v.is_str) { size_t j=0; while(v.s[j]&&j<sizeof(ch)-1){ch[j]=v.s[j];j++;} ch[j]='\0'; }
+        else { num_to_string(v.n, ch, sizeof(ch)); }
+        if (irc_join(ch) != 0) { set_error("IRC: join failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRC.PART")) {
+        value_t v = eval_expr(); char ch[64];
+        if (v.is_str) { size_t j=0; while(v.s[j]&&j<sizeof(ch)-1){ch[j]=v.s[j];j++;} ch[j]='\0'; }
+        else { num_to_string(v.n, ch, sizeof(ch)); }
+        if (irc_part(ch) != 0) { set_error("IRC: part failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRC.SAY") || strequal(name, "GRID.IRC.MSG")) {
+        value_t tgt = eval_expr(); if (!match_op(',')) { set_error("IRC.SAY: need ,"); return; }
+        value_t msg = eval_expr();
+        char tbuf[64], mbuf[256];
+        if (tgt.is_str) { size_t j=0; while(tgt.s[j]&&j<sizeof(tbuf)-1){tbuf[j]=tgt.s[j];j++;} tbuf[j]='\0'; }
+        else { num_to_string(tgt.n, tbuf, sizeof(tbuf)); }
+        if (msg.is_str) { size_t j=0; while(msg.s[j]&&j<sizeof(mbuf)-1){mbuf[j]=msg.s[j];j++;} mbuf[j]='\0'; }
+        else { num_to_string(msg.n, mbuf, sizeof(mbuf)); }
+        if (irc_say(tbuf, mbuf) != 0) { set_error("IRC: say failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRC.NICK")) {
+        value_t v = eval_expr(); char nb[40];
+        if (v.is_str) { size_t j=0; while(v.s[j]&&j<sizeof(nb)-1){nb[j]=v.s[j];j++;} nb[j]='\0'; }
+        else { num_to_string(v.n, nb, sizeof(nb)); }
+        if (irc_nick(nb) != 0) { set_error("IRC: nick failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRC.QUIT")) { irc_quit("GridBASIC"); return; }
+    if (strequal(name, "GRID.IRC.POLL")) { irc_poll(); return; }
+    if (strequal(name, "GRID.IRC.DISCONNECT")) { irc_disconnect(); return; }
     set_error("GRID: unknown statement");
 }
 
@@ -1189,7 +1253,7 @@ void basic_print_version(void) {
     console_write_line("GridBASIC 6.0 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
-    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* bindings");
+    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* bindings");
 }
 
 /* keep append_char referenced */
