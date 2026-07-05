@@ -19,6 +19,7 @@ gridctl — host helper for Grid OS arcade disk
   gridctl run-headless  terminal shell over serial (no GUI)
   gridctl test          headless smoke test (status + poweroff)
   gridctl backup [file] save disk + kernel tarball
+  gridctl save-macos     Mac Silicon bundle (kernel + disk + source)
   gridctl run-legacy    boot with legacy IDE disk (older QEMU profiles)
   gridctl wipe          delete arcade disk (fresh frontier)
   gridctl hexdump       show FLYNGRID signature sector
@@ -128,6 +129,9 @@ case "$cmd" in
     fi
     tar czf "$dest" -C "$ROOT" "${files[@]}"
     echo "Backed up to $dest"
+    ;;
+  save-macos|save-macos-arm64)
+    make -C "$ROOT" save-macos-arm64
     ;;
   run-legacy)
     make -C "$ROOT" run-legacy
