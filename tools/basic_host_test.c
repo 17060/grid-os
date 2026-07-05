@@ -9,6 +9,7 @@
 
 #include "basic.h"
 #include "ai.h"
+#include "btc.h"
 #include "irc.h"
 
 /* ---- console stubs ---- */
@@ -85,6 +86,34 @@ int ai_models(char *out, size_t cap) {
     if (cap) { snprintf(out, cap, "stub"); }
     return 0;
 }
+
+/* ---- btc stubs (offline path only in host test) ---- */
+int btc_call(const char *method, const char *params, char *out, size_t cap) {
+    (void)method; (void)params;
+    if (cap) { snprintf(out, cap, "btc-offline-host-test"); }
+    return -1;
+}
+void btc_status(char *out, size_t cap) {
+    if (cap) { snprintf(out, cap, "offline"); }
+}
+int btc_blockchain(char *out, size_t cap) { return btc_call("getblockchaininfo", "", out, cap); }
+int btc_network(char *out, size_t cap) { return btc_call("getnetworkinfo", "", out, cap); }
+int btc_wallet(char *out, size_t cap) { return btc_call("getwalletinfo", "", out, cap); }
+int btc_balance(char *out, size_t cap) { return btc_call("getbalance", "", out, cap); }
+int btc_address(const char *label, char *out, size_t cap) {
+    (void)label; return btc_call("getnewaddress", "", out, cap);
+}
+int btc_send(const char *addr, const char *amount, char *out, size_t cap) {
+    (void)addr; (void)amount; return btc_call("sendtoaddress", "", out, cap);
+}
+int btc_tx(const char *txid, char *out, size_t cap) {
+    (void)txid; return btc_call("getrawtransaction", "", out, cap);
+}
+int btc_block(const char *hash_or_height, char *out, size_t cap) {
+    (void)hash_or_height; return btc_call("getblock", "", out, cap);
+}
+int btc_help(char *out, size_t cap) { return btc_call("HELP", "", out, cap); }
+int btc_stop(char *out, size_t cap) { return btc_call("stop", "", out, cap); }
 
 int main(void) {
     static char buf[65536];

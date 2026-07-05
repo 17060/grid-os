@@ -1,6 +1,7 @@
 #include "basic.h"
 
 #include "ai.h"
+#include "btc.h"
 #include "console.h"
 #include "gfs.h"
 #include "log.h"
@@ -566,6 +567,33 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         if (port == 0) { return make_str("error: bad port"); }
         return make_str(irc_connect(argv[0].s, port, argv[2].s) == 0 ? "ok" : "error: connect failed");
     }
+    if (strequal(name, "GRID.BTC.CALL$")) {
+        if (!(argc >= 1 && argv[0].is_str)) { return make_str(""); }
+        const char *params = (argc >= 2 && argv[1].is_str) ? argv[1].s : "";
+        char b[BTC_RESP_MAX]; btc_call(argv[0].s, params, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.INFO$") || strequal(name, "GRID.BTC.BLOCKCHAIN$")) {
+        char b[BTC_RESP_MAX]; btc_blockchain(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.NETWORK$")) {
+        char b[BTC_RESP_MAX]; btc_network(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.WALLET$")) {
+        char b[BTC_RESP_MAX]; btc_wallet(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.BALANCE$")) {
+        char b[BTC_RESP_MAX]; btc_balance(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.ADDRESS$")) {
+        const char *label = (argc >= 1 && argv[0].is_str) ? argv[0].s : "";
+        char b[BTC_RESP_MAX]; btc_address(label, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.HELP$")) {
+        char b[BTC_RESP_MAX]; btc_help(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.STATUS$")) {
+        char b[BTC_RESP_MAX]; btc_status(b, sizeof(b)); return make_str(b);
+    }
     set_error("FUNC: unknown function");
     return make_num(0);
 }
@@ -584,7 +612,12 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.AI.EXPLAIN$") || strequal(name, "GRID.AI.FIX$") ||
         strequal(name, "GRID.AI.MODELS$") ||
         strequal(name, "GRID.IRC.READ$") || strequal(name, "GRID.IRC.STATUS$") ||
-        strequal(name, "GRID.IRC.CONNECT$")) {
+        strequal(name, "GRID.IRC.CONNECT$") ||
+        strequal(name, "GRID.BTC.CALL$") || strequal(name, "GRID.BTC.INFO$") ||
+        strequal(name, "GRID.BTC.BLOCKCHAIN$") || strequal(name, "GRID.BTC.NETWORK$") ||
+        strequal(name, "GRID.BTC.WALLET$") || strequal(name, "GRID.BTC.BALANCE$") ||
+        strequal(name, "GRID.BTC.ADDRESS$") || strequal(name, "GRID.BTC.HELP$") ||
+        strequal(name, "GRID.BTC.STATUS$")) {
         return 1;
     }
     return 0;
@@ -924,6 +957,17 @@ static void exec_grid_stmt(void) {
     if (strequal(name, "GRID.IRC.QUIT")) { irc_quit("GridBASIC"); return; }
     if (strequal(name, "GRID.IRC.POLL")) { irc_poll(); return; }
     if (strequal(name, "GRID.IRC.DISCONNECT")) { irc_disconnect(); return; }
+    if (strequal(name, "GRID.BTC.SEND")) {
+        value_t addr = eval_expr(); if (!match_op(',')) { set_error("BTC.SEND: need ,"); return; }
+        value_t amt = eval_expr();
+        char ab[128], mb[64], rb[BTC_RESP_MAX];
+        if (addr.is_str) { size_t j=0; while(addr.s[j]&&j<sizeof(ab)-1){ab[j]=addr.s[j];j++;} ab[j]='\0'; }
+        else { num_to_string(addr.n, ab, sizeof(ab)); }
+        if (amt.is_str) { size_t j=0; while(amt.s[j]&&j<sizeof(mb)-1){mb[j]=amt.s[j];j++;} mb[j]='\0'; }
+        else { num_to_string(amt.n, mb, sizeof(mb)); }
+        if (btc_send(ab, mb, rb, sizeof(rb)) != 0) { set_error(rb); }
+        return;
+    }
     set_error("GRID: unknown statement");
 }
 
@@ -1253,7 +1297,7 @@ void basic_print_version(void) {
     console_write_line("GridBASIC 6.0 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
-    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* bindings");
+    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
 }
 
 /* keep append_char referenced */

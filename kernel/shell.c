@@ -2,6 +2,7 @@
 #include "console.h"
 #include "shell.h"
 #include "ai.h"
+#include "btc.h"
 #include "disk.h"
 #include "grid.h"
 #include "gfs.h"
@@ -154,6 +155,7 @@ static void cmd_help(void) {
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
     console_write_line("  basic [ide|run <f>|help]     GridBASIC language + IDE");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
+    console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
     console_write_line("  vault             Persistent grid storage");
     console_write_line("  serial            COM1 serial I/O");
@@ -1084,6 +1086,127 @@ static void cmd_ai(int argc, char *argv[]) {
     console_write_line(resp);
 }
 
+static void cmd_btc(int argc, char *argv[]) {
+    char resp[BTC_RESP_MAX];
+    char prompt[384];
+    size_t p = 0;
+
+    if (argc < 2) {
+        console_write_line("Grid BTC commands (host Bitcoin Core via make btc-bridge):");
+        console_write_line("  btc help              List common RPC methods");
+        console_write_line("  btc status            Bridge / node connection");
+        console_write_line("  btc info              getblockchaininfo");
+        console_write_line("  btc blockchain        getblockchaininfo");
+        console_write_line("  btc network           getnetworkinfo");
+        console_write_line("  btc wallet            getwalletinfo");
+        console_write_line("  btc balance           getbalance");
+        console_write_line("  btc address [label]   getnewaddress");
+        console_write_line("  btc send <addr> <amt> sendtoaddress");
+        console_write_line("  btc call <method> [params-json]");
+        console_write_line("  btc tx <txid>         getrawtransaction");
+        console_write_line("  btc block <hash|h>    getblock");
+        console_write_line("  btc stop              stop bitcoind (dangerous)");
+        console_write_line("Host: make btc-bridge (TCP :8767) + BITCOIN_RPC_* env");
+        return;
+    }
+
+    if (equals(argv[1], "help") || equals(argv[1], "?")) {
+        btc_help(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "status")) {
+        btc_status(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "info") || equals(argv[1], "blockchain")) {
+        btc_blockchain(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "network")) {
+        btc_network(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "wallet")) {
+        btc_wallet(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "balance")) {
+        btc_balance(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "address")) {
+        const char *label = (argc >= 3) ? argv[2] : "";
+        btc_address(label, resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "send")) {
+        if (argc < 4) {
+            console_write_line("Usage: btc send <address> <amount>");
+            return;
+        }
+        btc_send(argv[2], argv[3], resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "call")) {
+        if (argc < 3) {
+            console_write_line("Usage: btc call <method> [params-json]");
+            return;
+        }
+        const char *params = (argc >= 4) ? argv[3] : "";
+        btc_call(argv[2], params, resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "tx")) {
+        if (argc < 3) {
+            console_write_line("Usage: btc tx <txid>");
+            return;
+        }
+        btc_tx(argv[2], resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "block")) {
+        if (argc < 3) {
+            console_write_line("Usage: btc block <hash|height>");
+            return;
+        }
+        btc_block(argv[2], resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+    if (equals(argv[1], "stop")) {
+        console_set_color(GRID_COL_WARN);
+        console_write_line("Warning: stops Bitcoin Core on the host.");
+        console_set_color(GRID_COL_DEFAULT);
+        btc_stop(resp, sizeof(resp));
+        console_write_line(resp);
+        return;
+    }
+
+    prompt[0] = '\0';
+    for (int i = 2; i < argc; ++i) {
+        if (i > 2 && p + 1 < sizeof(prompt)) {
+            prompt[p++] = ' ';
+        }
+        const char *w = argv[i];
+        while (*w && p + 1 < sizeof(prompt)) {
+            prompt[p++] = *w++;
+        }
+    }
+    prompt[p] = '\0';
+    btc_call(argv[1], prompt, resp, sizeof(resp));
+    console_write_line(resp);
+}
+
 static void cmd_basictest(void) {
     /* Deterministic interpreter self-test (no file input required).
      * Uses computed output that cannot appear in the source text, so we can
@@ -1431,6 +1554,8 @@ void shell_dispatch_line(char *line) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {
         cmd_ai(argc, argv);
+    } else if (equals(argv[0], "btc")) {
+        cmd_btc(argc, argv);
     } else if (equals(argv[0], "log")) {
         cmd_log(argc, argv);
     } else if (equals(argv[0], "ls")) {

@@ -29,7 +29,7 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
                build/timer.o build/link.o build/net.o build/tcp.o build/irc.o \
-               build/basic.o build/basic_ide.o build/ai.o build/shell.o $(USER_EMBED)
+               build/basic.o build/basic_ide.o build/ai.o build/btc.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
 
 QEMU_MACHINE  = q35,acpi=off
@@ -45,7 +45,7 @@ QEMU_DISPLAY  = -display cocoa,zoom-to-fit=on
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge clean
+.PHONY: all run run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge clean
 
 all: $(TARGET)
 
@@ -168,6 +168,9 @@ test: test-host test-qemu-smoke test-e2e
 
 ai-bridge:
 	python3 tools/gridai_bridge.py
+
+btc-bridge:
+	python3 tools/gridbtc_bridge.py
 
 clean:
 	rm -rf build

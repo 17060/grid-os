@@ -12,7 +12,9 @@
   - Statements: `GRID.CLS`, `GRID.COLOR n`, `GRID.LOG msg`, `GRID.WAIT ticks`, `GRID.SPAWN "name"`, `GRID.SERIAL.WRITE s$`
   - Functions: `GRID.TIME`, `GRID.RND(n)`, `GRID.PING(ip$)`, `GRID.STATUS$`, `GRID.SERIAL.READ$`
   - AI: `GRID.AI.ASK$`, `GRID.AI.EXPLAIN$`, `GRID.AI.FIX$`, `GRID.AI.COMPLETE$`, `GRID.AI.MODELS$`
+  - BTC: `GRID.BTC.CALL$`, `GRID.BTC.INFO$`, `GRID.BTC.BALANCE$`, `GRID.BTC.ADDRESS$`, `GRID.BTC.STATUS$`
 - **Grid AI** — IDE `:ai` commands, shell `ai`, and GRID.AI.* bindings; host LLM via `make ai-bridge` (TCP :8766) with offline keyword fallback
+- **Grid BTC** — IDE/shell `btc` commands and GRID.BTC.* bindings; host Bitcoin Core via `make btc-bridge` (TCP :8767) with clear offline errors
 - **`basic` shell command** — `basic` (open IDE), `basic ide [file]`, `basic run <file>`, `basic help`.
 - Sample program seeded at `/programs/hello.bas`.
 
@@ -163,6 +165,38 @@ From GridBASIC source:
 Without the bridge, offline keyword help still works for `PRINT`, `FOR`, `IF`, `GRID.*`, etc.
 
 Protocol: framed `GRIDAI/1.0/<ACTION>` lines over TCP `10.0.2.2:8766` (QEMU gateway) or COM1 serial.
+
+## Grid BTC (host bridge)
+
+Grid OS cannot run Bitcoin Core in-kernel (128 MB RAM). Instead, a host bridge forwards JSON-RPC to Bitcoin Core on the host:
+
+```bash
+# On the host — use testnet/regtest; never expose RPC to the internet
+export BITCOIN_RPC_USER=...
+export BITCOIN_RPC_PASSWORD=...
+make btc-bridge
+```
+
+In the GridBASIC IDE (Esc → `grid>`):
+
+```
+btc status
+btc info
+btc balance
+btc send bc1q... 0.001
+btc call getpeerinfo
+```
+
+From GridBASIC:
+
+```basic
+10 PRINT GRID.BTC.STATUS$()
+20 PRINT GRID.BTC.INFO$()
+30 PRINT GRID.BTC.BALANCE$()
+40 END
+```
+
+Protocol: framed `GRIDBTC/1.0/<METHOD>` + optional JSON params over TCP `10.0.2.2:8767`. Without the bridge, responses explain how to start `make btc-bridge`.
 
 ## Ring-3 programs
 

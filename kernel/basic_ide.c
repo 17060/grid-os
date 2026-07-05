@@ -25,6 +25,8 @@
  *   grid> :ai ask ...   AI prompt (host bridge or offline help)
  *   grid> :ai explain   explain current line
  *   grid> :ai complete  suggest completion for buffer
+ *   grid> btc info      Bitcoin node (host bridge via make btc-bridge)
+ *   grid> :btc balance  same as btc balance (fullscreen shell output)
  * ========================================================================== */
 
 #define IDE_MAX_LINES  400
@@ -48,6 +50,8 @@ typedef struct {
     char status[96];     /* pending status message for the shell row */
     uint8_t status_attr;
 } ide_t;
+
+static void run_shell_line(ide_t *e, const char *line);
 
 static ide_t ide;
 
@@ -648,6 +652,8 @@ static void cmd_help(void) {
     console_write_line("  GRID.AI.ASK$(p$)  GRID.AI.EXPLAIN$(l$)  GRID.AI.FIX$(c$)");
     console_write_line("  GRID.IRC.CONNECT ip$,port,nick$  GRID.IRC.JOIN/SAY/POLL/READ$");
     console_write_line("  irc connect|join|say|read|status  (also :irc ... at grid>)");
+    console_write_line("  GRID.BTC.CALL$(m$,p$)  GRID.BTC.INFO$/BALANCE$/ADDRESS$");
+    console_write_line("  GRID.BTC.SEND addr$, amount   btc info|balance|send|call|status");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
     console_set_color(GRID_COL_DEFAULT);
@@ -673,13 +679,17 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "load")) { cmd_load(e, cmd + 4); return 1; }
     if (sequal(cmd, "ai")) { cmd_ai(e, ""); return 1; }
     if (starts_with(cmd, "ai ")) { cmd_ai(e, cmd + 3); return 1; }
+    if (sequal(cmd, "btc")) { run_shell_line(e, "btc"); return 1; }
+    if (starts_with(cmd, "btc ")) { run_shell_line(e, cmd); return 1; }
     if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) { return handle_irc_ide(e, cmd); }
     return 0;
 }
 
-static void run_shell_line(ide_t *e, char *line) {
+static void run_shell_line(ide_t *e, const char *line) {
+    char buf[100];
+    scopy(buf, sizeof(buf), line);
     console_clear();
-    shell_dispatch_line(line);
+    shell_dispatch_line(buf);
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key to return to GridBASIC ---");
     console_set_color(GRID_COL_DEFAULT);
@@ -705,6 +715,10 @@ static void handle_command(ide_t *e) {
 
     if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) {
         handle_irc_ide(e, cmd);
+        return;
+    }
+    if (sequal(cmd, "btc") || starts_with(cmd, "btc ")) {
+        run_shell_line(e, cmd);
         return;
     }
 

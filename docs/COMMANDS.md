@@ -115,6 +115,26 @@ Type `help` at the `grid>` prompt for the built-in summary.
 
 Host bridge: run `make ai-bridge` on the host (TCP port 8766, OpenAI-compatible or Ollama).
 
+### Grid BTC
+
+| Command | Description |
+|---------|-------------|
+| `btc` | Show Bitcoin command summary |
+| `btc help` | List common RPC methods (via bridge) |
+| `btc status` | Bridge / node connection status |
+| `btc info` / `btc blockchain` | `getblockchaininfo` |
+| `btc network` | `getnetworkinfo` |
+| `btc wallet` | `getwalletinfo` |
+| `btc balance` | `getbalance` |
+| `btc address [label]` | `getnewaddress` |
+| `btc send <addr> <amount>` | `sendtoaddress` |
+| `btc call <method> [params-json]` | Arbitrary JSON-RPC call |
+| `btc tx <txid>` | `getrawtransaction` |
+| `btc block <hash\|height>` | `getblock` (verbose JSON) |
+| `btc stop` | Stop Bitcoin Core on host (**dangerous**) |
+
+Host bridge: run `make btc-bridge` on the host (TCP port 8767). Requires Bitcoin Core JSON-RPC on the host (`BITCOIN_RPC_URL`, `BITCOIN_RPC_USER`, `BITCOIN_RPC_PASSWORD`). Use **testnet** or **regtest** for development; never expose RPC to the internet.
+
 ### UI & misc
 
 | Command | Description |
@@ -139,6 +159,8 @@ Host bridge: run `make ai-bridge` on the host (TCP port 8766, OpenAI-compatible 
 | `:ai explain` | | Explain current editor line |
 | `:ai complete` | | Suggest completion for buffer |
 | `:ai models` | | Bridge model info |
+| `:btc help` / `:btc info` / `:btc balance` | | Bitcoin RPC via host bridge |
+| `btc send <addr> <amt>` | | Send coins (fullscreen shell output) |
 | `:irc connect <ip> <port> <nick>` | | Connect IRC (same as `irc connect`) |
 | `:irc join <#chan>` / `:irc say` / `:irc read` | | IRC session from IDE |
 | `:quit` | `:q` | Exit IDE |
@@ -251,6 +273,22 @@ String concat: `+` (when either side is a string)
 | `GRID.IRC.DISCONNECT` | Drop session |
 | `GRID.IRC.READ$` | Next queued line (empty if none) |
 | `GRID.IRC.STATUS$` | Connection summary string |
+
+### GRID.BTC.* bindings
+
+| Statement / function | Description |
+|---------------------|-------------|
+| `GRID.BTC.CALL$(method$, params$)` | Generic JSON-RPC (params$ is JSON array or empty) |
+| `GRID.BTC.INFO$` / `GRID.BTC.BLOCKCHAIN$` | `getblockchaininfo` |
+| `GRID.BTC.NETWORK$` | `getnetworkinfo` |
+| `GRID.BTC.WALLET$` | `getwalletinfo` |
+| `GRID.BTC.BALANCE$` | `getbalance` |
+| `GRID.BTC.ADDRESS$` [label$] | `getnewaddress` |
+| `GRID.BTC.HELP$` | Bridge help text |
+| `GRID.BTC.STATUS$` | Bridge connected / error string |
+| `GRID.BTC.SEND` addr$, amount | `sendtoaddress` (sets error on failure) |
+
+Host bridge: `make btc-bridge` (TCP `10.0.2.2:8767`). Without the bridge, calls return a clear offline error.
 
 ### Example program
 
