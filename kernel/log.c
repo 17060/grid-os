@@ -61,6 +61,38 @@ void log_print_all(void) {
     log_print_tail(LOG_ENTRIES);
 }
 
+int log_copy_tail(char *out, size_t out_len, int tail) {
+    if (!out || out_len == 0) {
+        return 0;
+    }
+    out[0] = '\0';
+    if (count == 0) {
+        return 0;
+    }
+
+    int start = 0;
+    int show = count;
+    if (tail > 0 && tail < show) {
+        start = count - tail;
+        show = tail;
+    }
+
+    size_t pos = 0;
+    for (int i = start; i < count && pos + 1 < out_len; ++i) {
+        int index = (head - count + i + LOG_ENTRIES) % LOG_ENTRIES;
+        const char *msg = entries[index].message;
+        if (pos > 0 && pos + 2 < out_len) {
+            out[pos++] = ';';
+            out[pos++] = ' ';
+        }
+        for (size_t j = 0; msg[j] && pos + 1 < out_len; ++j) {
+            out[pos++] = msg[j];
+        }
+    }
+    out[pos] = '\0';
+    return (int)pos;
+}
+
 void log_print_tail(int tail) {
     int start = 0;
     int show = count;

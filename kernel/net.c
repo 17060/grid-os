@@ -759,6 +759,52 @@ void net_print_status(void) {
     console_write_line("  Use: net ping <ip>  (e.g. 10.0.2.2)");
 }
 
+static void append_str(char *out, size_t cap, size_t *pos, const char *s) {
+    if (!out || !pos || !s) {
+        return;
+    }
+    while (*s && *pos + 1 < cap) {
+        out[(*pos)++] = *s++;
+    }
+    if (*pos < cap) {
+        out[*pos] = '\0';
+    }
+}
+
+int net_format_ip(uint32_t ip, char *out, size_t out_len) {
+    if (!out || out_len < 8) {
+        return 0;
+    }
+    size_t pos = 0;
+    for (int b = 3; b >= 0; --b) {
+        uint8_t byte = (uint8_t)((ip >> (b * 8)) & 0xFFu);
+        if (b < 3 && pos + 1 < out_len) {
+            out[pos++] = '.';
+        }
+        if (pos + 2 < out_len) {
+            out[pos++] = (char)('0' + (byte / 100u) % 10u);
+            out[pos++] = (char)('0' + (byte / 10u) % 10u);
+            out[pos++] = (char)('0' + byte % 10u);
+        }
+    }
+    out[pos] = '\0';
+    return (int)pos;
+}
+
+int net_format_status(char *out, size_t out_len) {
+    if (!out || out_len == 0) {
+        return 0;
+    }
+    size_t pos = 0;
+    out[0] = '\0';
+    if (!net.present) {
+        append_str(out, out_len, &pos, "offline");
+        return (int)pos;
+    }
+    append_str(out, out_len, &pos, "online ip=10.0.2.15 gw=10.0.2.2");
+    return (int)pos;
+}
+
 void net_init(void) {
     pci_device_t dev;
     net.present = 0;

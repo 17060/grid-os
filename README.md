@@ -1,4 +1,4 @@
-# Grid OS 6.6
+# Grid OS 6.7
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -9,6 +9,10 @@
 **Windows?** See [docs/WINDOWS.md](docs/WINDOWS.md) — download `GridOS-*-Windows-x64.zip` or `make release-windows` to build bundles.
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 6.7
+
+Full advanced GridBASIC — DEF FN, ELSEIF, ON ERROR/GOTO/GOSUB, OPTION BASE, SUB/FUNCTION/CALL/LOCAL, 2D arrays, CONTINUE, MIN/MAX/TRIM$, plus GRID.DNS/JOBS/ISO/VAULT.EXPORT bindings. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 6.6
 

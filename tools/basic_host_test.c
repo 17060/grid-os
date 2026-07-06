@@ -86,11 +86,27 @@ size_t serial_read_line(char *b, size_t cap, uint32_t lim) { (void)lim; if(cap)b
 static uint32_t g_ticks = 12345;
 uint32_t timer_ticks(void)                    { return g_ticks++; }
 
-/* ---- program stub ---- */
-int program_spawn_named(const char *n)        { (void)n; return 0; }
-
 /* ---- log stub ---- */
 void log_event(const char *m)                 { (void)m; }
+int log_copy_tail(char *o, size_t n, int t)   { (void)t; if(n&&o)snprintf(o,n,"log-stub"); return 8; }
+
+/* ---- sched / iso / program stubs ---- */
+int sched_format_jobs(char *o, size_t n)       { if(n&&o)snprintf(o,n,"none"); return 4; }
+int sched_kill(int id)                         { (void)id; return 0; }
+int iso_format_list(char *o, size_t n)          { if(n&&o)snprintf(o,n,"empty"); return 5; }
+int iso_spawn(const char *name)                { (void)name; return 1; }
+int program_run_background(const char *n)      { (void)n; return 1; }
+int net_format_status(char *o, size_t n)       { if(n&&o)snprintf(o,n,"online"); return 6; }
+int net_format_ip(uint32_t ip, char *o, size_t n) {
+    (void)ip; if(n&&o)snprintf(o,n,"10.0.2.2"); return 8;
+}
+void storage_export_serial(void)               { }
+int storage_import_serial(void)                { return 0; }
+const char *security_entity_name(void)         { return "User"; }
+const grid_identity_t *security_current_identity(void) { return NULL; }
+
+/* ---- program stub ---- */
+int program_spawn_named(const char *n)        { (void)n; return 0; }
 
 /* ---- ai stubs (offline path only in host test) ---- */
 int ai_ask(const char *prompt, char *out, size_t cap) {

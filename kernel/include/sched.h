@@ -13,5 +13,6 @@ void sched_print_jobs(void);
 int sched_kill(int program_id);
 int sched_detach(int program_id);
 void sched_kill_all(void);
+int sched_format_jobs(char *out, size_t out_len);
 
 #endif

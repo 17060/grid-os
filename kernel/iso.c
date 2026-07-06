@@ -339,6 +339,43 @@ void iso_print_list(void) {
     }
 }
 
+int iso_format_list(char *out, size_t out_len) {
+    if (!out || out_len == 0) {
+        return 0;
+    }
+    size_t pos = 0;
+    out[0] = '\0';
+    int found = 0;
+
+    for (int i = 0; i < ISO_ZONE_SLOTS; ++i) {
+        if (!zone[i].used) {
+            continue;
+        }
+        if (pos > 0 && pos + 2 < out_len) {
+            out[pos++] = ',';
+            out[pos++] = ' ';
+        }
+        if (pos + 4 < out_len) {
+            out[pos++] = '#';
+            out[pos++] = (char)('0' + (i + 1));
+            out[pos++] = ':';
+        }
+        for (size_t j = 0; zone[i].name[j] && pos + 1 < out_len; ++j) {
+            out[pos++] = zone[i].name[j];
+        }
+        found = 1;
+    }
+    if (!found && pos + 5 < out_len) {
+        out[pos++] = 'e';
+        out[pos++] = 'm';
+        out[pos++] = 'p';
+        out[pos++] = 't';
+        out[pos++] = 'y';
+    }
+    out[pos] = '\0';
+    return (int)pos;
+}
+
 void iso_print_inspect(int id) {
     const iso_entity_t *iso = entity_at(id);
     char buffer[96];

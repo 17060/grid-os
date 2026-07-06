@@ -155,6 +155,54 @@ static const char *state_label(program_state_t state) {
     }
 }
 
+int sched_format_jobs(char *out, size_t out_len) {
+    if (!out || out_len == 0) {
+        return 0;
+    }
+    out[0] = '\0';
+    size_t pos = 0;
+    int found = 0;
+
+    for (int i = 0; i < SCHED_JOBS_MAX; ++i) {
+        const grid_program_t *program;
+
+        if (!jobs[i].active) {
+            continue;
+        }
+
+        program = program_get(jobs[i].program_id);
+        if (pos > 0 && pos + 2 < out_len) {
+            out[pos++] = ',';
+            out[pos++] = ' ';
+        }
+        if (pos + 4 < out_len) {
+            out[pos++] = '#';
+            out[pos++] = (char)('0' + jobs[i].program_id);
+            out[pos++] = ':';
+        }
+        if (program) {
+            for (size_t j = 0; program->name[j] && pos + 1 < out_len; ++j) {
+                out[pos++] = program->name[j];
+            }
+        } else if (pos + 8 < out_len) {
+            const char *miss = "(missing)";
+            for (size_t j = 0; miss[j] && pos + 1 < out_len; ++j) {
+                out[pos++] = miss[j];
+            }
+        }
+        found = 1;
+    }
+
+    if (!found && pos + 5 < out_len) {
+        out[pos++] = 'n';
+        out[pos++] = 'o';
+        out[pos++] = 'n';
+        out[pos++] = 'e';
+    }
+    out[pos] = '\0';
+    return (int)pos;
+}
+
 void sched_print_jobs(void) {
     int found = 0;
 

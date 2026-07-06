@@ -9,5 +9,6 @@ void log_init(void);
 void log_event(const char *message);
 void log_print_all(void);
 void log_print_tail(int count);
+int log_copy_tail(char *out, size_t out_len, int count);
 
 #endif
