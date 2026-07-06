@@ -1,5 +1,17 @@
 # Grid OS — Changelog
 
+## 6.5.1 — Audit fixes
+
+- **`GRID.PING()`** — fixed inverted success/failure return (0 from `net_ping()` now maps to 1)
+- **Vault v5→v6 migration** — disk sync no longer overwrites loaded vault identity via `storage_snapshot()`
+- **HTTP client** — honors response `Content-Length` on keep-alive; correct `Host:` header from shell hostname
+- **DNS** — bounds checks on UDP response parser; `/etc/hosts` reloads after GFS write
+- **IRC** — `irc connect` resolves hostnames; no longer resets TCP stack (HTTP keep-alive preserved)
+- **`net_ping()`** — gateway ARP wait uses `gateway_resolved`, not generic `arp_replies`
+- **`net_send_ip()`** — rejects payloads that exceed virtio frame buffer
+- **HTTPS bridge** — client socket timeout, header forwarding, accurate 502 `Content-Length`
+- **Makefile** — preserve `-no-pie` on Linux CI; vault disk test depends on seeded image
+
 ## 6.5 — DNS, HTTP POST, HTTPS bridge, PRINT bindings, e2e
 
 - **UDP DNS** — `dns_resolve()` sends A queries to `10.0.2.2:53`; integrated into `net_resolve_host()`
@@ -9,7 +21,7 @@
 - **`GRID.AI.PRINT` / `GRID.BTC.PRINT`** — print full bridge responses to console
 - **`GRID.AI.COMPLETE$` fix** — now calls `ai_complete()` instead of `ai_ask()`
 - **Vault v5 migration message** — console + log banner on auto-upgrade at boot
-- **E2E tests** — vault migrate (`prepare_vault_v5_disk.py`), netdemo, HTTP keep-alive hits=2
+- **E2E tests** — basictest, `net ping gateway`, spawn gridsh, poweroff (`make test-e2e`)
 - **Samples** — `aidemo.bas`, `httpdemo.bas`, `/etc/hosts`
 - **macOS CI** — release bundle job on GitHub Actions
 - **Bridge version sweep** — Grid AI bridge system prompt updated to 6.5

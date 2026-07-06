@@ -253,13 +253,41 @@ static int load_vault_sectors(uint32_t sectors) {
     return 0;
 }
 
+static int storage_write_vault_sectors(void) {
+    uint8_t sector[DISK_SECTOR_SIZE];
+    uint8_t *raw = (uint8_t *)&vault;
+
+    if (!disk_present()) {
+        return -1;
+    }
+
+    if (write_disk_signature() != 0) {
+        return -1;
+    }
+
+    for (uint32_t i = 0; i < VAULT_DISK_SECTORS; ++i) {
+        for (size_t b = 0; b < DISK_SECTOR_SIZE; ++b) {
+            size_t offset = (size_t)i * DISK_SECTOR_SIZE + b;
+            if (offset < sizeof(grid_vault_t)) {
+                sector[b] = raw[offset];
+            } else {
+                sector[b] = 0;
+            }
+        }
+        if (disk_write(VAULT_DISK_LBA + i, sector) != 0) {
+            return -1;
+        }
+    }
+    return 0;
+}
+
 static int migrate_vault_v5_to_v6(void) {
     vault.version = GRID_VAULT_VERSION;
     vault_recompute_checksum();
     serial_write("Vault migrated v5 -> v6 (checksum refreshed, 3 sectors).\n");
     console_write_line("Vault migrated v5 -> v6 (checksum refreshed, 3 sectors).");
     log_event("vault migrated v5 to v6");
-    return storage_sync_disk();
+    return storage_write_vault_sectors();
 }
 
 int storage_load_disk(void) {
@@ -293,33 +321,12 @@ int storage_load_disk(void) {
 }
 
 int storage_sync_disk(void) {
-    uint8_t sector[DISK_SECTOR_SIZE];
-    uint8_t *raw = (uint8_t *)&vault;
-
     if (!disk_present()) {
         return -1;
     }
 
     storage_snapshot();
-    if (write_disk_signature() != 0) {
-        return -1;
-    }
-
-    for (uint32_t i = 0; i < VAULT_DISK_SECTORS; ++i) {
-        for (size_t b = 0; b < DISK_SECTOR_SIZE; ++b) {
-            size_t offset = (size_t)i * DISK_SECTOR_SIZE + b;
-            if (offset < sizeof(grid_vault_t)) {
-                sector[b] = raw[offset];
-            } else {
-                sector[b] = 0;
-            }
-        }
-        if (disk_write(VAULT_DISK_LBA + i, sector) != 0) {
-            return -1;
-        }
-    }
-
-    return 0;
+    return storage_write_vault_sectors();
 }
 
 int storage_copy_node(const char *key, char *out, size_t out_len) {

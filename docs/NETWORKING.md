@@ -53,12 +53,15 @@ grid> http post gateway /hook {"event":"grid"}
 - HTTP/1.1 with `Connection: keep-alive`
 - Reuses the TCP session for repeated requests to the same host:port
 - POST sends `Content-Length` + plain-text body
+- Honors response `Content-Length` (surplus bytes stay in the pool for the next request)
+- Sends the resolved `Host:` header (not a hardcoded name)
 - Server `Connection: close` or socket errors tear down the pool
 - Response body truncated at caller buffer size (2048 bytes in shell)
 
 Paths must start with `/`. Overlong paths are rejected before send.
 
-E2E test (`make test-e2e`) runs two GETs against a host HTTP server and expects `hits=2` (keep-alive reuse).
+Host-side keep-alive reuse can be exercised with `tools/http_test_server.py` (not wired into CI).
+E2E (`make test-e2e`) covers basictest, `net ping gateway`, spawn gridsh, and poweroff.
 
 ## HTTPS (host bridge)
 

@@ -16,7 +16,7 @@
 - **HTTPS host bridge** — `make https-bridge` (TCP :8768) proxies guest HTTP to upstream TLS
 - **`GRID.AI.PRINT` / `GRID.BTC.PRINT`** — full-length console output (bypasses 1024-char string cap)
 - **Vault migration banner** — v5→v6 upgrade logs to console + audit trail on boot
-- **Expanded e2e tests** — vault migrate, netdemo, HTTP keep-alive (two hits on one pool)
+- **Expanded e2e tests** — basictest, `net ping gateway`, spawn gridsh, clean poweroff
 - **Sample library** — `/programs/aidemo.bas`, `/programs/httpdemo.bas`, `/etc/hosts`
 - **macOS CI job** — builds release bundles on `macos-latest`
 - Runtime banners updated to 6.5

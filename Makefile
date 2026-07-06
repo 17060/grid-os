@@ -20,7 +20,7 @@ ifdef HOST_GCC
   USER_CFLAGS = -fno-pie
 endif
 ASFLAGS = -f elf64
-LDFLAGS = -T linker.ld -nostdlib -z max-page-size=0x1000
+LDFLAGS += -T linker.ld -nostdlib -z max-page-size=0x1000
 # GridBASIC (kernel/basic.c) uses 64-bit fixed-point math with __int128
 # intermediates for mul/div/sqrt. The 128-bit division helpers (__divti3,
 # __udivti3, __modti3) live in libgcc, which is pure integer code with no
@@ -167,15 +167,16 @@ test-host-basic:
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
 	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.5'
+	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 
 test-host-vault:
 	@cc -std=c11 -Ikernel/include -O2 -o build/vault_host tools/vault_host_test.c
 	@build/vault_host
 
-test-host-vault-disk:
+test-host-vault-disk: $(DISK_IMAGE)
 	@cc -std=c11 -Ikernel/include -O2 -o build/vault_disk_host tools/vault_disk_host_test.c
 	@build/vault_disk_host
-	@cc -std=c11 -O2 -o build/v5load tools/vault_v5_disk_load_test.c
+	@cc -std=c11 -Ikernel/include -O2 -o build/v5load tools/vault_v5_disk_load_test.c
 	@cp build/grid.img build/grid-test.img
 	@python3 tools/prepare_vault_v5_disk.py build/grid-test.img
 	@build/v5load build/grid-test.img
