@@ -50,10 +50,11 @@ NETDEMO_BAS = (
 )
 
 VAULTDEMO_BAS = (
-    b"10 REM Vault demo (run after: vault put motd hello)\n"
-    b"20 PRINT \"Vault keys live in Grid memory + disk sync\"\n"
-    b"30 PRINT \"Use: vault put key value / vault sync\"\n"
-    b"40 END\n"
+    b"10 REM Vault from GridBASIC\n"
+    b"20 GRID.VAULT.PUT \"motd\", \"hello from BASIC\"\n"
+    b"30 GRID.VAULT.SYNC\n"
+    b"40 PRINT GRID.VAULT.GET$(\"motd\")\n"
+    b"50 END\n"
 )
 
 AIDEMO_BAS = (
@@ -64,10 +65,25 @@ AIDEMO_BAS = (
 )
 
 HTTPDEMO_BAS = (
-    b"10 REM HTTP demo -- use shell: http get gateway 18080 /\n"
-    b"20 PRINT \"HTTP client lives in shell (GET/POST + keep-alive)\"\n"
-    b"30 PRINT \"Host HTTPS: make https-bridge on port 8768\"\n"
+    b"10 REM HTTP from GridBASIC (host bridge optional)\n"
+    b"20 R$ = GRID.HTTP.GET$(\"gateway\", 80, \"/\")\n"
+    b"30 IF LEN(R$) > 0 THEN PRINT \"HTTP ok\" ELSE PRINT \"HTTP skip\"\n"
     b"40 END\n"
+)
+
+ADVANCEDEMO_BAS = (
+    b"10 REM Advanced GridBASIC features\n"
+    b"20 CONST MAX=10\n"
+    b"30 DATA 1,2,3\n"
+    b"40 READ A,B,C\n"
+    b"50 SELECT CASE A\n"
+    b"60 CASE 1\n"
+    b"70   PRINT \"one\"\n"
+    b"80 CASE ELSE\n"
+    b"90   PRINT \"other\"\n"
+    b"100 END SELECT\n"
+    b"110 PRINT INSTR$(\"Grid OS\",\"OS\")\n"
+    b"120 END\n"
 )
 
 ETC_HOSTS = (
@@ -112,6 +128,7 @@ def main() -> int:
         (12, "/etc/hosts", ETC_HOSTS),
         (13, "/programs/aidemo.bas", AIDEMO_BAS),
         (14, "/programs/httpdemo.bas", HTTPDEMO_BAS),
+        (15, "/programs/advancedemo.bas", ADVANCEDEMO_BAS),
     ]
 
     for slot, path, payload in files:

@@ -10,7 +10,11 @@
 #include "basic.h"
 #include "ai.h"
 #include "btc.h"
+#include "gfs.h"
+#include "http.h"
 #include "irc.h"
+#include "security.h"
+#include "storage.h"
 
 /* ---- console stubs ---- */
 void console_write(const char *t)      { fputs(t, stdout); fflush(stdout); }
@@ -19,12 +23,35 @@ void console_write_char(char c)        { fputc(c, stdout); fflush(stdout); }
 void console_set_color(uint8_t c)      { (void)c; }
 void console_clear(void)               { }
 void console_reset_cursor(size_t x, size_t y) { (void)x; (void)y; }
+void console_write_at(size_t x, size_t y, const char *t, uint8_t a) { (void)x;(void)y;(void)a; (void)t; }
+int console_try_read_scancode(void)             { return -1; }
 char console_read_char(void)           { return (char)getchar(); }
 void console_read_line(char *b, size_t cap)   { if (fgets(b, (int)cap, stdin)) { b[strcspn(b,"\n")]=0; } else b[0]=0; }
 
 /* ---- gfs stubs ---- */
 int gfs_read_file(const char *p, void *o, size_t cap, size_t *len) { (void)p;(void)o;(void)cap; if(len)*len=0; return -1; }
-int gfs_write_file(const char *p, const void *d, size_t n)         { (void)p;(void)d;(void)n; return -1; }
+int gfs_write_file(const char *p, const void *d, size_t n)         { (void)p;(void)d;(void)n; return 0; }
+int gfs_list_paths(const char *prefix, char paths[][56], int max) {
+    (void)prefix; (void)max; if (max > 0 && paths) paths[0][0] = '\0'; return 0;
+}
+int gfs_present(void)                          { return 1; }
+
+/* ---- storage stubs ---- */
+int storage_put(const char *k, const char *v)  { (void)k;(void)v; return 0; }
+const char *storage_get(const char *k)         { (void)k; return "stub"; }
+int storage_sync_disk(void)                    { return 0; }
+int storage_list_keys(char *o, size_t n)       { if(n&&o)snprintf(o,n,"motd,seed"); return 0; }
+
+/* ---- http stubs ---- */
+int http_get_host(const char *h, uint16_t p, const char *path, char *o, size_t c) {
+    (void)h;(void)p;(void)path; if(c&&o)snprintf(o,c,"HTTP-OK"); return 4;
+}
+int http_post_host(const char *h, uint16_t p, const char *path, const char *b, char *o, size_t c) {
+    (void)h;(void)p;(void)path;(void)b; if(c&&o)snprintf(o,c,"POST-OK"); return 7;
+}
+
+/* ---- security stub ---- */
+int security_has_capability(uint32_t cap)      { (void)cap; return 1; }
 
 /* ---- net stubs ---- */
 int net_parse_ip(const char *t, uint32_t *o) { (void)t; if(o)*o=0; return -1; }

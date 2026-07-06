@@ -4,11 +4,14 @@
 #include "btc.h"
 #include "console.h"
 #include "gfs.h"
+#include "http.h"
 #include "log.h"
 #include "irc.h"
 #include "net.h"
 #include "program.h"
+#include "security.h"
 #include "serial.h"
+#include "storage.h"
 #include "timer.h"
 
 #include <stddef.h>
@@ -34,7 +37,9 @@ typedef enum {
     KW_WHILE, KW_WEND, KW_REPEAT, KW_UNTIL,
     KW_GOTO, KW_GOSUB, KW_RETURN,
     KW_REM, KW_INPUT, KW_DIM, KW_END, KW_STOP,
-    KW_AND, KW_OR, KW_NOT, KW_MOD, KW_DIV
+    KW_AND, KW_OR, KW_NOT, KW_MOD, KW_DIV,
+    KW_CONST, KW_DATA, KW_READ, KW_RESTORE, KW_RANDOMIZE,
+    KW_SELECT, KW_CASE, KW_EXIT, KW_LINE
 } kw_t;
 
 typedef struct {
@@ -70,6 +75,7 @@ typedef struct {
     char name[24];
     int is_str;        /* variable's value type */
     int is_array;
+    int is_const;
     int dim;           /* array upper bound (inclusive), 0 if scalar */
     value_t *cells;    /* dim+1 cells if array */
     value_t scalar;
@@ -122,6 +128,12 @@ static int g_for_sp;
 static gosub_frame_t g_gosub_stack[MAX_FRAMES];
 static int g_gosub_sp;
 
+#define MAX_DATA 512
+static value_t g_data[MAX_DATA];
+static int g_ndata;
+static int g_data_read;
+static uint32_t g_rnd_state = 0xC0FFEEu;
+
 static int g_running;
 static int g_error;
 static char g_errmsg[96];
@@ -151,6 +163,17 @@ static void num_to_string(num_t v, char *out, size_t cap);
 static num_t sqrt_local(num_t x);
 static num_t pow_local(num_t base, num_t exp);
 static uint32_t rnd_local(void);
+static value_t make_num(num_t v);
+static value_t make_str(const char *s);
+static value_t eval_expr(void);
+static token_t *cur(void);
+static void advance(void);
+static int match_kw(kw_t kw);
+static void exec_statement(void);
+static void exec_select_case(void);
+static int match_end_select(void);
+static void skip_to_next_case_or_end(void);
+static void skip_to_newline(void);
 
 static void set_error(const char *msg) {
     if (!g_error) {
@@ -212,6 +235,15 @@ static kw_t match_keyword(const char *w) {
     if (strequal(w, "NOT")) return KW_NOT;
     if (strequal(w, "MOD")) return KW_MOD;
     if (strequal(w, "DIV")) return KW_DIV;
+    if (strequal(w, "CONST")) return KW_CONST;
+    if (strequal(w, "DATA")) return KW_DATA;
+    if (strequal(w, "READ")) return KW_READ;
+    if (strequal(w, "RESTORE")) return KW_RESTORE;
+    if (strequal(w, "RANDOMIZE")) return KW_RANDOMIZE;
+    if (strequal(w, "SELECT")) return KW_SELECT;
+    if (strequal(w, "CASE")) return KW_CASE;
+    if (strequal(w, "EXIT")) return KW_EXIT;
+    if (strequal(w, "LINE")) return KW_LINE;
     return KW_NONE;
 }
 
@@ -425,6 +457,7 @@ static var_t *get_var(const char *name, int want_str) {
     v->name[n] = '\0';
     v->is_str = want_str;
     v->is_array = 0;
+    v->is_const = 0;
     v->dim = 0;
     v->cells = 0;
     v->scalar.is_str = want_str;
@@ -444,10 +477,39 @@ static void reset_state(void) {
     g_for_sp = 0;
     g_gosub_sp = 0;
     g_pool_used = 0;
+    g_ndata = 0;
+    g_data_read = 0;
     g_cur = 0;
     g_error = 0;
     g_errmsg[0] = '\0';
     g_running = 1;
+}
+
+static void collect_data(void) {
+    g_ndata = 0;
+    g_data_read = 0;
+    for (int i = 0; i < g_ntok; ++i) {
+        if (g_tokens[i].type != T_KW || g_tokens[i].kw != KW_DATA) {
+            continue;
+        }
+        for (int j = i + 1; j < g_ntok; ++j) {
+            if (g_tokens[j].type == T_NEWLINE || g_tokens[j].type == T_EOF) {
+                break;
+            }
+            if (g_tokens[j].type == T_OP && g_tokens[j].op == ':') {
+                break;
+            }
+            if (g_tokens[j].type == T_NUM) {
+                if (g_ndata < MAX_DATA) {
+                    g_data[g_ndata++] = make_num(g_tokens[j].num);
+                }
+            } else if (g_tokens[j].type == T_STR) {
+                if (g_ndata < MAX_DATA) {
+                    g_data[g_ndata++] = make_str(g_tokens[j].text);
+                }
+            }
+        }
+    }
 }
 
 /* ---- expression evaluator (recursive descent) ---- */
@@ -566,6 +628,26 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "LEFT$"))   { if(!(argc>0&&argv[0].is_str)) return make_str(""); int n=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:0); if(n<0)n=0; char b[160]; size_t k=0; const char*s=argv[0].s; while(*s&&k<(size_t)n&&k<sizeof(b)-1){b[k++]=*s++;} b[k]='\0'; return make_str(b); }
     if (strequal(name, "RIGHT$"))  { if(!(argc>0&&argv[0].is_str)) return make_str(""); int n=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:0); int len=str_len(argv[0].s); if(n>len)n=len; if(n<0)n=0; const char*s=argv[0].s+len-n; return make_str(s); }
     if (strequal(name, "MID$"))    { if(!(argc>0&&argv[0].is_str)) return make_str(""); int start=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:1); int n=(int)(argc>2?to_num(&argv[2])/BASIC_SCALE:32000); if(start<1)start=1; const char*s=argv[0].s+start-1; if(s<argv[0].s)s=argv[0].s; char b[160]; size_t k=0; while(*s&&k<(size_t)n&&k<sizeof(b)-1){b[k++]=*s++;} b[k]='\0'; return make_str(b); }
+    if (strequal(name, "INSTR$"))  {
+        if (!(argc > 0 && argv[0].is_str)) return make_num(0);
+        const char *hay = argv[0].s;
+        const char *needle = (argc > 1 && argv[1].is_str) ? argv[1].s : "";
+        int start = (int)(argc > 2 ? to_num(&argv[2]) / BASIC_SCALE : 1);
+        if (start < 1) start = 1;
+        hay += start - 1;
+        if (!needle[0]) return make_num((num_t)start * BASIC_SCALE);
+        const char *p = hay;
+        int pos = start;
+        while (*p) {
+            const char *a = p;
+            const char *b = needle;
+            while (*a && *b && *a == *b) { a++; b++; }
+            if (!*b) return make_num((num_t)pos * BASIC_SCALE);
+            p++;
+            pos++;
+        }
+        return make_num(0);
+    }
     if (strequal(name, "PI"))      return make_num(3141593LL);  /* 3.141593 * SCALE */
     /* GRID.* bindings exposed as functions */
     if (strequal(name, "GRID.TIME"))    return make_num((num_t)timer_ticks() * BASIC_SCALE);
@@ -573,7 +655,73 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) == 0 ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
     if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.5.1 — GridBASIC online"); }
-    if (strequal(name, "GRID.CAP"))     { return make_num(BASIC_SCALE); }
+    if (strequal(name, "GRID.CAP"))     {
+        if (argc > 0) {
+            uint32_t cap = (uint32_t)(to_num(&argv[0]) / BASIC_SCALE);
+            return make_num(security_has_capability(cap) ? BASIC_SCALE : 0);
+        }
+        return make_num(security_has_capability(CAP_READ_GRID) ? BASIC_SCALE : 0);
+    }
+    if (strequal(name, "GRID.INKEY$")) {
+        int sc = console_try_read_scancode();
+        if (sc < 0) return make_str("");
+        if (sc >= 0x100) return make_str("");
+        char b[2];
+        b[0] = (char)sc;
+        b[1] = '\0';
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.VAULT.GET$")) {
+        if (!(argc > 0 && argv[0].is_str)) return make_str("");
+        const char *val = storage_get(argv[0].s);
+        return make_str(val ? val : "");
+    }
+    if (strequal(name, "GRID.VAULT.LIST$")) {
+        char b[512];
+        storage_list_keys(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.GFS.READ$")) {
+        if (!(argc > 0 && argv[0].is_str)) return make_str("");
+        static char body[1024];
+        size_t got = 0;
+        if (gfs_read_file(argv[0].s, body, sizeof(body) - 1, &got) != 0 || got == 0) {
+            return make_str("");
+        }
+        body[got] = '\0';
+        return make_str(body);
+    }
+    if (strequal(name, "GRID.GFS.LIST$")) {
+        char paths[16][GFS_PATH_MAX];
+        const char *prefix = (argc > 0 && argv[0].is_str) ? argv[0].s : "/";
+        int n = gfs_list_paths(prefix, paths, 16);
+        char b[512];
+        size_t pos = 0;
+        for (int i = 0; i < n && pos + 1 < sizeof(b); ++i) {
+            if (i > 0 && pos + 1 < sizeof(b)) b[pos++] = ',';
+            const char *p = paths[i];
+            while (*p && pos + 1 < sizeof(b)) b[pos++] = *p++;
+        }
+        b[pos] = '\0';
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.HTTP.GET$")) {
+        if (!(argc > 2 && argv[0].is_str && argv[2].is_str)) return make_str("");
+        static char resp[2048];
+        uint16_t port = (uint16_t)(to_num(&argv[1]) / BASIC_SCALE);
+        if (port == 0) port = 80;
+        int n = http_get_host(argv[0].s, port, argv[2].s, resp, sizeof(resp));
+        return make_str(n >= 0 ? resp : "");
+    }
+    if (strequal(name, "GRID.HTTP.POST$")) {
+        if (!(argc > 3 && argv[0].is_str && argv[2].is_str)) return make_str("");
+        static char resp[2048];
+        uint16_t port = (uint16_t)(to_num(&argv[1]) / BASIC_SCALE);
+        if (port == 0) port = 80;
+        const char *body = argv[3].is_str ? argv[3].s : "";
+        int n = http_post_host(argv[0].s, port, argv[2].s, body, resp, sizeof(resp));
+        return make_str(n >= 0 ? resp : "");
+    }
     if (strequal(name, "GRID.AI.ASK$")) {
         if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
         char b[1024]; ai_ask(argv[0].s, b, sizeof(b)); return make_str(b);
@@ -642,10 +790,15 @@ static int is_builtin_name(const char *name) {
         strequal(name, "VAL") || strequal(name, "ASC") || strequal(name, "CHR$") ||
         strequal(name, "STR$") || strequal(name, "UPPER$") || strequal(name, "LOWER$") ||
         strequal(name, "LEFT$") || strequal(name, "RIGHT$") || strequal(name, "MID$") ||
+        strequal(name, "INSTR$") ||
         strequal(name, "PI") ||
         strequal(name, "GRID.TIME") || strequal(name, "GRID.RND") ||
         strequal(name, "GRID.PING") || strequal(name, "GRID.SERIAL.READ$") ||
         strequal(name, "GRID.STATUS$") || strequal(name, "GRID.CAP") ||
+        strequal(name, "GRID.INKEY$") ||
+        strequal(name, "GRID.VAULT.GET$") || strequal(name, "GRID.VAULT.LIST$") ||
+        strequal(name, "GRID.GFS.READ$") || strequal(name, "GRID.GFS.LIST$") ||
+        strequal(name, "GRID.HTTP.GET$") || strequal(name, "GRID.HTTP.POST$") ||
         strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$") ||
         strequal(name, "GRID.AI.EXPLAIN$") || strequal(name, "GRID.AI.FIX$") ||
         strequal(name, "GRID.AI.MODELS$") ||
@@ -862,6 +1015,7 @@ static void exec_assign(void) {
     int want_str = name_is_str(name);
     var_t *v = get_var(name, want_str);
     if (!v) return;
+    if (v->is_const) { set_error("CONST: cannot assign"); return; }
     value_t *cell = &v->scalar;
     if (cur()->type == T_OP && cur()->op == '(') {
         advance();
@@ -910,6 +1064,138 @@ static void exec_dim(void) {
     }
 }
 
+static void assign_from_value(var_t *v, value_t *cell, value_t val) {
+    if (cell->is_str || v->is_str) {
+        if (val.is_str) {
+            *cell = val;
+        } else {
+            char b[32];
+            num_to_string(val.n, b, sizeof(b));
+            *cell = make_str(b);
+        }
+    } else {
+        cell->is_str = 0;
+        cell->n = to_num(&val);
+    }
+}
+
+static void exec_const(void) {
+    char name[64];
+    if (cur()->type != T_ID) { set_error("CONST: need name"); return; }
+    size_t k = 0;
+    while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
+    name[k] = '\0';
+    if (find_var(name)) { set_error("CONST: already defined"); return; }
+    int want_str = name_is_str(name);
+    advance();
+    var_t *v = get_var(name, want_str);
+    if (!v) return;
+    if (!match_op('=')) { set_error("CONST: need ="); return; }
+    value_t val = eval_expr();
+    if (g_error) return;
+    assign_from_value(v, &v->scalar, val);
+    v->is_const = 1;
+}
+
+static void exec_read(void) {
+    while (cur()->type == T_ID) {
+        if (g_data_read >= g_ndata) { set_error("READ: past end of DATA"); return; }
+        value_t val = g_data[g_data_read++];
+        char name[64];
+        size_t k = 0;
+        while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
+        name[k] = '\0';
+        int want_str = name_is_str(name);
+        advance();
+        var_t *v = get_var(name, want_str);
+        if (!v) return;
+        if (v->is_const) { set_error("CONST: cannot READ"); return; }
+        assign_from_value(v, &v->scalar, val);
+        if (!match_op(',')) break;
+    }
+}
+
+static void exec_restore(void) {
+    g_data_read = 0;
+}
+
+static void exec_randomize(void) {
+    if (cur()->type != T_NEWLINE && cur()->type != T_EOF &&
+        !(cur()->type == T_OP && (cur()->op == ':' || cur()->op == ';'))) {
+        value_t seed = eval_expr();
+        g_rnd_state = (uint32_t)(to_num(&seed) / BASIC_SCALE) | 1u;
+    } else {
+        g_rnd_state = timer_ticks() | 1u;
+    }
+}
+
+static void exec_exit_loop(void) {
+    if (match_kw(KW_FOR)) {
+        int found = -1;
+        for (int i = g_for_sp - 1; i >= 0; --i) {
+            if (g_for_stack[i].var_index >= 0) { found = i; break; }
+        }
+        if (found < 0) { set_error("EXIT FOR: no FOR loop"); return; }
+        g_for_sp = found;
+        int depth = 1;
+        while (cur()->type != T_EOF && depth > 0) {
+            if (cur()->type == T_KW && cur()->kw == KW_FOR) depth++;
+            else if (cur()->type == T_KW && cur()->kw == KW_NEXT) {
+                depth--;
+                if (depth == 0) { advance(); return; }
+            }
+            advance();
+        }
+        set_error("EXIT FOR: missing NEXT");
+        return;
+    }
+    if (match_kw(KW_WHILE)) {
+        int found = -1;
+        for (int i = g_for_sp - 1; i >= 0; --i) {
+            if (g_for_stack[i].var_index == -1) { found = i; break; }
+        }
+        if (found < 0) { set_error("EXIT WHILE: no WHILE loop"); return; }
+        g_for_sp = found;
+        int depth = 1;
+        while (cur()->type != T_EOF && depth > 0) {
+            if (cur()->type == T_KW && cur()->kw == KW_WHILE) depth++;
+            else if (cur()->type == T_KW && cur()->kw == KW_WEND) {
+                depth--;
+                if (depth == 0) { advance(); return; }
+            }
+            advance();
+        }
+        set_error("EXIT WHILE: missing WEND");
+        return;
+    }
+    set_error("EXIT: need FOR or WHILE");
+}
+
+static void exec_line_input(void) {
+    if (!match_kw(KW_INPUT)) { set_error("LINE: need INPUT"); return; }
+    if (cur()->type == T_STR) {
+        console_write(cur()->text);
+        advance();
+        if (match_op(';') || match_op(',')) { }
+    }
+    while (cur()->type == T_ID) {
+        char name[64];
+        size_t k = 0;
+        while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
+        name[k] = '\0';
+        if (!name_is_str(name)) { set_error("LINE INPUT: need string var"); return; }
+        advance();
+        var_t *v = get_var(name, 1);
+        if (!v) return;
+        if (v->is_const) { set_error("CONST: cannot INPUT"); return; }
+        console_write("? ");
+        char buf[1024];
+        console_read_line(buf, sizeof(buf));
+        v->scalar = make_str(buf);
+        if (!match_op(',')) break;
+    }
+}
+
 static void exec_input(void) {
     /* INPUT ["prompt";] var [, var ...] */
     if (cur()->type == T_STR) {
@@ -927,6 +1213,7 @@ static void exec_input(void) {
         char buf[160];
         console_read_line(buf, sizeof(buf));
         if (v) {
+            if (v->is_const) { set_error("CONST: cannot INPUT"); return; }
             if (v->is_str) v->scalar = make_str(buf);
             else { value_t tmp = make_str(buf); v->scalar.is_str = 0; v->scalar.n = to_num(&tmp); }
         }
@@ -946,6 +1233,38 @@ static void exec_grid_stmt(void) {
     if (strequal(name, "GRID.COLOR")) { value_t v = eval_expr(); console_set_color((uint8_t)(to_num(&v) / BASIC_SCALE)); return; }
     if (strequal(name, "GRID.WAIT")) { value_t v = eval_expr(); uint32_t ticks = (uint32_t)(to_num(&v) / BASIC_SCALE); uint32_t start = timer_ticks(); while (timer_ticks() - start < ticks && g_running) { /* spin */ } return; }
     if (strequal(name, "GRID.PRINT")) { /* alias with extra newline */ value_t v = eval_expr(); int col=0; print_value(&v,0,&col); console_write_line(""); return; }
+    if (strequal(name, "GRID.LOCATE")) {
+        value_t row = eval_expr();
+        if (!match_op(',')) { set_error("GRID.LOCATE: need row,col"); return; }
+        value_t colv = eval_expr();
+        console_reset_cursor((size_t)(to_num(&colv) / BASIC_SCALE), (size_t)(to_num(&row) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.VAULT.PUT")) {
+        value_t key = eval_expr();
+        if (!match_op(',')) { set_error("GRID.VAULT.PUT: need key,value"); return; }
+        value_t val = eval_expr();
+        char kb[32], vb[96];
+        if (key.is_str) { size_t j=0; while(key.s[j]&&j<sizeof(kb)-1){kb[j]=key.s[j];j++;} kb[j]='\0'; }
+        else num_to_string(key.n, kb, sizeof(kb));
+        if (val.is_str) { size_t j=0; while(val.s[j]&&j<sizeof(vb)-1){vb[j]=val.s[j];j++;} vb[j]='\0'; }
+        else num_to_string(val.n, vb, sizeof(vb));
+        storage_put(kb, vb);
+        return;
+    }
+    if (strequal(name, "GRID.VAULT.SYNC")) {
+        storage_sync_disk();
+        return;
+    }
+    if (strequal(name, "GRID.GFS.WRITE")) {
+        value_t path = eval_expr();
+        if (!match_op(',')) { set_error("GRID.GFS.WRITE: need path,data"); return; }
+        value_t data = eval_expr();
+        if (!path.is_str || !data.is_str) { set_error("GRID.GFS.WRITE: need strings"); return; }
+        size_t n = 0; while (data.s[n]) n++;
+        gfs_write_file(path.s, data.s, n);
+        return;
+    }
     if (strequal(name, "GRID.IRC.CONNECT")) {
         value_t host = eval_expr(); if (!match_op(',')) { set_error("IRC.CONNECT: need ,"); return; }
         value_t portv = eval_expr(); if (!match_op(',')) { set_error("IRC.CONNECT: need ,"); return; }
@@ -1060,6 +1379,136 @@ static void skip_to_else_or_newline(void) {
     while (cur()->type != T_NEWLINE && cur()->type != T_EOF) {
         if (cur()->type == T_KW && cur()->kw == KW_ELSE) return;
         advance();
+    }
+}
+
+static int values_equal(const value_t *a, const value_t *b) {
+    if (a->is_str || b->is_str) {
+        if (!a->is_str || !b->is_str) {
+            return 0;
+        }
+        return str_cmp(a->s, b->s) == 0;
+    }
+    return a->n == b->n;
+}
+
+static int match_end_select(void) {
+    if (!(cur()->type == T_KW && cur()->kw == KW_END)) {
+        return 0;
+    }
+    int saved = g_cur;
+    advance();
+    if (cur()->type == T_ID && strequal(cur()->text, "SELECT")) {
+        advance();
+        return 1;
+    }
+    g_cur = saved;
+    return 0;
+}
+
+static void skip_to_next_case_or_end(void) {
+    while (cur()->type != T_EOF) {
+        while (cur()->type == T_NEWLINE) {
+            advance();
+        }
+        if (cur()->type == T_EOF) {
+            return;
+        }
+        if (cur()->type == T_KW && cur()->kw == KW_CASE) {
+            return;
+        }
+        if (match_end_select()) {
+            return;
+        }
+        if (cur()->type == T_KW && cur()->kw == KW_SELECT) {
+            set_error("SELECT: nested not supported");
+            return;
+        }
+        exec_statement();
+        while (cur()->type == T_OP && cur()->op == ':') {
+            advance();
+            exec_statement();
+        }
+        if (cur()->type == T_NEWLINE) {
+            advance();
+        }
+        if (g_error || !g_running) {
+            return;
+        }
+    }
+}
+
+static void exec_select_case(void) {
+    if (!match_kw(KW_CASE)) {
+        set_error("SELECT: need CASE expr");
+        return;
+    }
+    value_t sel = eval_expr();
+    skip_to_newline();
+
+    int executed = 0;
+    while (!g_error && g_running && cur()->type != T_EOF) {
+        while (cur()->type == T_NEWLINE) {
+            advance();
+        }
+        if (match_end_select()) {
+            return;
+        }
+        if (!(cur()->type == T_KW && cur()->kw == KW_CASE)) {
+            set_error("SELECT: expected CASE or END SELECT");
+            return;
+        }
+        advance();
+
+        int matched = 0;
+        if (cur()->type == T_KW && cur()->kw == KW_ELSE) {
+            advance();
+            matched = executed ? 0 : 1;
+        } else {
+            while (cur()->type != T_NEWLINE && cur()->type != T_EOF) {
+                value_t cv = eval_expr();
+                if (values_equal(&sel, &cv)) {
+                    matched = 1;
+                }
+                if (cur()->type == T_OP && cur()->op == ',') {
+                    advance();
+                } else {
+                    break;
+                }
+            }
+        }
+        skip_to_newline();
+
+        if (matched) {
+            executed = 1;
+            while (!g_error && g_running && cur()->type != T_EOF) {
+                while (cur()->type == T_NEWLINE) {
+                    advance();
+                }
+                if (match_end_select()) {
+                    return;
+                }
+                if (cur()->type == T_KW && cur()->kw == KW_CASE) {
+                    break;
+                }
+                exec_statement();
+                while (cur()->type == T_OP && cur()->op == ':') {
+                    advance();
+                    exec_statement();
+                }
+                if (cur()->type == T_NEWLINE) {
+                    advance();
+                }
+            }
+            if (match_end_select()) {
+                return;
+            }
+        } else {
+            skip_to_next_case_or_end();
+            if (match_end_select()) {
+                return;
+            }
+        }
     }
 }
 
@@ -1199,10 +1648,22 @@ static void exec_statement(void) {
             g_cur = g_gosub_stack[--g_gosub_sp].tok_index; return;
         }
         case KW_INPUT: advance(); exec_input(); return;
+        case KW_LINE:   advance(); exec_line_input(); return;
         case KW_DIM:   advance(); exec_dim(); return;
+        case KW_CONST: advance(); exec_const(); return;
+        case KW_DATA:  skip_to_newline(); return;
+        case KW_READ:  advance(); exec_read(); return;
+        case KW_RESTORE: advance(); exec_restore(); return;
+        case KW_RANDOMIZE: advance(); exec_randomize(); return;
+        case KW_SELECT: advance(); exec_select_case(); return;
+        case KW_EXIT:  advance(); exec_exit_loop(); return;
         case KW_REM:   skip_to_newline(); return;
-        case KW_END: case KW_STOP: advance(); g_running = 0; return;
-        case KW_THEN: case KW_ELSE: case KW_TO: case KW_STEP:
+        case KW_END: {
+            if (match_end_select()) return;
+            advance(); g_running = 0; return;
+        }
+        case KW_STOP: advance(); g_running = 0; return;
+        case KW_THEN: case KW_ELSE: case KW_TO: case KW_STEP: case KW_CASE:
         case KW_AND: case KW_OR: case KW_NOT: case KW_MOD: case KW_DIV:
             set_error("SYNTAX: unexpected keyword"); return;
         case KW_NONE: break;
@@ -1275,7 +1736,6 @@ static num_t pow_local(num_t base, num_t exp) {
     return (num_t)r;
 }
 
-static uint32_t g_rnd_state = 0xC0FFEEu;
 static uint32_t rnd_local(void) {
     g_rnd_state = g_rnd_state * 1664525u + 1013904223u;
     return g_rnd_state;
@@ -1320,6 +1780,7 @@ int basic_run_source(const char *source) {
         return -1;
     }
     reset_state();
+    collect_data();
     run_loop();
     if (g_error) {
         console_set_color(GRID_COL_ERROR);
@@ -1368,11 +1829,13 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 6.5.1 — Advanced BASIC for the Grid");
+    console_write_line("GridBASIC 6.6 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
-    console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
-    console_write_line("GRID.AI.PRINT / GRID.BTC.PRINT — full-length bridge output to console");
+    console_write_line("PRINT LET CONST DIM DATA/READ/RESTORE RANDOMIZE INSTR$");
+    console_write_line("IF/THEN/ELSE SELECT CASE CASE ELSE END SELECT EXIT FOR/WHILE");
+    console_write_line("FOR/NEXT WHILE/WEND REPEAT/UNTIL GOTO GOSUB LINE INPUT");
+    console_write_line("GRID.VAULT.* GRID.GFS.* GRID.HTTP.* GRID.LOCATE GRID.INKEY$");
+    console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
 }
 
 /* keep append_char referenced */

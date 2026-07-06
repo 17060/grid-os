@@ -21,6 +21,7 @@ int storage_snapshot(void);
 int storage_restore(void);
 int storage_sync_disk(void);
 int storage_load_disk(void);
+int storage_list_keys(char *out, size_t out_len);
 
 void storage_export_serial(void);
 int storage_import_serial(void);

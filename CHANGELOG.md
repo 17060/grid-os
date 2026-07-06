@@ -1,5 +1,15 @@
 # Grid OS — Changelog
 
+## 6.6 — Advanced GridBASIC language + kernel bindings
+
+- **Language** — `CONST`, `DATA`/`READ`/`RESTORE`, `RANDOMIZE`, `INSTR$`, `SELECT CASE`/`CASE`/`CASE ELSE`/`END SELECT`, `EXIT FOR`/`EXIT WHILE`, `LINE INPUT`
+- **GRID bindings** — `GRID.VAULT.GET$`/`PUT`/`SYNC`/`LIST$`, `GRID.GFS.READ$`/`WRITE`/`LIST$`, `GRID.HTTP.GET$`/`POST$`, `GRID.LOCATE`, `GRID.INKEY$`
+- **`GRID.CAP(n)`** — now calls real `security_has_capability()` instead of always returning 1
+- **`storage_list_keys()`** — vault key listing for `GRID.VAULT.LIST$`
+- **IDE** — syntax highlighting and `:help` text for new keywords
+- **Sample** — `/programs/advancedemo.bas` seeded on Flynn disk
+- **Host tests** — CONST, DATA/READ, RANDOMIZE, INSTR$ in `test-host-basic`
+
 ## 6.5.2 — Windows release bundles
 
 - **Windows x64 bundles** — `make release-windows` produces `GridOS-*-Windows-x64.zip` (launcher) and `grid-os-windows-x64-*.zip` (full source)

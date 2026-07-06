@@ -214,7 +214,7 @@ On the GEM desktop, keys **1–8** launch icons.
 
 ### Statement keywords
 
-`PRINT` / `?` · `LET` · `IF` · `THEN` · `ELSE` · `FOR` · `TO` · `STEP` · `NEXT` · `WHILE` · `WEND` · `REPEAT` · `UNTIL` · `GOTO` · `GOSUB` · `RETURN` · `INPUT` · `DIM` · `REM` · `'` · `END` · `STOP`
+`PRINT` / `?` · `LET` · `CONST` · `IF` · `THEN` · `ELSE` · `SELECT` · `CASE` · `END SELECT` · `FOR` · `TO` · `STEP` · `NEXT` · `EXIT FOR` · `WHILE` · `WEND` · `EXIT WHILE` · `REPEAT` · `UNTIL` · `GOTO` · `GOSUB` · `RETURN` · `INPUT` · `LINE INPUT` · `DIM` · `DATA` · `READ` · `RESTORE` · `RANDOMIZE` · `REM` · `'` · `END` · `STOP`
 
 Multiple statements on one line are separated with `:` (e.g. `X = 1: PRINT X`).
 
@@ -233,11 +233,35 @@ String concat: `+` (when either side is a string)
 - Numeric: `N`, `COUNT`, …
 - String: trailing `$` → `S$`, `MSG$`
 - Arrays: `A(0)`, `A(10)` — 0-based after `DIM A(10)`
+- Constants: `CONST MAX=10` — read-only; assignment, `READ`, or `INPUT` to a CONST variable is an error
+
+### Control flow
+
+**SELECT CASE** — multi-branch dispatch on an expression:
+
+```basic
+SELECT CASE N
+CASE 1
+  PRINT "one"
+CASE 2, 3
+  PRINT "two or three"
+CASE ELSE
+  PRINT "other"
+END SELECT
+```
+
+**EXIT FOR** / **EXIT WHILE** — leave the innermost matching loop early.
+
+**DATA / READ / RESTORE** — static numeric/string literals collected at run start; `RESTORE` resets the read pointer to the first `DATA` line.
+
+**RANDOMIZE [seed]** — seed the pseudo-random generator used by `RND()`.
+
+**LINE INPUT s$** — read a full line (including spaces) into string variable `s$`.
 
 ### Built-in functions
 
 **Math:** `ABS` `INT` `SGN` `SQR` `RND` `PI`  
-**String:** `LEN` `VAL` `ASC` `CHR$` `STR$` `UPPER$` `LOWER$` `LEFT$` `RIGHT$` `MID$`
+**String:** `LEN` `VAL` `ASC` `CHR$` `STR$` `UPPER$` `LOWER$` `LEFT$` `RIGHT$` `MID$` `INSTR$(hay$, needle$ [, start])`
 
 ### GRID.* bindings
 
@@ -252,6 +276,10 @@ String concat: `+` (when either side is a string)
 | `GRID.COLOR` n | Set console color |
 | `GRID.WAIT` ticks | Busy-wait (timer ticks) |
 | `GRID.PRINT` expr | Print + newline |
+| `GRID.LOCATE` row, col | Move console cursor |
+| `GRID.VAULT.PUT` key$, value$ | Store vault node |
+| `GRID.VAULT.SYNC` | Persist vault to arcade disk |
+| `GRID.GFS.WRITE` path$, data$ | Write GridFS file |
 
 **Functions:**
 
@@ -262,7 +290,14 @@ String concat: `+` (when either side is a string)
 | `GRID.PING(ip$)` | 1 if ping OK, else 0 |
 | `GRID.SERIAL.READ$` | One line from COM1 |
 | `GRID.STATUS$` | Status string |
-| `GRID.CAP` | Capability flag (1) |
+| `GRID.CAP(n)` | 1 if capability *n* is granted, else 0 |
+| `GRID.INKEY$` | Next key scancode as string (empty if none) |
+| `GRID.VAULT.GET$(key$)` | Vault node value |
+| `GRID.VAULT.LIST$` | Comma-separated vault keys |
+| `GRID.GFS.READ$(path$)` | GridFS file contents |
+| `GRID.GFS.LIST$(path$)` | GridFS directory listing |
+| `GRID.HTTP.GET$(host$, port, path$)` | HTTP GET response body |
+| `GRID.HTTP.POST$(host$, port, path$, body$)` | HTTP POST response body |
 | `GRID.AI.ASK$(prompt$)` | AI answer |
 | `GRID.AI.COMPLETE$(fragment$)` | Complete BASIC fragment |
 | `GRID.AI.EXPLAIN$(line$)` | Explain a BASIC line |

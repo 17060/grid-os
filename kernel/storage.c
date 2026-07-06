@@ -395,6 +395,32 @@ void storage_list(void) {
     }
 }
 
+int storage_list_keys(char *out, size_t out_len) {
+    size_t pos = 0;
+
+    if (!out || out_len == 0) {
+        return -1;
+    }
+    out[0] = '\0';
+    for (int i = 0; i < (int)VAULT_ENTRIES; ++i) {
+        if (!vault.entries[i].used) {
+            continue;
+        }
+        const char *k = vault.entries[i].key;
+        if (pos > 0) {
+            if (pos + 1 >= out_len) {
+                break;
+            }
+            out[pos++] = ',';
+        }
+        while (*k && pos + 1 < out_len) {
+            out[pos++] = *k++;
+        }
+    }
+    out[pos] = '\0';
+    return 0;
+}
+
 int storage_snapshot(void) {
     const grid_identity_t *identity = security_current_identity();
 
