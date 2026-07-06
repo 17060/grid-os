@@ -23,6 +23,8 @@ gridctl — host helper for Grid OS arcade disk
   gridctl standalone     Single .command file (double-click to run)
   gridctl save-windows   Windows x64 zip (kernel + disk + source)
   gridctl standalone-windows  GridOS.bat zip (double-click to run)
+  gridctl save-termux    Android Termux zip (kernel + disk + source)
+  gridctl standalone-termux   Termux launcher (.sh + zip)
   gridctl run-legacy    boot with legacy IDE disk (older QEMU profiles)
   gridctl wipe          delete arcade disk (fresh frontier)
   gridctl hexdump       show FLYNGRID signature sector
@@ -144,6 +146,12 @@ case "$cmd" in
     ;;
   standalone-windows)
     make -C "$ROOT" standalone-windows
+    ;;
+  save-termux)
+    make -C "$ROOT" save-termux
+    ;;
+  standalone-termux)
+    make -C "$ROOT" standalone-termux
     ;;
   run-legacy)
     make -C "$ROOT" run-legacy
