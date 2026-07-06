@@ -9,9 +9,9 @@
 #include <stdint.h>
 
 #define GRID_VAULT_MAGIC 0x47524431u
-#define GRID_VAULT_VERSION 5u
+#define GRID_VAULT_VERSION 6u
 #define VAULT_DISK_LBA 32u
-#define VAULT_DISK_SECTORS 2u
+#define VAULT_DISK_SECTORS 3u
 #define VAULT_DISK_SIG_LBA 31u
 
 typedef struct {
@@ -100,11 +100,11 @@ static int vault_valid(const grid_vault_t *data) {
     return data->checksum == vault_checksum(data);
 }
 
-static void vault_put_raw(const char *key, const char *value) {
+static int vault_put_raw(const char *key, const char *value) {
     for (int i = 0; i < (int)VAULT_ENTRIES; ++i) {
         if (vault.entries[i].used && equals_key(vault.entries[i].key, key)) {
             copy_string(vault.entries[i].value, VAULT_VAL_MAX, value);
-            return;
+            return 0;
         }
     }
 
@@ -114,9 +114,10 @@ static void vault_put_raw(const char *key, const char *value) {
             copy_string(vault.entries[i].key, VAULT_KEY_MAX, key);
             copy_string(vault.entries[i].value, VAULT_VAL_MAX, value);
             vault.entry_count++;
-            return;
+            return 0;
         }
     }
+    return -1;
 }
 
 static void capture_iso_state(void) {
@@ -288,7 +289,9 @@ int storage_put(const char *key, const char *value) {
         return -1;
     }
 
-    vault_put_raw(key, value);
+    if (vault_put_raw(key, value) != 0) {
+        return -1;
+    }
     vault_recompute_checksum();
     return 0;
 }
@@ -457,7 +460,7 @@ static int parse_iso_line(const char *line) {
         i++;
     }
 
-    for (size_t g = 0; g + 1 < ISO_GENOME_SIZE; ++g) {
+    for (size_t g = 0; g < ISO_GENOME_SIZE; ++g) {
         genome[g] = (uint8_t)((hex_nibble(line[i]) << 4) | hex_nibble(line[i + 1]));
         i += 2;
     }

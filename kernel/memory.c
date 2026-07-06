@@ -286,6 +286,10 @@ int memory_map_user_segment(uint64_t *pml4, uint64_t vaddr, const void *src,
         flags |= PAGE_WRITE;
     }
 
+    if (writable && executable) {
+        return -1;
+    }
+
     if (mem_size < file_size) {
         return -1;
     }

@@ -91,6 +91,7 @@ static void send_segment(tcp_conn_t *c, uint8_t flags, const uint8_t *data, size
 
 void tcp_init(void) {
     active_conn = 0;
+    net_set_tcp_input(tcp_input);
 }
 
 static uint32_t isn_seed = 0x47424C45u;
@@ -164,7 +165,9 @@ int tcp_recv(tcp_conn_t *c, uint32_t timeout_loops) {
         return -1;
     }
     active_conn = c;
-    c->rx_len = 0;
+    if (c->rx_len > 0) {
+        return (int)c->rx_len;
+    }
     for (uint32_t i = 0; i < timeout_loops; ++i) {
         net_poll();
         if (c->rx_len > 0 || c->closed || c->error) {
@@ -245,9 +248,11 @@ void tcp_input(uint32_t src_ip, const uint8_t *pkt, size_t len) {
                 }
                 c->rx_len += copy;
                 c->rx_seq += (uint32_t)copy;
+                if (copy < data_len) {
+                    c->error = 1;
+                }
+                send_segment(c, TCP_ACK, 0, 0);
             }
-            /* ACK the data */
-            send_segment(c, TCP_ACK, 0, 0);
         }
         if (flags & TCP_FIN) {
             c->rx_seq += 1;

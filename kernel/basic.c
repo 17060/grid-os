@@ -63,7 +63,7 @@ typedef int64_t num_t;
 typedef struct {
     int is_str;
     num_t n;         /* fixed-point numeric value */
-    char s[160];
+    char s[512];
 } value_t;
 
 typedef struct {
@@ -132,6 +132,16 @@ static int is_alpha(int c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 
 static int is_digit(int c) { return c >= '0' && c <= '9'; }
 static int is_alnum(int c) { return is_alpha(c) || is_digit(c); }
 static int to_upper(int c) { return (c >= 'a' && c <= 'z') ? c - 32 : c; }
+static int name_is_str(const char *name) {
+    if (!name || !name[0]) {
+        return 0;
+    }
+    const char *p = name;
+    while (*p) {
+        p++;
+    }
+    return p[-1] == '$';
+}
 
 /* forward declarations — helpers defined later but used by the evaluator */
 static int str_contains(const char *s, char ch);
@@ -205,11 +215,16 @@ static kw_t match_keyword(const char *w) {
     return KW_NONE;
 }
 
-static void push_tok(token_t *t) {
-    if (g_ntok < MAX_TOKENS) {
-        g_tokens[g_ntok] = *t;
-        g_ntok++;
+static int g_tok_overflow;
+
+static int push_tok(token_t *t) {
+    if (g_ntok >= MAX_TOKENS) {
+        g_tok_overflow = 1;
+        return -1;
     }
+    g_tokens[g_ntok] = *t;
+    g_ntok++;
+    return 0;
 }
 
 static int parse_number(const char *src, size_t *i, num_t *out) {
@@ -261,6 +276,7 @@ static int parse_number(const char *src, size_t *i, num_t *out) {
 static int tokenize(const char *src) {
     g_ntok = 0;
     g_nlabels = 0;
+    g_tok_overflow = 0;
     size_t i = 0;
     int line_no = 0;
     int at_line_start = 1;
@@ -381,6 +397,9 @@ static int tokenize(const char *src) {
             i++;
             continue;
         }
+    }
+    if (g_tok_overflow) {
+        return -1;
     }
     token_t t = {0}; t.type = T_EOF; t.line_no = line_no;
     push_tok(&t);
@@ -538,7 +557,7 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_parse_ip(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.0 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.2 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     { return make_num(BASIC_SCALE); }
     if (strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$")) {
         if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
@@ -657,7 +676,7 @@ static value_t eval_primary(void) {
             return eval_builtin(name, argc, argv);
         }
         /* variable or array access */
-        int want_str = name[str_len(name)-1] == '$';
+        int want_str = name_is_str(name);
         var_t *v = get_var(name, want_str);
         if (!v) return make_num(0);
         if (cur()->type == T_OP && cur()->op == '(') {
@@ -812,7 +831,6 @@ static void exec_print(void) {
         suppress_nl = 0;
     }
     if (!suppress_nl && !last_was_sep) console_write_line("");
-    else if (last_was_sep && !suppress_nl) console_write_line("");
     (void)last_was_sep;
 }
 
@@ -822,7 +840,7 @@ static void exec_assign(void) {
     token_t *t = cur();
     size_t k = 0; while (t->text[k] && k < sizeof(name)-1) { name[k] = t->text[k]; k++; } name[k] = '\0';
     advance();
-    int want_str = name[str_len(name)-1] == '$';
+    int want_str = name_is_str(name);
     var_t *v = get_var(name, want_str);
     if (!v) return;
     value_t *cell = &v->scalar;
@@ -840,7 +858,7 @@ static void exec_assign(void) {
         cell = var_cell(v, (int)(to_num(&idx) / BASIC_SCALE));
         if (!cell) return;
     }
-    if (!match_op('=')) { set_error("LET: expected ="); return; }
+    if (!match_op('=') && !match_op('E')) { set_error("LET: expected ="); return; }
     value_t val = eval_expr();
     if (g_error) return;
     if (cell->is_str || v->is_str) {
@@ -856,7 +874,7 @@ static void exec_dim(void) {
     while (cur()->type == T_ID) {
         char name[64];
         size_t k = 0; while (cur()->text[k] && k < sizeof(name)-1) { name[k] = cur()->text[k]; k++; } name[k] = '\0';
-        int want_str = name[str_len(name)-1] == '$';
+        int want_str = name_is_str(name);
         advance();
         int dim = 0;
         if (match_op('(')) {
@@ -883,7 +901,7 @@ static void exec_input(void) {
     while (cur()->type == T_ID) {
         char name[64];
         size_t k = 0; while (cur()->text[k] && k < sizeof(name)-1) { name[k] = cur()->text[k]; k++; } name[k] = '\0';
-        int want_str = name[str_len(name)-1] == '$';
+        int want_str = name_is_str(name);
         advance();
         var_t *v = get_var(name, want_str);
         console_write("? ");
@@ -1241,7 +1259,7 @@ int basic_run_source(const char *source) {
     join_source(source, src_buf, sizeof(src_buf));
     if (tokenize(src_buf) != 0) {
         console_set_color(GRID_COL_ERROR);
-        console_write_line("GridBASIC: tokenize error");
+        console_write_line("GridBASIC: token limit exceeded (program too large)");
         console_set_color(GRID_COL_DEFAULT);
         return -1;
     }
@@ -1294,7 +1312,7 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 6.0 — Advanced BASIC for the Grid");
+    console_write_line("GridBASIC 6.2 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
     console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");

@@ -43,6 +43,9 @@ int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap
     n = scopy(req, sizeof(req), "GET ");
     n = append(req, sizeof(req), n, path);
     n = append(req, sizeof(req), n, " HTTP/1.0\r\nConnection: close\r\n\r\n");
+    if (n + 1 >= sizeof(req)) {
+        return -1;
+    }
 
     if (tcp_connect(&conn, ip, port) != 0) {
         return -1;
