@@ -17,6 +17,8 @@ const uint8_t *net_mac(void);
 
 /* Raw IP plumbing for the TCP layer. */
 int net_send_ip(uint32_t dst_ip, uint8_t proto, const uint8_t *payload, size_t len);
+int net_send_udp(uint32_t dst_ip, uint16_t dst_port, uint16_t src_port,
+                 const uint8_t *payload, size_t len);
 const uint8_t *net_resolve_gateway(void);
 void net_set_tcp_input(void (*fn)(uint32_t src_ip, const uint8_t *pkt, size_t len));
 

@@ -1,4 +1,4 @@
-# Grid OS 6.4 — Commands & GridBASIC Reference
+# Grid OS 6.5 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -16,7 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `cycles` | Same as `status` (elapsed cycles) |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 6.4 |
+| `about` | About Grid OS 6.5 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs
@@ -65,7 +65,8 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `net` / `net status` | virtio-net + IP status |
 | `net ping <ip>` | ICMP echo (e.g. `10.0.2.2`) |
 | `net poll` | Drain receive queue |
-| `http get <host\|ip> <path>` | HTTP/1.1 GET on port 80 (keep-alive pool) |
+| `http get <host\|ip> [port] <path>` | HTTP/1.1 GET (keep-alive pool) |
+| `http post <host\|ip> [port] <path> <body>` | HTTP/1.1 POST |
 | `irc connect <ip> <port> <nick>` | Connect persistent IRC session |
 | `irc join <#chan>` | Join channel |
 | `irc say <#chan> <msg>` | Send PRIVMSG |
@@ -262,10 +263,12 @@ String concat: `+` (when either side is a string)
 | `GRID.SERIAL.READ$` | One line from COM1 |
 | `GRID.STATUS$` | Status string |
 | `GRID.CAP` | Capability flag (1) |
-| `GRID.AI.ASK$(prompt$)` | AI answer (alias: `GRID.AI.COMPLETE$`) |
+| `GRID.AI.ASK$(prompt$)` | AI answer |
+| `GRID.AI.COMPLETE$(fragment$)` | Complete BASIC fragment |
 | `GRID.AI.EXPLAIN$(line$)` | Explain a BASIC line |
 | `GRID.AI.FIX$(code$)` | Suggest fixed code |
 | `GRID.AI.MODELS$` | Bridge / offline model info |
+| `GRID.AI.PRINT prompt$ [, "ASK"\|"EXPLAIN"\|"FIX"\|"COMPLETE"\|"MODELS"]` | Full-length AI output to console |
 
 ### GRID.IRC.* bindings
 
@@ -296,6 +299,7 @@ String concat: `+` (when either side is a string)
 | `GRID.BTC.HELP$` | Bridge help text |
 | `GRID.BTC.STATUS$` | Bridge connected / error string |
 | `GRID.BTC.SEND` addr$, amount | `sendtoaddress` (sets error on failure) |
+| `GRID.BTC.PRINT method$ [, params$]` | Full-length BTC/bridge output to console |
 
 Host bridge: `make btc-bridge` (TCP `10.0.2.2:8767`). Without the bridge, calls return a clear offline error.
 

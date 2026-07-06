@@ -26,20 +26,20 @@ make run              # cocoa GUI window
 
 **4K / HD resize:** launchers call AppleScript to resize the QEMU window. Grant **Accessibility** to Terminal or Cursor in **System Settings → Privacy & Security → Accessibility**, or drag-resize manually (`zoom-to-fit` scales the console).
 
-## Release bundles (v6.4+)
+## Release bundles (v6.5+)
 
 Build both distributable formats in one step:
 
 ```bash
 make release-mac
-# → dist/grid-os-macos-arm64-v6.4.tar.gz
-# → dist/GridOS-6.4-macOS-AppleSilicon.command
+# → dist/grid-os-macos-arm64-v6.5.tar.gz
+# → dist/GridOS-6.5-macOS-AppleSilicon.command
 ```
 
 Upload to GitHub:
 
 ```bash
-gh release upload v6.4 dist/*
+gh release upload v6.5 dist/*
 ```
 
 ### Standalone single file
@@ -48,16 +48,16 @@ One double-clickable file — no git clone, no `make`. Only **QEMU** required:
 
 ```bash
 make standalone-macos
-# or: GRID_OS_VERSION=6.4 make standalone-macos
-# → dist/GridOS-6.4-macOS-AppleSilicon.command
+# or: GRID_OS_VERSION=6.5 make standalone-macos
+# → dist/GridOS-6.5-macOS-AppleSilicon.command
 ```
 
 Copy that **one file** to your Mac, then:
 
 ```bash
 brew install qemu
-chmod +x GridOS-6.4-macOS-AppleSilicon.command
-./GridOS-6.4-macOS-AppleSilicon.command
+chmod +x GridOS-6.5-macOS-AppleSilicon.command
+./GridOS-6.5-macOS-AppleSilicon.command
 # or double-click in Finder
 ```
 
@@ -76,8 +76,8 @@ Creates a tarball with the built kernel, seeded Flynn disk, and source — ready
 
 ```bash
 make save-macos-arm64
-# or: GRID_OS_VERSION=v6.4 make save-macos-arm64
-# → dist/grid-os-macos-arm64-v6.4.tar.gz
+# or: GRID_OS_VERSION=v6.5 make save-macos-arm64
+# → dist/grid-os-macos-arm64-v6.5.tar.gz
 ```
 
 Or:

@@ -496,6 +496,21 @@ static void num_to_string(num_t raw, char *out, size_t cap) {
     out[p] = '\0';
 }
 
+static void console_print_long(const char *s) {
+    if (!s || !s[0]) {
+        console_write_line("");
+        return;
+    }
+    console_write(s);
+    size_t n = 0;
+    while (s[n]) {
+        n++;
+    }
+    if (s[n - 1] != '\n') {
+        console_write_line("");
+    }
+}
+
 static value_t make_num(num_t v) {
     value_t r; r.is_str = 0; r.n = v; r.s[0] = '\0'; return r;
 }
@@ -557,19 +572,23 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.4 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.5 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     { return make_num(BASIC_SCALE); }
-    if (strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$")) {
+    if (strequal(name, "GRID.AI.ASK$")) {
         if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
-        char b[512]; ai_ask(argv[0].s, b, sizeof(b)); return make_str(b);
+        char b[1024]; ai_ask(argv[0].s, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.AI.COMPLETE$")) {
+        if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
+        char b[1024]; ai_complete(argv[0].s, b, sizeof(b)); return make_str(b);
     }
     if (strequal(name, "GRID.AI.EXPLAIN$")) {
         if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
-        char b[512]; ai_explain(argv[0].s, b, sizeof(b)); return make_str(b);
+        char b[1024]; ai_explain(argv[0].s, b, sizeof(b)); return make_str(b);
     }
     if (strequal(name, "GRID.AI.FIX$")) {
         if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
-        char b[512]; ai_fix(argv[0].s, b, sizeof(b)); return make_str(b);
+        char b[1024]; ai_fix(argv[0].s, b, sizeof(b)); return make_str(b);
     }
     if (strequal(name, "GRID.AI.MODELS$")) {
         char b[160]; ai_models(b, sizeof(b)); return make_str(b);
@@ -986,6 +1005,43 @@ static void exec_grid_stmt(void) {
         if (btc_send(ab, mb, rb, sizeof(rb)) != 0) { set_error(rb); }
         return;
     }
+    if (strequal(name, "GRID.AI.PRINT")) {
+        value_t prompt = eval_expr();
+        char pb[256];
+        if (prompt.is_str) { size_t j=0; while(prompt.s[j]&&j<sizeof(pb)-1){pb[j]=prompt.s[j];j++;} pb[j]='\0'; }
+        else { num_to_string(prompt.n, pb, sizeof(pb)); }
+        char mode[16]; mode[0]='\0';
+        if (match_op(',')) {
+            value_t mv = eval_expr();
+            if (mv.is_str) { size_t j=0; while(mv.s[j]&&j<sizeof(mode)-1){mode[j]=to_upper(mv.s[j]);j++;} mode[j]='\0'; }
+            else { num_to_string(mv.n, mode, sizeof(mode)); }
+        }
+        char b[2048];
+        if (mode[0]=='\0' || strequal(mode, "ASK")) { ai_ask(pb, b, sizeof(b)); }
+        else if (strequal(mode, "EXPLAIN")) { ai_explain(pb, b, sizeof(b)); }
+        else if (strequal(mode, "FIX")) { ai_fix(pb, b, sizeof(b)); }
+        else if (strequal(mode, "COMPLETE")) { ai_complete(pb, b, sizeof(b)); }
+        else if (strequal(mode, "MODELS")) { ai_models(b, sizeof(b)); }
+        else { ai_ask(pb, b, sizeof(b)); }
+        console_print_long(b);
+        return;
+    }
+    if (strequal(name, "GRID.BTC.PRINT")) {
+        value_t method = eval_expr();
+        char mth[64], prm[128];
+        if (method.is_str) { size_t j=0; while(method.s[j]&&j<sizeof(mth)-1){mth[j]=method.s[j];j++;} mth[j]='\0'; }
+        else { num_to_string(method.n, mth, sizeof(mth)); }
+        prm[0] = '\0';
+        if (match_op(',')) {
+            value_t pv = eval_expr();
+            if (pv.is_str) { size_t j=0; while(pv.s[j]&&j<sizeof(prm)-1){prm[j]=pv.s[j];j++;} prm[j]='\0'; }
+            else { num_to_string(pv.n, prm, sizeof(prm)); }
+        }
+        char b[BTC_RESP_MAX];
+        btc_call(mth, prm, b, sizeof(b));
+        console_print_long(b);
+        return;
+    }
     set_error("GRID: unknown statement");
 }
 
@@ -1312,10 +1368,11 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 6.4 — Advanced BASIC for the Grid");
+    console_write_line("GridBASIC 6.5 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
     console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
+    console_write_line("GRID.AI.PRINT / GRID.BTC.PRINT — full-length bridge output to console");
 }
 
 /* keep append_char referenced */

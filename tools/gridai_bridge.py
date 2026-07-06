@@ -34,7 +34,7 @@ def model_name() -> str:
 
 def system_for(action: str) -> str:
     base = (
-        "You are Grid AI, assistant for GridBASIC on Grid OS 6.0. "
+        "You are Grid AI, assistant for GridBASIC on Grid OS 6.5. "
         "Answer concisely in plain text (no markdown fences). "
         "GridBASIC has PRINT LET IF FOR WHILE GOTO GOSUB DIM INPUT END and GRID.* bindings."
     )

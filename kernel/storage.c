@@ -1,6 +1,7 @@
 #include "console.h"
 #include "disk.h"
 #include "iso.h"
+#include "log.h"
 #include "security.h"
 #include "serial.h"
 #include "storage.h"
@@ -255,6 +256,9 @@ static int load_vault_sectors(uint32_t sectors) {
 static int migrate_vault_v5_to_v6(void) {
     vault.version = GRID_VAULT_VERSION;
     vault_recompute_checksum();
+    serial_write("Vault migrated v5 -> v6 (checksum refreshed, 3 sectors).\n");
+    console_write_line("Vault migrated v5 -> v6 (checksum refreshed, 3 sectors).");
+    log_event("vault migrated v5 to v6");
     return storage_sync_disk();
 }
 

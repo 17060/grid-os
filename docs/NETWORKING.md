@@ -1,6 +1,6 @@
-# Grid OS Networking (6.4)
+# Grid OS Networking (6.5)
 
-Grid OS includes a minimal virtio-net stack, static DNS names, a multi-session TCP client, and plain HTTP/1.1 fetch.
+Grid OS includes a minimal virtio-net stack, static DNS names, GFS `/etc/hosts`, a UDP DNS resolver, a multi-session TCP client, and plain HTTP/1.1 GET/POST.
 
 ## Addresses
 
@@ -10,15 +10,21 @@ Grid OS includes a minimal virtio-net stack, static DNS names, a multi-session T
 | QEMU gateway | `10.0.2.2` | `gateway`, `gw`, `ai`, `btc` |
 | Localhost | `127.0.0.1` | `localhost` |
 
-Host bridges (`make ai-bridge`, `make btc-bridge`) listen on the gateway address from the guest's perspective.
+Host bridges (`make ai-bridge`, `make btc-bridge`, `make https-bridge`) listen on the gateway address from the guest's perspective.
 
-## Static DNS
+## Name resolution order
 
-`net_resolve_host()` accepts literal IPv4 or a hostname from the table above (case-insensitive):
+`net_resolve_host()` tries, in order:
+
+1. Literal IPv4 (`10.0.2.2`)
+2. Built-in static table (`gateway`, `grid`, `localhost`, `ai`, `btc`, …)
+3. GFS `/etc/hosts` (editable; seeded on Flynn disk)
+4. UDP DNS A query to `10.0.2.2:53` (QEMU user-net resolver)
 
 ```text
 grid> net ping gateway
 grid> http get grid /
+grid> cat /etc/hosts
 ```
 
 GridBASIC:
@@ -28,13 +34,11 @@ GridBASIC:
 20 END
 ```
 
-Unknown hostnames return an error — there is no real DNS resolver.
-
 ## Multi-session TCP
 
 Up to **8 concurrent outbound TCP connections**, each with a unique local port. Inbound segments dispatch by `(remote_ip, remote_port, local_port)`.
 
-This allows IRC, HTTP, AI bridge, and BTC bridge sessions to coexist.
+This allows IRC, HTTP, AI bridge, BTC bridge, and HTTPS proxy sessions to coexist.
 
 Host tests (`make test-host-tcp`) verify dual/triple-port dispatch and slot limits.
 
@@ -42,20 +46,35 @@ Host tests (`make test-host-tcp`) verify dual/triple-port dispatch and slot limi
 
 ```text
 grid> http get gateway /
+grid> http get gateway 8080 /api
+grid> http post gateway /hook {"event":"grid"}
 ```
 
-- HTTP/1.1 request with `Connection: keep-alive`
+- HTTP/1.1 with `Connection: keep-alive`
 - Reuses the TCP session for repeated requests to the same host:port
+- POST sends `Content-Length` + plain-text body
 - Server `Connection: close` or socket errors tear down the pool
 - Response body truncated at caller buffer size (2048 bytes in shell)
 
 Paths must start with `/`. Overlong paths are rejected before send.
 
+E2E test (`make test-e2e`) runs two GETs against a host HTTP server and expects `hits=2` (keep-alive reuse).
+
+## HTTPS (host bridge)
+
+In-guest TLS is not supported. Use the host proxy:
+
+```bash
+make https-bridge   # listens on :8768 by default
+```
+
+From Grid OS, open a TCP connection to `gateway:8768` and send a normal HTTP/1.1 request with a `Host:` header for the real HTTPS site. The bridge forwards over TLS and returns the upstream response.
+
 ## IRC + HTTP + bridges together
 
 Typical workflow:
 
-1. `make ai-bridge` and/or `make btc-bridge` on the host
+1. `make ai-bridge`, `make btc-bridge`, and/or `make https-bridge` on the host
 2. `make run` in another terminal
 3. In Grid OS:
    ```text
@@ -75,9 +94,9 @@ grid> net ping gateway
 grid> net status
 ```
 
-Idle polling in the shell and IDE drains the RX queue so ARP/ICMP replies are handled promptly.
+Idle polling in the shell and IDE drains the RX queue so ARP/ICMP/UDP replies are handled promptly.
 
 ## See also
 
-- [GETTING_STARTED.md](GETTING_STARTED.md) — first boot
-- [COMMANDS.md](COMMANDS.md) — full command reference
+- [GETTING_STARTED.md](GETTING_STARTED.md) — first boot walkthrough
+- [COMMANDS.md](COMMANDS.md) — shell reference

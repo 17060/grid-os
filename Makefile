@@ -40,7 +40,7 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/program.o build/serial.o build/disk.o build/pci.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
-               build/timer.o build/link.o build/net.o build/tcp.o build/irc.o build/http.o \
+               build/timer.o build/link.o build/net.o build/dns.o build/tcp.o build/irc.o build/http.o \
                build/basic.o build/basic_ide.o build/ai.o build/btc.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
 
@@ -69,7 +69,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge save-macos-arm64 standalone-macos release-mac clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge https-bridge save-macos-arm64 standalone-macos release-mac clean
 
 all: $(TARGET)
 
@@ -166,7 +166,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.4'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.5'
 
 test-host-vault:
 	@cc -std=c11 -Ikernel/include -O2 -o build/vault_host tools/vault_host_test.c
@@ -175,6 +175,10 @@ test-host-vault:
 test-host-vault-disk:
 	@cc -std=c11 -Ikernel/include -O2 -o build/vault_disk_host tools/vault_disk_host_test.c
 	@build/vault_disk_host
+	@cc -std=c11 -O2 -o build/v5load tools/vault_v5_disk_load_test.c
+	@cp build/grid.img build/grid-test.img
+	@python3 tools/prepare_vault_v5_disk.py build/grid-test.img
+	@build/v5load build/grid-test.img
 
 test-host-tcp:
 	@cc -std=c11 -Ikernel/include -O2 -o build/tcp_host tools/tcp_host_test.c kernel/tcp.c
@@ -203,6 +207,7 @@ test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 # exit it cleanly, then poweroff (isa-debug-exit -> 3).
 test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	@(sleep 5; printf '\033'; sleep 1; printf 'basictest\n'; sleep 3; printf '\n'; \
+	  sleep 1; printf '\033'; sleep 1; printf 'net ping gateway\n'; sleep 4; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'spawn gridsh\n'; sleep 2; \
 	  printf 'disc\n'; sleep 1; printf 'exit\n'; sleep 2; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'poweroff\n'; sleep 5) | \
@@ -213,6 +218,7 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	rc=$$?; \
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
 	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
+	grep -q 'Reply received' build/test-e2e.log || { echo "net ping output missing"; exit 1; }; \
 	grep -q 'Disc:' build/test-e2e.log || { echo "gridsh disc output missing"; exit 1; }; \
 	grep -q 'End of line' build/test-e2e.log || { echo "gridsh clean exit missing"; exit 1; }; \
 	if grep -q 'Program fault' build/test-e2e.log; then echo "unexpected program fault"; exit 1; fi; \
@@ -227,6 +233,9 @@ ai-bridge:
 btc-bridge:
 	python3 tools/gridbtc_bridge.py
 
+https-bridge:
+	python3 tools/gridhttps_bridge.py
+
 save-macos-arm64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh
 	./tools/save_mac_silicon.sh
@@ -237,9 +246,9 @@ standalone-macos: $(TARGET) $(DISK_IMAGE)
 
 release-mac: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh tools/build_standalone_mac.sh
-	GRID_OS_VERSION=v6.4 ./tools/save_mac_silicon.sh
-	GRID_OS_VERSION=6.4 ./tools/build_standalone_mac.sh
-	@echo "Upload dist/* to GitHub release v6.4 with: gh release upload v6.4 dist/*"
+	GRID_OS_VERSION=v6.5 ./tools/save_mac_silicon.sh
+	GRID_OS_VERSION=6.5 ./tools/build_standalone_mac.sh
+	@echo "Upload dist/* to GitHub release v6.5 with: gh release upload v6.5 dist/*"
 
 clean:
 	rm -rf build
