@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* GridBASIC — the advanced BASIC language of Grid OS 6.3.
+/* GridBASIC — the advanced BASIC language of Grid OS 6.4.
  *
  * Programs may be run from source text (basic_run_source) or from a GFS
  * file (basic_run_file). The interpreter is in-kernel and runs in the

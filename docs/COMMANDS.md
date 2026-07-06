@@ -1,4 +1,4 @@
-# Grid OS 6.0 — Commands & GridBASIC Reference
+# Grid OS 6.4 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -16,7 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `cycles` | Same as `status` (elapsed cycles) |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 6.0 |
+| `about` | About Grid OS 6.4 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs
@@ -65,7 +65,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `net` / `net status` | virtio-net + IP status |
 | `net ping <ip>` | ICMP echo (e.g. `10.0.2.2`) |
 | `net poll` | Drain receive queue |
-| `http get <ip> <path>` | HTTP/1.0 GET on port 80 |
+| `http get <host\|ip> <path>` | HTTP/1.1 GET on port 80 (keep-alive pool) |
 | `irc connect <ip> <port> <nick>` | Connect persistent IRC session |
 | `irc join <#chan>` | Join channel |
 | `irc say <#chan> <msg>` | Send PRIVMSG |

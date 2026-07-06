@@ -63,7 +63,7 @@ typedef int64_t num_t;
 typedef struct {
     int is_str;
     num_t n;         /* fixed-point numeric value */
-    char s[512];
+    char s[1024];
 } value_t;
 
 typedef struct {
@@ -555,9 +555,9 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     /* GRID.* bindings exposed as functions */
     if (strequal(name, "GRID.TIME"))    return make_num((num_t)timer_ticks() * BASIC_SCALE);
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
-    if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_parse_ip(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) ? BASIC_SCALE : 0); }
+    if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.3 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.4 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     { return make_num(BASIC_SCALE); }
     if (strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$")) {
         if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
@@ -1312,7 +1312,7 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 6.3 — Advanced BASIC for the Grid");
+    console_write_line("GridBASIC 6.4 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("PRINT LET IF/THEN/ELSE FOR/TO/STEP/NEXT WHILE/WEND REPEAT/UNTIL");
     console_write_line("GOTO GOSUB/RETURN INPUT DIM REM END  +  GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");

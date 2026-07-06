@@ -128,7 +128,7 @@ static int test_dual_ports(void) {
 }
 
 static int test_slot_limit(void) {
-    tcp_conn_t conns[5];
+    tcp_conn_t conns[TCP_MAX_CONNECTIONS + 1];
     int i;
 
     g_syn_seq = 5000;
@@ -142,16 +142,52 @@ static int test_slot_limit(void) {
         }
     }
 
-    memset(&conns[4], 0, sizeof(conns[4]));
-    conns[4].remote_ip = 0x0A000099u;
-    conns[4].remote_port = 9999;
-    if (tcp_connect(&conns[4], conns[4].remote_ip, conns[4].remote_port) == 0) {
+    memset(&conns[TCP_MAX_CONNECTIONS], 0, sizeof(conns[TCP_MAX_CONNECTIONS]));
+    conns[TCP_MAX_CONNECTIONS].remote_ip = 0x0A000099u;
+    conns[TCP_MAX_CONNECTIONS].remote_port = 9999;
+    if (tcp_connect(&conns[TCP_MAX_CONNECTIONS], conns[TCP_MAX_CONNECTIONS].remote_ip,
+                    conns[TCP_MAX_CONNECTIONS].remote_port) == 0) {
         return -1;
     }
 
     for (i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
         tcp_close(&conns[i]);
     }
+    return 0;
+}
+
+static int test_triple_ports(void) {
+    tcp_conn_t a, b, c;
+
+    g_syn_seq = 8000;
+    tcp_init();
+    memset(&a, 0, sizeof(a));
+    memset(&b, 0, sizeof(b));
+    memset(&c, 0, sizeof(c));
+    a.remote_ip = 0x01010101u;
+    a.remote_port = 80;
+    b.remote_ip = 0x02020202u;
+    b.remote_port = 443;
+    c.remote_ip = 0x03030303u;
+    c.remote_port = 8766;
+
+    if (tcp_connect(&a, a.remote_ip, a.remote_port) != 0 ||
+        tcp_connect(&b, b.remote_ip, b.remote_port) != 0 ||
+        tcp_connect(&c, c.remote_ip, c.remote_port) != 0) {
+        return -1;
+    }
+    if (a.local_port == b.local_port || b.local_port == c.local_port) {
+        return -1;
+    }
+    deliver_data(&a, "H");
+    deliver_data(&b, "T");
+    deliver_data(&c, "P");
+    if (a.rx_buf[0] != 'H' || b.rx_buf[0] != 'T' || c.rx_buf[0] != 'P') {
+        return -1;
+    }
+    tcp_close(&a);
+    tcp_close(&b);
+    tcp_close(&c);
     return 0;
 }
 
@@ -162,6 +198,10 @@ int main(void) {
     }
     if (test_slot_limit() != 0) {
         fprintf(stderr, "tcp slot-limit test failed\n");
+        return 1;
+    }
+    if (test_triple_ports() != 0) {
+        fprintf(stderr, "tcp triple-port test failed\n");
         return 1;
     }
     printf("tcp host tests OK\n");

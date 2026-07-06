@@ -26,21 +26,38 @@ make run              # cocoa GUI window
 
 **4K / HD resize:** launchers call AppleScript to resize the QEMU window. Grant **Accessibility** to Terminal or Cursor in **System Settings → Privacy & Security → Accessibility**, or drag-resize manually (`zoom-to-fit` scales the console).
 
-## Standalone single file (Apple Silicon)
+## Release bundles (v6.4+)
+
+Build both distributable formats in one step:
+
+```bash
+make release-mac
+# → dist/grid-os-macos-arm64-v6.4.tar.gz
+# → dist/GridOS-6.4-macOS-AppleSilicon.command
+```
+
+Upload to GitHub:
+
+```bash
+gh release upload v6.4 dist/*
+```
+
+### Standalone single file
 
 One double-clickable file — no git clone, no `make`. Only **QEMU** required:
 
 ```bash
 make standalone-macos
-# → dist/GridOS-6.1-macOS-AppleSilicon.command
+# or: GRID_OS_VERSION=6.4 make standalone-macos
+# → dist/GridOS-6.4-macOS-AppleSilicon.command
 ```
 
 Copy that **one file** to your Mac, then:
 
 ```bash
 brew install qemu
-chmod +x GridOS-6.1-macOS-AppleSilicon.command
-./GridOS-6.1-macOS-AppleSilicon.command
+chmod +x GridOS-6.4-macOS-AppleSilicon.command
+./GridOS-6.4-macOS-AppleSilicon.command
 # or double-click in Finder
 ```
 
@@ -53,13 +70,14 @@ GRIDOS_MODE=4k  ./GridOS-*.command    # 3840×2160 window
 
 Payload extracts once to `~/.grid-os/standalone-<version>/`.
 
-## Save a Mac Silicon bundle (full source tarball)
+### Full source tarball
 
 Creates a tarball with the built kernel, seeded Flynn disk, and source — ready to archive or share:
 
 ```bash
 make save-macos-arm64
-# → dist/grid-os-macos-arm64-<version>.tar.gz
+# or: GRID_OS_VERSION=v6.4 make save-macos-arm64
+# → dist/grid-os-macos-arm64-v6.4.tar.gz
 ```
 
 Or:
@@ -93,10 +111,10 @@ Run in separate Terminal tabs while Grid OS is up:
 
 ```bash
 make ai-bridge    # port 8766 → Ollama / OpenAI-compatible API
-make btc-bridge     # port 8767 → Bitcoin Core RPC (use testnet/regtest)
+make btc-bridge   # port 8767 → Bitcoin Core RPC (use testnet/regtest)
 ```
 
-Guest gateway: **10.0.2.2**
+Guest gateway: **10.0.2.2** (DNS alias: `gateway`, `ai`, `btc`)
 
 ## Tests
 
@@ -104,6 +122,6 @@ Guest gateway: **10.0.2.2**
 make test
 ```
 
-Same suite as GitHub Actions CI.
+Same suite as GitHub Actions CI (host + QEMU e2e).
 
-See also: [GETTING_STARTED.md](GETTING_STARTED.md) · [COMMANDS.md](COMMANDS.md)
+See also: [GETTING_STARTED.md](GETTING_STARTED.md) · [NETWORKING.md](NETWORKING.md) · [COMMANDS.md](COMMANDS.md)

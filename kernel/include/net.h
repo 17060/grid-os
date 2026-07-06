@@ -11,6 +11,7 @@ int net_ping(uint32_t ip);
 int net_send_arp(uint32_t target_ip);
 void net_print_status(void);
 int net_parse_ip(const char *text, uint32_t *out);
+int net_resolve_host(const char *host, uint32_t *out);
 uint32_t net_local_ip(void);
 const uint8_t *net_mac(void);
 

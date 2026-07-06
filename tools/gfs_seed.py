@@ -30,15 +30,30 @@ WELCOME_GRID = (
 
 HELLO_BAS = (
     b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 6.0 online\"\n"
+    b"20 PRINT \"GridBASIC 6.4 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
     b"60 S$ = \"hello \" + \"grid\"\n"
     b"70 PRINT S$\n"
-    b"80 PRINT \"ping gw: \"; GRID.PING(\"10.0.2.2\")\n"
+    b"80 PRINT \"ping gw: \"; GRID.PING(\"gateway\")\n"
     b"90 PRINT \"ticks: \"; GRID.TIME\n"
     b"100 END\n"
+)
+
+NETDEMO_BAS = (
+    b"10 REM Network demo -- DNS names + ping\n"
+    b"20 PRINT \"Grid OS network demo\"\n"
+    b"30 PRINT \"ping gateway: \"; GRID.PING(\"gateway\")\n"
+    b"40 PRINT \"ping grid: \"; GRID.PING(\"grid\")\n"
+    b"50 END\n"
+)
+
+VAULTDEMO_BAS = (
+    b"10 REM Vault demo (run after: vault put motd hello)\n"
+    b"20 PRINT \"Vault keys live in Grid memory + disk sync\"\n"
+    b"30 PRINT \"Use: vault put key value / vault sync\"\n"
+    b"40 END\n"
 )
 
 
@@ -71,6 +86,8 @@ def main() -> int:
         (6, "/grid/recognizer.log", b"Recognizer patrol: sector clear. End of line.\n"),
         (7, "/source/welcome.grid", WELCOME_GRID),
         (9, "/programs/hello.bas", HELLO_BAS),
+        (10, "/programs/netdemo.bas", NETDEMO_BAS),
+        (11, "/programs/vaultdemo.bas", VAULTDEMO_BAS),
     ]
 
     for slot, path, payload in files:

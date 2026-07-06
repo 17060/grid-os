@@ -1,5 +1,18 @@
 # Grid OS — Changelog
 
+## 6.4 — Docs, DNS, HTTP keep-alive, tests, samples
+
+- **Static DNS** — `net_resolve_host()` resolves `gateway`, `grid`, `localhost`, `ai`, `btc` (case-insensitive) plus literal IPv4; used by `http get`, `GRID.PING()`, and shell
+- **HTTP/1.1 keep-alive pool** — reuses TCP connections across requests to the same host; `http_close_idle()` tears down the pool
+- **TCP slots** — increased from 4 to 8 concurrent outbound sessions
+- **GridBASIC strings** — `value_t.s` expanded to 1024 bytes for longer AI/BTC results
+- **Host tests** — vault disk round-trip, DNS resolver, triple TCP dispatch, spawn fault regression script
+- **CI** — split build/seed/host/QEMU steps; runs full host test matrix
+- **Samples** — `/programs/netdemo.bas`, `/programs/vaultdemo.bas` seeded on Flynn disk
+- **Docs** — README, GETTING_STARTED, COMMANDS, MAC_SILICON, and new NETWORKING.md updated to 6.4
+- **`make release-mac`** — builds Mac Silicon tarball + standalone `.command` for release upload
+- Runtime banners updated to 6.4
+
 ## 6.3 — Multi-TCP, vault migration, tests, hardening
 
 - **Multi-connection TCP** — up to 4 concurrent outbound TCP sessions with per-connection local ports and tuple-based dispatch (IRC + HTTP + AI + BTC can run together)

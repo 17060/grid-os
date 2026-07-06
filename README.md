@@ -1,10 +1,30 @@
-# Grid OS 6.0
+# Grid OS 6.4
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
 **New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
 
-**Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` creates a portable bundle.
+**Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.
+
+**Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, static DNS names, HTTP keep-alive.
+
+## What's new in 6.4
+
+- **Static DNS** — resolve `gateway`, `grid`, `localhost`, `ai`, `btc` (plus IPv4) in shell, HTTP, and `GRID.PING()`
+- **HTTP/1.1 keep-alive** — connection pool reuses TCP sessions to the same host
+- **8 concurrent TCP sessions** — IRC + HTTP + AI + BTC bridges can run together
+- **Longer GridBASIC strings** — 1024-byte `value_t` buffer for AI/BTC responses
+- **Expanded host tests** — vault disk round-trip, DNS, triple TCP, spawn fault regression
+- **Sample programs** — `/programs/netdemo.bas`, `/programs/vaultdemo.bas`
+- **`make release-mac`** — Mac Silicon tarball + standalone `.command` launcher
+
+## What's new in 6.3
+
+- **Multi-connection TCP** — per-port dispatch; up to 8 concurrent outbound sessions
+- **Vault v5→v6 migration** — auto-upgrades legacy on-disk vaults
+- **Vault checksum fix** — saved vaults validate correctly on load
+- **Input hardening** — HTTP, IRC, and serial import bounds checks
+- **Host test suite** — GridBASIC, vault, and TCP unit tests
 
 ## What's new in 6.0 — GridBASIC
 
@@ -235,6 +255,8 @@ Protocol: framed `GRIDBTC/1.0/<METHOD>` + optional JSON params over TCP `10.0.2.
 ## See also
 
 - [CHANGELOG.md](CHANGELOG.md)
+- [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md)
+- [docs/NETWORKING.md](docs/NETWORKING.md)
 - [docs/VISION.md](docs/VISION.md)
 
 ## License

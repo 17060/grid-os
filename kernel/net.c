@@ -622,6 +622,55 @@ int net_parse_ip(const char *text, uint32_t *out) {
     return 0;
 }
 
+static int name_equal_ci(const char *a, const char *b) {
+    while (*a && *b) {
+        char ca = *a;
+        char cb = *b;
+        if (ca >= 'A' && ca <= 'Z') {
+            ca = (char)(ca + 32);
+        }
+        if (cb >= 'A' && cb <= 'Z') {
+            cb = (char)(cb + 32);
+        }
+        if (ca != cb) {
+            return 0;
+        }
+        a++;
+        b++;
+    }
+    return *a == *b;
+}
+
+int net_resolve_host(const char *host, uint32_t *out) {
+    static const struct {
+        const char *name;
+        uint32_t ip;
+    } hosts[] = {
+        {"localhost", 0x7F000001u},
+        {"gateway", 0x0A000202u},
+        {"gw", 0x0A000202u},
+        {"grid", 0x0A00020Fu},
+        {"host", 0x0A00020Fu},
+        {"ai", 0x0A000202u},
+        {"btc", 0x0A000202u},
+        {0, 0},
+    };
+
+    if (!host || !out) {
+        return -1;
+    }
+    if (net_parse_ip(host, out) == 0) {
+        return 0;
+    }
+    for (int i = 0; hosts[i].name; ++i) {
+        if (name_equal_ci(host, hosts[i].name)) {
+            *out = hosts[i].ip;
+            return 0;
+        }
+    }
+    return -1;
+}
+
 void net_print_status(void) {
     console_write("Network:   ");
     if (!net.present) {
@@ -644,7 +693,8 @@ void net_print_status(void) {
     }
     console_write_char('\n');
     console_write("  IP:         10.0.2.15\n");
-    console_write("  Gateway:    10.0.2.2\n");
+    console_write("  Gateway:    10.0.2.2 (also: gateway, gw)\n");
+    console_write("  DNS names:  grid, host, localhost, ai, btc\n");
     console_write("  RX packets: ");
     {
         char buf[16];

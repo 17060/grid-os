@@ -98,8 +98,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 6.3 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.3  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 6.4 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.4  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -150,7 +150,7 @@ static void cmd_help(void) {
     console_write_line("  log [tail]        Audit trail");
     console_write_line("  portal [export|import|recv]  GridLink serial portal");
     console_write_line("  net [status|ping <ip>]       Grid network (virtio-net)");
-    console_write_line("  http get <ip> <path>         HTTP/1.0 GET (port 80)");
+    console_write_line("  http get <host|ip> <path>    HTTP/1.1 GET (port 80, keep-alive)");
     console_write_line("  irc connect <ip> <port> <nick>   Connect IRC session");
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
@@ -780,15 +780,15 @@ static void write_int(int value) {
 static void cmd_http(int argc, char *argv[]) {
     if (argc < 4 || !equals(argv[1], "get")) {
         console_write_line("HTTP commands:");
-        console_write_line("  http get <ip> <path>    Fetch URL path (port 80, HTTP/1.0)");
-        console_write_line("Example: http get 10.0.2.2 /");
+        console_write_line("  http get <host|ip> <path>    HTTP/1.1 GET (port 80, keep-alive pool)");
+        console_write_line("Example: http get gateway /");
         return;
     }
 
     uint32_t ip;
-    if (net_parse_ip(argv[2], &ip) != 0) {
+    if (net_resolve_host(argv[2], &ip) != 0) {
         console_set_color(GRID_COL_ERROR);
-        console_write_line("Usage: http get <ip> <path>  (path must start with /)");
+        console_write_line("Unknown host. Use an IPv4 address or: gateway, grid, localhost, ai, btc");
         console_set_color(GRID_COL_DEFAULT);
         return;
     }
@@ -1339,7 +1339,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 6.3 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 6.4 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
