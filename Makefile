@@ -166,7 +166,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.7'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.9'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'

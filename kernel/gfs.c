@@ -571,7 +571,7 @@ int gfs_seed_defaults(void) {
 
     seed_one("/programs/hello.bas",
              "10 REM GridBASIC demo — the Grid counts\n"
-             "20 PRINT \"GridBASIC 6.5 online\"\n"
+             "20 PRINT \"GridBASIC 6.9 online\"\n"
              "30 FOR I = 1 TO 5\n"
              "40   PRINT \"grid line \"; I\n"
              "50 NEXT I\n"
@@ -580,7 +580,65 @@ int gfs_seed_defaults(void) {
              "80 PRINT \"ping gw: \"; GRID.PING(\"10.0.2.2\")\n"
              "90 PRINT \"ticks: \"; GRID.TIME\n"
              "100 END\n",
-             220);
+             249);
+
+    seed_one("/programs/autoexec.bas",
+             "10 REM Flynn Boot — runs once at Grid OS startup\n"
+             "20 PRINT \"\"\n"
+             "30 PRINT \"=== Welcome to Flynn's Grid ===\"\n"
+             "40 PRINT GRID.STATUS$\n"
+             "50 PRINT \"Type 'tutorial' or Esc :load tutorial in IDE\"\n"
+             "60 PRINT \"Samples: samples   Run: basic run /programs/hello.bas\"\n"
+             "70 PRINT \"Disable boot script: vault put autoexec off\"\n"
+             "80 PRINT \"\"\n"
+             "90 END\n",
+             323);
+
+    seed_one("/programs/tutorial.bas",
+             "10 REM GridBASIC Tutorial — Flynn Boot Experience\n"
+             "20 GRID.CLS\n"
+             "30 PRINT \"=== GridBASIC Tutorial ===\"\n"
+             "40 PRINT \"1. PRINT shows text on the grid\"\n"
+             "50 PRINT \"2. LET stores numbers in variables\"\n"
+             "60 LET N = 42\n"
+             "70 PRINT \"   N = \"; N\n"
+             "80 PRINT \"3. FOR loops count for you\"\n"
+             "90 FOR I = 1 TO 3\n"
+             "100   PRINT \"   line \"; I\n"
+             "110 NEXT I\n"
+             "120 PRINT \"4. Strings join with +\"\n"
+             "130 S$ = \"hello \" + \"grid\"\n"
+             "140 PRINT \"   \"; S$\n"
+             "150 PRINT \"5. GRID.WHOAMI$ = \"; GRID.WHOAMI$\n"
+             "160 PRINT \"Try: samples   basic run /programs/subdemo.bas\"\n"
+             "170 PRINT \"End of line.\"\n"
+             "180 END\n",
+             539);
+
+    seed_one("/programs/subdemo.bas",
+             "10 REM SUB / FUNCTION demo\n"
+             "20 SUB GREET(N$)\n"
+             "30   PRINT \"Hello, \"; N$\n"
+             "40 END SUB\n"
+             "50 FUNCTION DOUBLE(X)\n"
+             "60   DOUBLE = X * 2\n"
+             "70 END FUNCTION\n"
+             "80 CALL GREET(\"Flynn\")\n"
+             "90 PRINT \"DOUBLE(21) = \"; DOUBLE(21)\n"
+             "100 END\n",
+             206);
+
+    seed_one("/programs/grid2d.bas",
+             "10 REM 2D array demo\n"
+             "20 DIM M(3,3)\n"
+             "30 FOR R = 0 TO 3\n"
+             "40   FOR C = 0 TO 3\n"
+             "50     M(R,C) = R * 10 + C\n"
+             "60   NEXT C\n"
+             "70 NEXT R\n"
+             "80 PRINT \"M(2,3) = \"; M(2,3)\n"
+             "90 END\n",
+             158);
 
     return 0;
 }

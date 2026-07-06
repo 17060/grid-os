@@ -24,6 +24,7 @@
  *   grid> :load <name>  read from GFS
  *   grid> :new          clear the buffer
  *   grid> :list         print the buffer (paused)
+ *   grid> :samples      list Flynn disk sample programs
  *   grid> :help         IDE editing help
  *   grid> :ai ask ...   AI prompt (host bridge or offline help)
  *   grid> :ai explain   explain current line
@@ -849,6 +850,7 @@ static void cmd_help(void) {
     console_write_line("  :load <name>          read /programs/<name>.bas");
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
+    console_write_line("  :samples              list /programs/*.bas samples");
     console_write_line("  :help                 this IDE help");
     console_write_line("  :ai ask <prompt>      AI help (host bridge or offline)");
     console_write_line("  :ai explain           explain current line");
@@ -890,6 +892,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
         ide_status(e, "new buffer", GRID_COL_OK); return 1;
     }
     if (sequal(cmd, "list") || sequal(cmd, "l")) { cmd_list(e); return 1; }
+    if (sequal(cmd, "samples")) { run_shell_line(e, "samples"); return 1; }
     if (sequal(cmd, "help") || sequal(cmd, "h") || sequal(cmd, "?")) { cmd_help(); return 1; }
     if (starts_with(cmd, "save ")) { cmd_save(e, cmd + 5); return 1; }
     if (starts_with(cmd, "load ")) { cmd_load(e, cmd + 5); return 1; }
