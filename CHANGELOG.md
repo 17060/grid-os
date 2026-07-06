@@ -11,6 +11,7 @@
 - **`net_send_ip()`** — rejects payloads that exceed virtio frame buffer
 - **HTTPS bridge** — client socket timeout, header forwarding, accurate 502 `Content-Length`
 - **Makefile** — preserve `-no-pie` on Linux CI; vault disk test depends on seeded image
+- **Freestanding `memcpy`** — required for x86_64-elf-gcc macOS cross builds
 
 ## 6.5 — DNS, HTTP POST, HTTPS bridge, PRINT bindings, e2e
 

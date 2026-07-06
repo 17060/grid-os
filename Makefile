@@ -36,7 +36,7 @@ USER_PROGS = gridprog discinfo gridsh lightcycle gridloop
 USER_EMBED = $(USER_PROGS:%=build/%_embed.o)
 
 KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
-               build/memory.o build/gdt.o build/idt.o build/syscall.o \
+               build/memory.o build/string.o build/gdt.o build/idt.o build/syscall.o \
                build/program.o build/serial.o build/disk.o build/pci.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
