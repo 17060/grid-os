@@ -161,7 +161,9 @@ static int is_basic_keyword(const char *w) {
     static const char *kws[] = {
         "PRINT", "LET", "IF", "THEN", "ELSE", "FOR", "TO", "STEP", "NEXT",
         "WHILE", "WEND", "REPEAT", "UNTIL", "GOTO", "GOSUB", "RETURN",
-        "INPUT", "DIM", "REM", "END", "STOP", "AND", "OR", "NOT", "MOD", "DIV", 0
+        "INPUT", "LINE", "DIM", "CONST", "DATA", "READ", "RESTORE", "RANDOMIZE",
+        "SELECT", "CASE", "EXIT", "REM", "END", "STOP",
+        "AND", "OR", "NOT", "MOD", "DIV", 0
     };
     char upper[48];
     size_t wi = 0;
@@ -852,18 +854,17 @@ static void cmd_help(void) {
     console_write_line("  help                  Flynn Grid shell commands");
     console_write_line("  poweroff              exit Grid OS");
     console_write_line("GridBASIC statements:");
-    console_write_line("  PRINT expr;expr   LET v=expr   INPUT v   DIM A(10)");
-    console_write_line("  IF c THEN s ELSE s  FOR i=a TO b STEP s .. NEXT [i]");
-    console_write_line("  WHILE c .. WEND   REPEAT .. UNTIL c   GOTO n  GOSUB n/RETURN");
+    console_write_line("  PRINT expr;expr   CONST v=expr   DIM A(10)   DATA/READ/RESTORE");
+    console_write_line("  SELECT CASE x : CASE n .. : CASE ELSE .. : END SELECT");
+    console_write_line("  IF c THEN s ELSE s  FOR i=a TO b .. NEXT   EXIT FOR/WHILE");
+    console_write_line("  WHILE c .. WEND   REPEAT .. UNTIL c   LINE INPUT s$");
+    console_write_line("  RANDOMIZE [seed]   INSTR$(hay$,needle$)   GOTO n  GOSUB n");
     console_write_line("Grid bindings:");
+    console_write_line("  GRID.VAULT.GET$/PUT/SYNC/LIST$   GRID.GFS.READ$/WRITE/LIST$");
+    console_write_line("  GRID.HTTP.GET$/POST$   GRID.LOCATE row,col   GRID.INKEY$");
     console_write_line("  GRID.CLS  GRID.COLOR n  GRID.LOG msg  GRID.WAIT ticks");
-    console_write_line("  GRID.SPAWN \"name\"  GRID.SERIAL.WRITE s$");
-    console_write_line("  GRID.TIME  GRID.RND(n)  GRID.PING(ip$)  GRID.STATUS$");
-    console_write_line("  GRID.AI.ASK$(p$)  GRID.AI.EXPLAIN$(l$)  GRID.AI.FIX$(c$)");
-    console_write_line("  GRID.IRC.CONNECT ip$,port,nick$  GRID.IRC.JOIN/SAY/POLL/READ$");
-    console_write_line("  irc connect|join|say|read|status  (also :irc ... at grid>)");
-    console_write_line("  GRID.BTC.CALL$(m$,p$)  GRID.BTC.INFO$/BALANCE$/ADDRESS$");
-    console_write_line("  GRID.BTC.SEND addr$, amount   btc info|balance|send|call|status");
+    console_write_line("  GRID.SPAWN \"name\"  GRID.TIME  GRID.PING(ip$)  GRID.CAP(n)");
+    console_write_line("  GRID.AI.ASK$/PRINT   GRID.IRC.*   GRID.BTC.*");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
     console_set_color(GRID_COL_DEFAULT);
