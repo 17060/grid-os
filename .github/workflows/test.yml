@@ -100,7 +100,7 @@ jobs:
       - name: Upload Termux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: grid-os-termux-v6.7
+          name: grid-os-termux-v6.8
           path: |
             dist/GridOS-*-Android-Termux.*
             dist/grid-os-android-termux-*.zip

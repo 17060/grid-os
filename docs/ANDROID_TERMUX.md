@@ -100,7 +100,7 @@ make release-termux
 Upload to GitHub releases:
 
 ```bash
-gh release upload v6.7 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip
+gh release upload v6.8 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip
 ```
 
 ## Troubleshooting

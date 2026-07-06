@@ -283,9 +283,9 @@ standalone-termux: $(TARGET) $(DISK_IMAGE)
 
 release-termux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_termux.sh tools/build_standalone_termux.sh
-	GRID_OS_VERSION=v6.7 ./tools/save_termux.sh
-	GRID_OS_VERSION=6.7 ./tools/build_standalone_termux.sh
-	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v6.7 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
+	GRID_OS_VERSION=v6.8 ./tools/save_termux.sh
+	GRID_OS_VERSION=6.8 ./tools/build_standalone_termux.sh
+	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v6.8 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
 
 clean:
 	rm -rf build
