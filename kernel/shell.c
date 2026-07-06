@@ -98,8 +98,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 6.5 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.5  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 6.5.1 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.5.1  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -1420,7 +1420,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 6.5 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 6.5.1 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }

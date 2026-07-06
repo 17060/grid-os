@@ -247,9 +247,9 @@ standalone-macos: $(TARGET) $(DISK_IMAGE)
 
 release-mac: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh tools/build_standalone_mac.sh
-	GRID_OS_VERSION=v6.5 ./tools/save_mac_silicon.sh
-	GRID_OS_VERSION=6.5 ./tools/build_standalone_mac.sh
-	@echo "Upload dist/* to GitHub release v6.5 with: gh release upload v6.5 dist/*"
+	GRID_OS_VERSION=v6.5.1 ./tools/save_mac_silicon.sh
+	GRID_OS_VERSION=6.5.1 ./tools/build_standalone_mac.sh
+	@echo "Upload dist/* to GitHub release v6.5.1 with: gh release upload v6.5.1 dist/*"
 
 clean:
 	rm -rf build

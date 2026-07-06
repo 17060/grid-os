@@ -1,4 +1,4 @@
-# Grid OS 6.5
+# Grid OS 6.5.1
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -7,6 +7,10 @@
 **Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 6.5.1
+
+Patch release — audit fixes for PING, vault migration, HTTP keep-alive, DNS, IRC, and CI. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 6.5
 
