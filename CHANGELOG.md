@@ -1,5 +1,20 @@
 # Grid OS — Changelog
 
+## 6.2 — Deep audit bug fixes
+
+- **TCP handler registration** — `tcp_init()` now registers `tcp_input` at boot, so HTTP/AI/BTC (not just IRC) actually receive inbound segments
+- **`tcp_recv` data loss** — no longer zeroes `rx_len` on entry; returns already-buffered data instead of dropping it
+- **TCP overflow ACK** — only ACKs bytes actually copied and flags `error` when the RX buffer overflows
+- **Vault disk layout** — bumped to vault v6 (3 disk sectors); the struct was ~1028 bytes but only 1024 were persisted, truncating the last entry
+- **`storage_put` errors** — returns `-1` when the vault is full instead of silently succeeding
+- **ISO genome import** — serial import reads all 32 genome bytes (was stopping at 30)
+- **Sandbox spawn faults** — `program_spawn` / `program_spawn_elf` return `-1` and release the slot on fault instead of reporting success
+- **ELF W+X rejection** — user segments can no longer be mapped writable *and* executable
+- **HTTP request length** — rejects paths that would overflow/truncate the request buffer
+- **GridBASIC** — trailing `PRINT` comma no longer emits an extra newline; `:=` assignment accepted; empty-identifier out-of-bounds guard; token-limit error reported; `value_t` string buffer grown to 512 bytes so AI/BTC results are not truncated at 160
+- **IDE syntax highlighting** — keyword matching is now case-insensitive
+- Version banners updated to 6.2
+
 ## 6.0 — GridBASIC advanced language + IDE
 
 - **GridBASIC interpreter** (`kernel/basic.c`) — tokenizing lexer, recursive-descent expression evaluator, numeric + string values with `+` concatenation, one-dimensional arrays (`DIM`), and full classic control flow: `PRINT` (`?`), `LET`, `IF/THEN/ELSE`, `FOR/TO/STEP/NEXT`, `WHILE/WEND`, `REPEAT/UNTIL`, `GOTO`, `GOSUB/RETURN`, `INPUT`, `REM`, `END/STOP`
