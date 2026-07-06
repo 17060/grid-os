@@ -1,4 +1,4 @@
-# Grid OS 6.5 — Commands & GridBASIC Reference
+# Grid OS 6.6 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -16,7 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `cycles` | Same as `status` (elapsed cycles) |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 6.5 |
+| `about` | About Grid OS 6.6 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs

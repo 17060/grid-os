@@ -81,7 +81,7 @@ def upstream_request(raw: bytes, timeout: float) -> bytes:
     data = body.encode("utf-8") if body else None
     req = urllib.request.Request(url, data=data if method in {"POST", "PUT"} else None, method=method)
     req.add_header("Host", host)
-    req.add_header("User-Agent", "GridOS-HTTPS-Bridge/6.5.1")
+    req.add_header("User-Agent", "GridOS-HTTPS-Bridge/6.6")
     for key, val in forward_headers:
         req.add_header(key, val)
 
@@ -137,7 +137,7 @@ def serve(host: str, port: int, timeout: float) -> None:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
     sock.listen(8)
-    print(f"Grid HTTPS bridge listening on {host}:{port} (Grid OS 6.5.1)", flush=True)
+    print(f"Grid HTTPS bridge listening on {host}:{port} (Grid OS 6.6)", flush=True)
     while True:
         conn, addr = sock.accept()
         with conn:

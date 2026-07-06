@@ -1,4 +1,4 @@
-# Grid OS 6.5.1
+# Grid OS 6.6
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -9,6 +9,10 @@
 **Windows?** See [docs/WINDOWS.md](docs/WINDOWS.md) — download `GridOS-*-Windows-x64.zip` or `make release-windows` to build bundles.
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 6.6
+
+Advanced GridBASIC — `CONST`, `DATA`/`READ`/`RESTORE`, `RANDOMIZE`, `INSTR$`, `SELECT CASE`, `EXIT FOR`/`WHILE`, `LINE INPUT`, plus `GRID.VAULT.*`, `GRID.GFS.*`, `GRID.HTTP.*`, `GRID.LOCATE`, and `GRID.INKEY$`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 6.5.1
 

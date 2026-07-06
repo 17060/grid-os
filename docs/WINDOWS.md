@@ -59,8 +59,8 @@ Host packaging (creates Windows zip bundles):
 
 ```bash
 make release-windows
-# → dist/GridOS-6.5.1-Windows-x64.zip
-# → dist/grid-os-windows-x64-v6.5.1.zip
+# → dist/GridOS-6.6-Windows-x64.zip
+# → dist/grid-os-windows-x64-v6.6.zip
 ```
 
 ## Release bundles
@@ -77,7 +77,7 @@ Produces:
 Upload to GitHub:
 
 ```bash
-gh release upload v6.5.1 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip
+gh release upload v6.6 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip
 ```
 
 ## Host bridges (AI / BTC / HTTPS)

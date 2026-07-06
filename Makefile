@@ -166,7 +166,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.5'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.6'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'
@@ -251,9 +251,9 @@ standalone-macos: $(TARGET) $(DISK_IMAGE)
 
 release-mac: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh tools/build_standalone_mac.sh
-	GRID_OS_VERSION=v6.5.1 ./tools/save_mac_silicon.sh
-	GRID_OS_VERSION=6.5.1 ./tools/build_standalone_mac.sh
-	@echo "Upload dist/* to GitHub release v6.5.1 with: gh release upload v6.5.1 dist/*"
+	GRID_OS_VERSION=v6.6 ./tools/save_mac_silicon.sh
+	GRID_OS_VERSION=6.6 ./tools/build_standalone_mac.sh
+	@echo "Upload dist/* to GitHub release v6.6 with: gh release upload v6.6 dist/*"
 
 save-windows-x64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_windows_x64.sh
@@ -265,9 +265,9 @@ standalone-windows: $(TARGET) $(DISK_IMAGE)
 
 release-windows: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_windows_x64.sh tools/build_standalone_windows.sh
-	GRID_OS_VERSION=v6.5.1 ./tools/save_windows_x64.sh
-	GRID_OS_VERSION=6.5.1 ./tools/build_standalone_windows.sh
-	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v6.5.1 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
+	GRID_OS_VERSION=v6.6 ./tools/save_windows_x64.sh
+	GRID_OS_VERSION=6.6 ./tools/build_standalone_windows.sh
+	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v6.6 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
 
 clean:
 	rm -rf build

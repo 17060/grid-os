@@ -50,7 +50,7 @@ jobs:
       - name: Upload Mac artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: grid-os-macos-v6.5.1
+          name: grid-os-macos-v6.6
           path: dist/*
 
   windows-release:
@@ -74,7 +74,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: grid-os-windows-v6.5.1
+          name: grid-os-windows-v6.6
           path: |
             dist/GridOS-*-Windows-x64.zip
             dist/grid-os-windows-x64-*.zip
