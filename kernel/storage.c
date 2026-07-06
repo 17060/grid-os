@@ -10,8 +10,10 @@
 
 #define GRID_VAULT_MAGIC 0x47524431u
 #define GRID_VAULT_VERSION 6u
+#define GRID_VAULT_VERSION_V5 5u
 #define VAULT_DISK_LBA 32u
 #define VAULT_DISK_SECTORS 3u
+#define VAULT_DISK_SECTORS_V5 2u
 #define VAULT_DISK_SIG_LBA 31u
 
 typedef struct {
@@ -93,11 +95,19 @@ static void vault_recompute_checksum(void) {
     vault.checksum = vault_checksum(&vault);
 }
 
-static int vault_valid(const grid_vault_t *data) {
-    if (data->magic != GRID_VAULT_MAGIC || data->version != GRID_VAULT_VERSION) {
+static int vault_valid_version(const grid_vault_t *data, uint32_t version) {
+    grid_vault_t tmp;
+
+    if (data->magic != GRID_VAULT_MAGIC || data->version != version) {
         return 0;
     }
-    return data->checksum == vault_checksum(data);
+    tmp = *data;
+    tmp.checksum = 0;
+    return data->checksum == vault_checksum(&tmp);
+}
+
+static int vault_valid(const grid_vault_t *data) {
+    return vault_valid_version(data, GRID_VAULT_VERSION);
 }
 
 static int vault_put_raw(const char *key, const char *value) {
@@ -201,26 +211,27 @@ static int write_disk_signature(void) {
     return disk_write(VAULT_DISK_SIG_LBA, sector);
 }
 
-static int disk_signature_valid(void) {
+static int read_disk_signature_version(uint8_t *out_version) {
     uint8_t sector[DISK_SECTOR_SIZE];
     if (disk_read(VAULT_DISK_SIG_LBA, sector) != 0) {
-        return 0;
+        return -1;
     }
-    return sector[0] == 'F' && sector[1] == 'L' && sector[2] == 'Y' &&
-           sector[3] == 'N' && sector[4] == 'G' && sector[5] == 'R' &&
-           sector[6] == 'I' && sector[7] == 'D' &&
-           sector[8] == (uint8_t)GRID_VAULT_VERSION;
+    if (sector[0] != 'F' || sector[1] != 'L' || sector[2] != 'Y' ||
+        sector[3] != 'N' || sector[4] != 'G' || sector[5] != 'R' ||
+        sector[6] != 'I' || sector[7] != 'D') {
+        return -1;
+    }
+    if (out_version) {
+        *out_version = sector[8];
+    }
+    return 0;
 }
 
-int storage_load_disk(void) {
+static int load_vault_sectors(uint32_t sectors) {
     uint8_t sector[DISK_SECTOR_SIZE];
     uint8_t *raw = (uint8_t *)&vault;
 
-    if (!disk_present() || !disk_signature_valid()) {
-        return -1;
-    }
-
-    for (uint32_t i = 0; i < VAULT_DISK_SECTORS; ++i) {
+    for (uint32_t i = 0; i < sectors; ++i) {
         if (disk_read(VAULT_DISK_LBA + i, sector) != 0) {
             return -1;
         }
@@ -232,10 +243,49 @@ int storage_load_disk(void) {
         }
     }
 
-    if (!vault_valid(&vault)) {
-        return -1;
+    size_t loaded = (size_t)sectors * DISK_SECTOR_SIZE;
+    if (loaded < sizeof(grid_vault_t)) {
+        for (size_t b = loaded; b < sizeof(grid_vault_t); ++b) {
+            raw[b] = 0;
+        }
     }
     return 0;
+}
+
+static int migrate_vault_v5_to_v6(void) {
+    vault.version = GRID_VAULT_VERSION;
+    vault_recompute_checksum();
+    return storage_sync_disk();
+}
+
+int storage_load_disk(void) {
+    uint8_t version = 0;
+
+    if (!disk_present() || read_disk_signature_version(&version) != 0) {
+        return -1;
+    }
+
+    if (version == (uint8_t)GRID_VAULT_VERSION) {
+        if (load_vault_sectors(VAULT_DISK_SECTORS) != 0) {
+            return -1;
+        }
+        if (!vault_valid(&vault)) {
+            return -1;
+        }
+        return 0;
+    }
+
+    if (version == (uint8_t)GRID_VAULT_VERSION_V5) {
+        if (load_vault_sectors(VAULT_DISK_SECTORS_V5) != 0) {
+            return -1;
+        }
+        if (!vault_valid_version(&vault, GRID_VAULT_VERSION_V5)) {
+            return -1;
+        }
+        return migrate_vault_v5_to_v6();
+    }
+
+    return -1;
 }
 
 int storage_sync_disk(void) {
@@ -461,6 +511,9 @@ static int parse_iso_line(const char *line) {
     }
 
     for (size_t g = 0; g < ISO_GENOME_SIZE; ++g) {
+        if (!line[i] || !line[i + 1]) {
+            return -1;
+        }
         genome[g] = (uint8_t)((hex_nibble(line[i]) << 4) | hex_nibble(line[i + 1]));
         i += 2;
     }
@@ -505,6 +558,9 @@ int storage_import_serial(void) {
         }
 
         if (line[0] == 'D' && line[1] == 'I') {
+            if (line[5 + (GRID_DISC_BYTES * 2)] != '\0') {
+                continue;
+            }
             for (size_t i = 0; i < GRID_DISC_BYTES; ++i) {
                 vault.user_disc[i] =
                     (uint8_t)((hex_nibble(line[5 + (i * 2)]) << 4) | hex_nibble(line[6 + (i * 2)]));

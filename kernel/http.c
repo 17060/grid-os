@@ -5,6 +5,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
+static size_t str_len(const char *s) {
+    size_t n = 0;
+    while (s[n]) {
+        n++;
+    }
+    return n;
+}
+
 static size_t scopy(char *dst, size_t cap, const char *src) {
     size_t i = 0;
     if (src) {
@@ -31,6 +39,7 @@ int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap
     size_t n = 0;
     size_t total = 0;
     int headers_done = 0;
+    size_t path_len;
 
     if (!out || cap == 0 || !path || path[0] != '/') {
         return -1;
@@ -39,9 +48,17 @@ int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap
         return -1;
     }
 
+    path_len = str_len(path);
+    if (path_len + 40 >= sizeof(req)) {
+        return -1;
+    }
+
     out[0] = '\0';
     n = scopy(req, sizeof(req), "GET ");
     n = append(req, sizeof(req), n, path);
+    if (n != 4 + path_len) {
+        return -1;
+    }
     n = append(req, sizeof(req), n, " HTTP/1.0\r\nConnection: close\r\n\r\n");
     if (n + 1 >= sizeof(req)) {
         return -1;
@@ -75,6 +92,9 @@ int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap
                         j++;
                     }
                     if (!found) {
+                        if (conn.rx_len >= sizeof(conn.rx_buf)) {
+                            conn.error = 1;
+                        }
                         break;
                     }
                     continue;

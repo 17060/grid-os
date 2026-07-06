@@ -28,6 +28,7 @@ typedef struct {
     char parse_buf[IRC_LINE_MAX];
     size_t parse_len;
     int echo_console;
+    int line_overflow;
 } irc_state_t;
 
 static irc_state_t g_irc;
@@ -366,6 +367,9 @@ static void process_rx_bytes(const uint8_t *data, size_t n) {
             g_irc.parse_len = 0;
         } else if (g_irc.parse_len + 1 < IRC_LINE_MAX) {
             g_irc.parse_buf[g_irc.parse_len++] = ch;
+        } else if (!g_irc.line_overflow) {
+            g_irc.line_overflow = 1;
+            enqueue_line("IRC: line truncated");
         }
     }
 }
@@ -402,6 +406,7 @@ static void teardown(void) {
     g_irc.queue_head = 0;
     g_irc.queue_count = 0;
     g_irc.echo_console = 0;
+    g_irc.line_overflow = 0;
 }
 
 int irc_is_connected(void) {
@@ -431,6 +436,7 @@ int irc_connect(const char *host_ip, uint16_t port, const char *nick) {
     g_irc.parse_len = 0;
     g_irc.registered = 0;
     g_irc.echo_console = 0;
+    g_irc.line_overflow = 0;
 
     tcp_init();
     net_set_tcp_input(tcp_input);
