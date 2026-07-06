@@ -7,6 +7,7 @@
 - **Input hardening** — HTTP rejects overlong paths and oversized headers; IRC reports truncated lines; serial import validates DISC hex length and ISO genome byte pairs
 - **Host test suite** — `test-host-basic` (GridBASIC math, `:=`, trailing comma, status), `test-host-vault` (v5 migration, full vault, genome parse), `test-host-tcp` (dual-port dispatch, slot limit)
 - **Vault checksum validation** — compare against a zeroed checksum field so saved vaults actually validate on load
+- Runtime banners updated to 6.3
 
 ## 6.2 — Deep audit bug fixes
 

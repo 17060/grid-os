@@ -22,7 +22,7 @@ void shell_run(void);
 
 void kernel_main(void) {
     serial_init();
-    serial_write("Grid OS 6.2 boot\n");
+    serial_write("Grid OS 6.3 boot\n");
     console_init();
     gdt_init();
     memory_init();
@@ -41,7 +41,7 @@ void kernel_main(void) {
     net_init();
     tcp_init();
 
-    log_event("Grid OS 6.2 boot");
+    log_event("Grid OS 6.3 boot");
 
     __asm__ volatile("sti");
 
