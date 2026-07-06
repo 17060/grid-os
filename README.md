@@ -1,4 +1,4 @@
-# Grid OS 6.4
+# Grid OS 6.5
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -6,7 +6,20 @@
 
 **Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.
 
-**Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, static DNS names, HTTP keep-alive.
+**Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 6.5
+
+- **UDP DNS resolver** — queries QEMU gateway `10.0.2.2:53` after built-in names and GFS `/etc/hosts`
+- **GFS `/etc/hosts`** — editable static hostname table (seeded on Flynn disk)
+- **HTTP POST** — `http post <host> [port] <path> <body>` with keep-alive pool
+- **HTTPS host bridge** — `make https-bridge` (TCP :8768) proxies guest HTTP to upstream TLS
+- **`GRID.AI.PRINT` / `GRID.BTC.PRINT`** — full-length console output (bypasses 1024-char string cap)
+- **Vault migration banner** — v5→v6 upgrade logs to console + audit trail on boot
+- **Expanded e2e tests** — vault migrate, netdemo, HTTP keep-alive (two hits on one pool)
+- **Sample library** — `/programs/aidemo.bas`, `/programs/httpdemo.bas`, `/etc/hosts`
+- **macOS CI job** — builds release bundles on `macos-latest`
+- Runtime banners updated to 6.5
 
 ## What's new in 6.4
 

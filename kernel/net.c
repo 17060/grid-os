@@ -1,4 +1,5 @@
 #include "console.h"
+#include "dns.h"
 #include "memory.h"
 #include "net.h"
 #include "pci.h"
@@ -30,6 +31,7 @@
 #define ICMP_ECHO_REQUEST 8u
 #define IP_PROTO_ICMP 1u
 #define IP_PROTO_TCP  6u
+#define IP_PROTO_UDP  17u
 
 #define NET_LOCAL_IP   0x0A00020Fu  /* 10.0.2.15 */
 #define NET_GATEWAY_IP 0x0A000202u  /* 10.0.2.2  */
@@ -388,6 +390,14 @@ static void handle_packet(const uint8_t *buf, size_t len) {
             net.tcp_input_fn(src_ip, l4, l4_len);
             return;
         }
+
+        if (proto == IP_PROTO_UDP) {
+            uint32_t src_ip = get_u32_be(payload + 12);
+            if (l4_len >= 8) {
+                dns_input(src_ip, l4 + 8, l4_len - 8);
+            }
+            return;
+        }
     }
 }
 
@@ -576,6 +586,24 @@ int net_send_ip(uint32_t dst_ip, uint8_t proto, const uint8_t *payload, size_t l
     return 0;
 }
 
+int net_send_udp(uint32_t dst_ip, uint16_t dst_port, uint16_t src_port,
+                 const uint8_t *payload, size_t len) {
+    uint8_t udp[512];
+    size_t total = 8 + len;
+
+    if (!net.present || total > sizeof(udp)) {
+        return -1;
+    }
+    put_u16_be(udp + 0, src_port);
+    put_u16_be(udp + 2, dst_port);
+    put_u16_be(udp + 4, (uint16_t)total);
+    put_u16_be(udp + 6, 0);
+    for (size_t i = 0; i < len; ++i) {
+        udp[8 + i] = payload[i];
+    }
+    return net_send_ip(dst_ip, IP_PROTO_UDP, udp, total);
+}
+
 int net_present(void) {
     return net.present;
 }
@@ -668,6 +696,12 @@ int net_resolve_host(const char *host, uint32_t *out) {
             return 0;
         }
     }
+    if (hosts_lookup(host, out) == 0) {
+        return 0;
+    }
+    if (dns_resolve(host, out) == 0) {
+        return 0;
+    }
     return -1;
 }
 
@@ -694,7 +728,7 @@ void net_print_status(void) {
     console_write_char('\n');
     console_write("  IP:         10.0.2.15\n");
     console_write("  Gateway:    10.0.2.2 (also: gateway, gw)\n");
-    console_write("  DNS names:  grid, host, localhost, ai, btc\n");
+    console_write("  DNS names:  grid, host, localhost, ai, btc, /etc/hosts, UDP\n");
     console_write("  RX packets: ");
     {
         char buf[16];

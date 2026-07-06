@@ -1,4 +1,5 @@
 #include "console.h"
+#include "dns.h"
 #include "grid.h"
 #include "gfs.h"
 #include "gdt.h"
@@ -22,7 +23,7 @@ void shell_run(void);
 
 void kernel_main(void) {
     serial_init();
-    serial_write("Grid OS 6.4 boot\n");
+    serial_write("Grid OS 6.5 boot\n");
     console_init();
     gdt_init();
     memory_init();
@@ -39,9 +40,10 @@ void kernel_main(void) {
     storage_init();
     gfs_init();
     net_init();
+    dns_init();
     tcp_init();
 
-    log_event("Grid OS 6.4 boot");
+    log_event("Grid OS 6.5 boot");
 
     __asm__ volatile("sti");
 

@@ -30,7 +30,7 @@ WELCOME_GRID = (
 
 HELLO_BAS = (
     b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 6.4 online\"\n"
+    b"20 PRINT \"GridBASIC 6.5 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
@@ -54,6 +54,27 @@ VAULTDEMO_BAS = (
     b"20 PRINT \"Vault keys live in Grid memory + disk sync\"\n"
     b"30 PRINT \"Use: vault put key value / vault sync\"\n"
     b"40 END\n"
+)
+
+AIDEMO_BAS = (
+    b"10 REM AI demo -- full-length PRINT (host: make ai-bridge)\n"
+    b"20 PRINT \"Grid AI demo (offline fallback if no bridge)\"\n"
+    b"30 GRID.AI.PRINT \"What is PRINT?\", \"EXPLAIN\"\n"
+    b"40 END\n"
+)
+
+HTTPDEMO_BAS = (
+    b"10 REM HTTP demo -- use shell: http get gateway 18080 /\n"
+    b"20 PRINT \"HTTP client lives in shell (GET/POST + keep-alive)\"\n"
+    b"30 PRINT \"Host HTTPS: make https-bridge on port 8768\"\n"
+    b"40 END\n"
+)
+
+ETC_HOSTS = (
+    b"# Grid OS static hosts (also: built-in gateway/grid/ai/btc + UDP DNS)\n"
+    b"10.0.2.2   bridge gateway gw ai btc\n"
+    b"10.0.2.15  grid host localhost\n"
+    b"192.168.1.50  lab\n"
 )
 
 
@@ -88,6 +109,9 @@ def main() -> int:
         (9, "/programs/hello.bas", HELLO_BAS),
         (10, "/programs/netdemo.bas", NETDEMO_BAS),
         (11, "/programs/vaultdemo.bas", VAULTDEMO_BAS),
+        (12, "/etc/hosts", ETC_HOSTS),
+        (13, "/programs/aidemo.bas", AIDEMO_BAS),
+        (14, "/programs/httpdemo.bas", HTTPDEMO_BAS),
     ]
 
     for slot, path, payload in files:

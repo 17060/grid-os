@@ -1,5 +1,20 @@
 # Grid OS — Changelog
 
+## 6.5 — DNS, HTTP POST, HTTPS bridge, PRINT bindings, e2e
+
+- **UDP DNS** — `dns_resolve()` sends A queries to `10.0.2.2:53`; integrated into `net_resolve_host()`
+- **GFS `/etc/hosts`** — parser in `kernel/dns.c`; seeded at `/etc/hosts` on Flynn disk
+- **HTTP POST** — `http_post()` / `http post` shell command; optional port on GET/POST
+- **HTTPS bridge** — `tools/gridhttps_bridge.py` + `make https-bridge` (guest TCP → host TLS)
+- **`GRID.AI.PRINT` / `GRID.BTC.PRINT`** — print full bridge responses to console
+- **`GRID.AI.COMPLETE$` fix** — now calls `ai_complete()` instead of `ai_ask()`
+- **Vault v5 migration message** — console + log banner on auto-upgrade at boot
+- **E2E tests** — vault migrate (`prepare_vault_v5_disk.py`), netdemo, HTTP keep-alive hits=2
+- **Samples** — `aidemo.bas`, `httpdemo.bas`, `/etc/hosts`
+- **macOS CI** — release bundle job on GitHub Actions
+- **Bridge version sweep** — Grid AI bridge system prompt updated to 6.5
+- Runtime banners updated to 6.5
+
 ## 6.4 — Docs, DNS, HTTP keep-alive, tests, samples
 
 - **Static DNS** — `net_resolve_host()` resolves `gateway`, `grid`, `localhost`, `ai`, `btc` (case-insensitive) plus literal IPv4; used by `http get`, `GRID.PING()`, and shell

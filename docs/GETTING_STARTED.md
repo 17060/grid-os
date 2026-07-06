@@ -1,4 +1,4 @@
-# Getting Started with Grid OS 6.4
+# Getting Started with Grid OS 6.5
 
 Flynn's Grid — a bootable x86_64 hobby OS with GridBASIC IDE, ring-3 sandboxes, multi-session TCP networking, and host bridges for AI and Bitcoin.
 
@@ -162,11 +162,11 @@ On a Mac with Homebrew:
 
 ```bash
 make release-mac
-# → dist/grid-os-macos-arm64-v6.4.tar.gz
-# → dist/GridOS-6.4-macOS-AppleSilicon.command
+# → dist/grid-os-macos-arm64-v6.5.tar.gz
+# → dist/GridOS-6.5-macOS-AppleSilicon.command
 ```
 
-Upload to GitHub releases with `gh release upload v6.4 dist/*`
+Upload to GitHub releases with `gh release upload v6.5 dist/*`
 
 ## Host tools (`gridctl`)
 

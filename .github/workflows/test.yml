@@ -30,3 +30,25 @@ jobs:
         run: |
           make test-qemu-smoke
           make test-e2e
+
+  macos-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: brew install nasm qemu
+
+      - name: Build kernel and disk
+        run: |
+          make
+          make disk seed-disk
+
+      - name: Build Mac release bundles
+        run: make release-mac
+
+      - name: Upload Mac artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: grid-os-macos-v6.5
+          path: dist/*

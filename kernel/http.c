@@ -75,24 +75,29 @@ void http_close_idle(void) {
     }
 }
 
-int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap) {
+static int http_request(const char *method, uint32_t ip, uint16_t port, const char *path,
+                        const char *body, char *out, size_t cap) {
     tcp_conn_t *conn;
-    char req[256];
+    char req[512];
     size_t n = 0;
     size_t total = 0;
     int headers_done = 0;
     size_t path_len;
+    size_t body_len = 0;
     int saw_close = 0;
 
-    if (!out || cap == 0 || !path || path[0] != '/') {
+    if (!out || cap == 0 || !path || path[0] != '/' || !method) {
         return -1;
     }
     if (!net_present()) {
         return -1;
     }
+    if (body) {
+        body_len = str_len(body);
+    }
 
     path_len = str_len(path);
-    if (path_len + 48 >= sizeof(req)) {
+    if (path_len + 96 + body_len >= sizeof(req)) {
         return -1;
     }
 
@@ -115,13 +120,32 @@ int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap
     }
     conn = &g_http_pool.conn;
 
-    n = scopy(req, sizeof(req), "GET ");
+    n = scopy(req, sizeof(req), method);
+    n = append(req, sizeof(req), n, " ");
     n = append(req, sizeof(req), n, path);
-    if (n != 4 + path_len) {
-        http_close_idle();
-        return -1;
+    n = append(req, sizeof(req), n, " HTTP/1.1\r\nHost: grid\r\nConnection: keep-alive\r\n");
+    if (body_len > 0) {
+        char clen[16];
+        size_t cl = 0;
+        size_t tmp = body_len;
+        char digits[12];
+        int nd = 0;
+        do {
+            digits[nd++] = (char)('0' + (tmp % 10));
+            tmp /= 10;
+        } while (tmp > 0);
+        while (nd > 0) {
+            clen[cl++] = digits[--nd];
+        }
+        clen[cl] = '\0';
+        n = append(req, sizeof(req), n, "Content-Length: ");
+        n = append(req, sizeof(req), n, clen);
+        n = append(req, sizeof(req), n, "\r\nContent-Type: text/plain\r\n");
     }
-    n = append(req, sizeof(req), n, " HTTP/1.1\r\nHost: grid\r\nConnection: keep-alive\r\n\r\n");
+    n = append(req, sizeof(req), n, "\r\n");
+    if (body_len > 0) {
+        n = append(req, sizeof(req), n, body);
+    }
     if (n + 1 >= sizeof(req)) {
         http_close_idle();
         return -1;
@@ -203,10 +227,28 @@ int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap
     return headers_done ? (int)total : -1;
 }
 
+int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap) {
+    return http_request("GET", ip, port, path, 0, out, cap);
+}
+
+int http_post(uint32_t ip, uint16_t port, const char *path, const char *body,
+              char *out, size_t cap) {
+    return http_request("POST", ip, port, path, body ? body : "", out, cap);
+}
+
 int http_get_host(const char *host, uint16_t port, const char *path, char *out, size_t cap) {
     uint32_t ip;
     if (net_resolve_host(host, &ip) != 0) {
         return -1;
     }
     return http_get(ip, port, path, out, cap);
+}
+
+int http_post_host(const char *host, uint16_t port, const char *path, const char *body,
+                   char *out, size_t cap) {
+    uint32_t ip;
+    if (net_resolve_host(host, &ip) != 0) {
+        return -1;
+    }
+    return http_post(ip, port, path, body, out, cap);
 }

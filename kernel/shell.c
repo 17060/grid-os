@@ -98,8 +98,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 6.4 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.4  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 6.5 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.5  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -149,8 +149,9 @@ static void cmd_help(void) {
     console_write_line("  ide [file.grid]   Grid Workbench (GEM + AmigaDOS)");
     console_write_line("  log [tail]        Audit trail");
     console_write_line("  portal [export|import|recv]  GridLink serial portal");
-    console_write_line("  net [status|ping <ip>]       Grid network (virtio-net)");
-    console_write_line("  http get <host|ip> <path>    HTTP/1.1 GET (port 80, keep-alive)");
+    console_write_line("  net [status|ping <ip|host>]  Grid network (virtio-net)");
+    console_write_line("  http get <host|ip> [port] <path>        HTTP/1.1 GET (keep-alive)");
+    console_write_line("  http post <host|ip> [port] <path> <body>  HTTP/1.1 POST");
     console_write_line("  irc connect <ip> <port> <nick>   Connect IRC session");
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
@@ -777,29 +778,72 @@ static void write_int(int value) {
     }
 }
 
+static int parse_http_port(int argc, char *argv[], int host_idx, uint16_t *port, int *path_idx) {
+    int next = host_idx + 1;
+
+    if (next >= argc) {
+        return 0;
+    }
+
+    if (argv[next][0] == '/') {
+        *port = 80;
+        *path_idx = next;
+        return 1;
+    }
+
+    uint32_t p = 0;
+    const char *arg = argv[next];
+    for (size_t i = 0; arg[i]; ++i) {
+        if (arg[i] < '0' || arg[i] > '9') {
+            return 0;
+        }
+        p = p * 10u + (uint32_t)(arg[i] - '0');
+        if (p > 65535u) {
+            return 0;
+        }
+    }
+    if (p == 0) {
+        return 0;
+    }
+
+    int path_i = next + 1;
+    if (path_i >= argc || argv[path_i][0] != '/') {
+        return 0;
+    }
+
+    *port = (uint16_t)p;
+    *path_idx = path_i;
+    return 1;
+}
+
 static void cmd_http(int argc, char *argv[]) {
-    if (argc < 4 || !equals(argv[1], "get")) {
+    if (argc < 2 || (!equals(argv[1], "get") && !equals(argv[1], "post"))) {
         console_write_line("HTTP commands:");
-        console_write_line("  http get <host|ip> <path>    HTTP/1.1 GET (port 80, keep-alive pool)");
+        console_write_line("  http get <host|ip> [port] <path>           HTTP/1.1 GET (keep-alive pool)");
+        console_write_line("  http post <host|ip> [port] <path> <body>   HTTP/1.1 POST");
         console_write_line("Example: http get gateway /");
+        console_write_line("Example: http post gateway /hook hello");
         return;
     }
 
-    uint32_t ip;
-    if (net_resolve_host(argv[2], &ip) != 0) {
+    if (argc < 4) {
         console_set_color(GRID_COL_ERROR);
-        console_write_line("Unknown host. Use an IPv4 address or: gateway, grid, localhost, ai, btc");
+        console_write_line("Usage: http get|post <host|ip> [port] <path> [body]");
         console_set_color(GRID_COL_DEFAULT);
         return;
     }
 
-    const char *path = argv[3];
-    if (path[0] != '/') {
+    uint16_t port;
+    int path_idx;
+    if (!parse_http_port(argc, argv, 2, &port, &path_idx)) {
         console_set_color(GRID_COL_ERROR);
-        console_write_line("Path must start with /");
+        console_write_line("Bad host/path. Path must start with /; optional port is numeric.");
         console_set_color(GRID_COL_DEFAULT);
         return;
     }
+
+    const char *host = argv[2];
+    const char *path = argv[path_idx];
 
     if (!net_present()) {
         console_set_color(GRID_COL_ERROR);
@@ -809,10 +853,47 @@ static void cmd_http(int argc, char *argv[]) {
     }
 
     static char body[2048];
-    console_write("HTTP GET ");
-    console_write(argv[2]);
-    console_write_line(path);
-    int n = http_get(ip, 80, path, body, sizeof(body));
+    static char post_body[512];
+    int n;
+    int is_post = equals(argv[1], "post");
+
+    if (is_post) {
+        if (path_idx + 1 >= argc) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Usage: http post <host|ip> [port] <path> <body>");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        size_t bn = 0;
+        for (int i = path_idx + 1; i < argc; ++i) {
+            if (i > path_idx + 1 && bn + 1 < sizeof(post_body)) {
+                post_body[bn++] = ' ';
+            }
+            const char *p = argv[i];
+            while (*p && bn + 1 < sizeof(post_body)) {
+                post_body[bn++] = *p++;
+            }
+        }
+        post_body[bn] = '\0';
+        console_write("HTTP POST ");
+        console_write(host);
+        if (port != 80) {
+            console_write(":");
+            write_int((int)port);
+        }
+        console_write_line(path);
+        n = http_post_host(host, port, path, post_body, body, sizeof(body));
+    } else {
+        console_write("HTTP GET ");
+        console_write(host);
+        if (port != 80) {
+            console_write(":");
+            write_int((int)port);
+        }
+        console_write_line(path);
+        n = http_get_host(host, port, path, body, sizeof(body));
+    }
+
     if (n < 0) {
         console_set_color(GRID_COL_ERROR);
         console_write_line("HTTP request failed (timeout or connection error).");
@@ -850,9 +931,9 @@ static void cmd_net(int argc, char *argv[]) {
 
     if (equals(argv[1], "ping") && argc >= 3) {
         uint32_t ip;
-        if (net_parse_ip(argv[2], &ip) != 0) {
+        if (net_parse_ip(argv[2], &ip) != 0 && net_resolve_host(argv[2], &ip) != 0) {
             console_set_color(GRID_COL_ERROR);
-            console_write_line("Usage: net ping <ip>  (e.g. 10.0.2.2)");
+            console_write_line("Usage: net ping <ip|host>  (e.g. 10.0.2.2 or gateway)");
             console_set_color(GRID_COL_DEFAULT);
             return;
         }
@@ -886,7 +967,7 @@ static void cmd_net(int argc, char *argv[]) {
 
     console_write_line("Network commands:");
     console_write_line("  net status        Show virtio-net + IP + packet counts");
-    console_write_line("  net ping <ip>     Send ICMP echo (e.g. 10.0.2.2)");
+    console_write_line("  net ping <ip|host>  Send ICMP echo (e.g. 10.0.2.2 or gateway)");
     console_write_line("  net poll          Drain the receive queue");
     console_write_line("  irc connect <ip> <port> <nick>  Connect to IRC server");
     console_write_line("  irc join <#chan>                Join channel");
@@ -1339,7 +1420,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 6.4 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 6.5 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
