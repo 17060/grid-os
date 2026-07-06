@@ -98,8 +98,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 6.7 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.7  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 6.9 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.9  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -156,7 +156,9 @@ static void cmd_help(void) {
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
-    console_write_line("  basic [ide|run <f>|help]     GridBASIC language + IDE");
+    console_write_line("  basic [ide|run <f>|samples|help]  GridBASIC language + IDE");
+    console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
+    console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1156,6 +1158,90 @@ static void cmd_irc(int argc, char *argv[]) {
     console_write_line("  irc <ip> <port> <nick> <#ch>    Legacy one-shot listen");
 }
 
+static int path_ends_with(const char *path, const char *suffix) {
+    size_t plen = 0;
+    size_t slen = 0;
+    while (path[plen]) {
+        plen++;
+    }
+    while (suffix[slen]) {
+        slen++;
+    }
+    if (slen == 0 || plen < slen) {
+        return 0;
+    }
+    return equals(path + plen - slen, suffix);
+}
+
+static void cmd_samples(void) {
+    char paths[32][GFS_PATH_MAX];
+    int n = gfs_list_paths("/programs/", paths, 32);
+    int shown = 0;
+
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("=== GridBASIC samples (/programs/*.bas) ===");
+    console_set_color(GRID_COL_DEFAULT);
+    if (n == 0) {
+        console_set_color(GRID_COL_DIM);
+        console_write_line("  (empty — attach Flynn disk or run: gfs seed)");
+        console_set_color(GRID_COL_DEFAULT);
+        console_write_line("Run with: basic run <file>   or in IDE: Esc, :load <name>");
+        return;
+    }
+
+    for (int i = 0; i < n; ++i) {
+        if (!path_ends_with(paths[i], ".bas")) {
+            continue;
+        }
+        shown++;
+        console_write("  ");
+        console_write_line(paths[i]);
+    }
+    if (shown == 0) {
+        console_set_color(GRID_COL_DIM);
+        console_write_line("  (no .bas files under /programs/)");
+        console_set_color(GRID_COL_DEFAULT);
+    }
+    console_write_line("");
+    console_write_line("  tutorial.bas   Flynn Boot walkthrough (also: tutorial)");
+    console_write_line("  hello.bas      intro loop + GRID.PING");
+    console_write_line("  subdemo.bas    SUB / FUNCTION / CALL");
+    console_write_line("  grid2d.bas     2D DIM arrays");
+    console_write_line("  advancedemo.bas CONST / DATA / SELECT CASE");
+    console_write_line("  netdemo.bas vaultdemo.bas aidemo.bas httpdemo.bas");
+    console_write_line("");
+    console_write_line("Run: basic run /programs/hello.bas   or   Esc :load hello");
+}
+
+static void cmd_tutorial(void) {
+    char probe[8];
+    size_t got = 0;
+
+    if (gfs_read_file("/programs/tutorial.bas", probe, sizeof(probe), &got) != 0 || got == 0) {
+        console_set_color(GRID_COL_WARN);
+        console_write_line("Tutorial missing — run: gfs seed   or attach Flynn disk");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+    basic_run_file("/programs/tutorial.bas");
+}
+
+static int shell_run_autoexec(void) {
+    char probe[8];
+    size_t got = 0;
+    const char *flag;
+
+    flag = storage_get("autoexec");
+    if (flag && equals(flag, "off")) {
+        return 0;
+    }
+    if (gfs_read_file("/programs/autoexec.bas", probe, sizeof(probe), &got) != 0 || got == 0) {
+        return 0;
+    }
+    basic_run_file("/programs/autoexec.bas");
+    return 1;
+}
+
 static void cmd_basic(int argc, char *argv[]) {
     if (shell_in_basic_ide && (argc < 2 || equals(argv[1], "ide"))) {
         console_write_line("Already in GridBASIC — edit above, shell below.");
@@ -1179,12 +1265,16 @@ static void cmd_basic(int argc, char *argv[]) {
         basic_run_file(argv[2]);
         return;
     }
+    if (equals(argv[1], "samples")) {
+        cmd_samples();
+        return;
+    }
     if (equals(argv[1], "help") || equals(argv[1], "?")) {
         basic_print_version();
         return;
     }
     console_set_color(GRID_COL_ERROR);
-    console_write_line("Usage: basic [ide [file] | run <file> | help]");
+    console_write_line("Usage: basic [ide [file] | run <file> | samples | help]");
     console_set_color(GRID_COL_DEFAULT);
 }
 
@@ -1420,7 +1510,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 6.7 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 6.9 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
@@ -1735,6 +1825,10 @@ void shell_dispatch_line(char *line) {
         cmd_irc(argc, argv);
     } else if (equals(argv[0], "basic")) {
         cmd_basic(argc, argv);
+    } else if (equals(argv[0], "tutorial")) {
+        cmd_tutorial();
+    } else if (equals(argv[0], "samples")) {
+        cmd_samples();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {
@@ -1784,5 +1878,9 @@ void shell_dispatch_line(char *line) {
 
 void shell_run(void) {
     console_set_serial_mirror(1);
+    print_banner();
+    if (shell_run_autoexec()) {
+        basic_ide_set_boot_hint("Welcome — Esc: grid> tutorial | :load tutorial | :samples");
+    }
     basic_ide(0);
 }

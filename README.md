@@ -1,4 +1,4 @@
-# Grid OS 6.7
+# Grid OS 6.9
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -11,6 +11,10 @@
 **Android (Termux)?** See [docs/ANDROID_TERMUX.md](docs/ANDROID_TERMUX.md) — download `GridOS-*-Android-Termux.sh` or `make release-termux`.
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 6.9
+
+Flynn Boot Experience — `autoexec.bas` welcome on boot (`vault put autoexec off` to skip), `tutorial` / `samples` shell commands, new samples (`tutorial.bas`, `subdemo.bas`, `grid2d.bas`), IDE `:samples`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 6.8
 

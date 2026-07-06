@@ -1,5 +1,19 @@
 # Grid OS — Changelog
 
+## 6.9 — Flynn Boot Experience
+
+- **`/programs/autoexec.bas`** — welcome script runs once after boot banner (skip with `vault put autoexec off`)
+- **`tutorial.bas`**, **`subdemo.bas`**, **`grid2d.bas`** — new seeded GridBASIC samples on Flynn disk
+- **Shell** — `tutorial`, `samples`, `basic samples`; boot banner before GridBASIC IDE
+- **IDE** — `:samples` lists Flynn disk programs
+- **`hello.bas`** — version banner updated to 6.9
+- Runtime banners updated to 6.9
+
+### Audit fixes
+- Boot welcome survives IDE startup via IDE status hint (autoexec output no longer wiped silently)
+- `tutorial` checks GFS before run (no duplicate error lines)
+- QEMU tests always copy a seeded Flynn disk (`make seed-disk` prerequisite)
+
 ## 6.8 — Android (Termux) release bundles
 
 - **Android Termux launcher** — `GridOS-*-Android-Termux.sh` single-file boot (headless serial default)

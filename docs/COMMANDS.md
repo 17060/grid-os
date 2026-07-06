@@ -1,4 +1,4 @@
-# Grid OS 6.7 — Commands & GridBASIC Reference
+# Grid OS 6.9 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -16,7 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `cycles` | Same as `status` (elapsed cycles) |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 6.7 |
+| `about` | About Grid OS 6.9 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs
@@ -101,7 +101,10 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `basic` | Open GridBASIC IDE |
 | `basic ide [file]` | IDE with optional load path |
 | `basic run <file>` | Run `.bas` from GFS |
+| `basic samples` | List Flynn disk sample programs |
 | `basic help` / `basic ?` | GridBASIC version + syntax summary |
+| `tutorial` | Run Flynn Boot tutorial (`/programs/tutorial.bas`) |
+| `samples` | List GridBASIC sample programs on Flynn disk |
 | `basictest` | Deterministic interpreter self-test |
 
 ### Grid AI
@@ -156,6 +159,7 @@ Host bridge: run `make btc-bridge` on the host (TCP port 8767). Requires Bitcoin
 | `:load <name>` | | Read from GFS |
 | `:new` | | Clear buffer |
 | `:list` | `:l` | Print program |
+| `:samples` | | List Flynn disk sample programs |
 | `:help` | `:h`, `:?` | IDE help |
 | `:ai ask <prompt>` | | Ask the AI |
 | `:ai explain` | | Explain current editor line |

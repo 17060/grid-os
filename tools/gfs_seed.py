@@ -30,7 +30,7 @@ WELCOME_GRID = (
 
 HELLO_BAS = (
     b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 6.5 online\"\n"
+    b"20 PRINT \"GridBASIC 6.9 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
@@ -86,6 +86,64 @@ ADVANCEDEMO_BAS = (
     b"120 END\n"
 )
 
+AUTOEXEC_BAS = (
+    b"10 REM Flynn Boot -- runs once at Grid OS startup\n"
+    b"20 PRINT \"\"\n"
+    b"30 PRINT \"=== Welcome to Flynn's Grid ===\"\n"
+    b"40 PRINT GRID.STATUS$\n"
+    b"50 PRINT \"Type 'tutorial' or Esc :load tutorial in IDE\"\n"
+    b"60 PRINT \"Samples: samples   Run: basic run /programs/hello.bas\"\n"
+    b"70 PRINT \"Disable boot script: vault put autoexec off\"\n"
+    b"80 PRINT \"\"\n"
+    b"90 END\n"
+)
+
+TUTORIAL_BAS = (
+    b"10 REM GridBASIC Tutorial -- Flynn Boot Experience\n"
+    b"20 GRID.CLS\n"
+    b"30 PRINT \"=== GridBASIC Tutorial ===\"\n"
+    b"40 PRINT \"1. PRINT shows text on the grid\"\n"
+    b"50 PRINT \"2. LET stores numbers in variables\"\n"
+    b"60 LET N = 42\n"
+    b"70 PRINT \"   N = \"; N\n"
+    b"80 PRINT \"3. FOR loops count for you\"\n"
+    b"90 FOR I = 1 TO 3\n"
+    b"100   PRINT \"   line \"; I\n"
+    b"110 NEXT I\n"
+    b"120 PRINT \"4. Strings join with +\"\n"
+    b"130 S$ = \"hello \" + \"grid\"\n"
+    b"140 PRINT \"   \"; S$\n"
+    b"150 PRINT \"5. GRID.WHOAMI$ = \"; GRID.WHOAMI$\n"
+    b"160 PRINT \"Try: samples   basic run /programs/subdemo.bas\"\n"
+    b"170 PRINT \"End of line.\"\n"
+    b"180 END\n"
+)
+
+SUBDEMO_BAS = (
+    b"10 REM SUB / FUNCTION demo\n"
+    b"20 SUB GREET(N$)\n"
+    b"30   PRINT \"Hello, \"; N$\n"
+    b"40 END SUB\n"
+    b"50 FUNCTION DOUBLE(X)\n"
+    b"60   DOUBLE = X * 2\n"
+    b"70 END FUNCTION\n"
+    b"80 CALL GREET(\"Flynn\")\n"
+    b"90 PRINT \"DOUBLE(21) = \"; DOUBLE(21)\n"
+    b"100 END\n"
+)
+
+GRID2D_BAS = (
+    b"10 REM 2D array demo\n"
+    b"20 DIM M(3,3)\n"
+    b"30 FOR R = 0 TO 3\n"
+    b"40   FOR C = 0 TO 3\n"
+    b"50     M(R,C) = R * 10 + C\n"
+    b"60   NEXT C\n"
+    b"70 NEXT R\n"
+    b"80 PRINT \"M(2,3) = \"; M(2,3)\n"
+    b"90 END\n"
+)
+
 ETC_HOSTS = (
     b"# Grid OS static hosts (also: built-in gateway/grid/ai/btc + UDP DNS)\n"
     b"10.0.2.2   bridge gateway gw ai btc\n"
@@ -129,6 +187,10 @@ def main() -> int:
         (13, "/programs/aidemo.bas", AIDEMO_BAS),
         (14, "/programs/httpdemo.bas", HTTPDEMO_BAS),
         (15, "/programs/advancedemo.bas", ADVANCEDEMO_BAS),
+        (16, "/programs/autoexec.bas", AUTOEXEC_BAS),
+        (17, "/programs/tutorial.bas", TUTORIAL_BAS),
+        (18, "/programs/subdemo.bas", SUBDEMO_BAS),
+        (19, "/programs/grid2d.bas", GRID2D_BAS),
     ]
 
     for slot, path, payload in files:
