@@ -1,5 +1,29 @@
 # Grid OS — Changelog
 
+## 6.7 — Full advanced GridBASIC (Tier 1–3)
+
+### Language (Tier 1)
+- **DEF FN** — single-line user functions
+- **ELSEIF** — multi-branch IF chains
+- **ON GOTO / ON GOSUB** — computed dispatch
+- **ON ERROR GOTO / RESUME** — error handlers with `ERR$`
+- **OPTION BASE 0|1** — array indexing base
+- **TRIM$ / LTRIM$ / RTRIM$**, **SPACE$**, **STRING$**
+- **MIN / MAX / FIX / ROUND**
+
+### Language (Tier 3)
+- **SUB / FUNCTION … END SUB/FUNCTION** with **CALL** and **LOCAL**
+- **CONTINUE FOR / CONTINUE WHILE**
+- **2D arrays** — `DIM A(10,10)`, `A(i,j)` (string SELECT CASE already supported)
+
+### GRID.* bindings (Tier 2)
+- **GRID.DNS.RESOLVE$**, **GRID.NET.STATUS$**, **GRID.LOG.TAIL$(n)**
+- **GRID.WHOAMI$**, **GRID.CAPS$**, **GRID.JOBS.LIST$ / KILL**, **GRID.ISO.LIST$ / SPAWN**
+- **GRID.VAULT.EXPORT / IMPORT**, **GRID.SPAWN.BG**
+
+### Kernel helpers
+- `log_copy_tail()`, `sched_format_jobs()`, `iso_format_list()`, `net_format_status()`
+
 ## 6.6 — Advanced GridBASIC language + kernel bindings
 
 - **Language** — `CONST`, `DATA`/`READ`/`RESTORE`, `RANDOMIZE`, `INSTR$`, `SELECT CASE`/`CASE`/`CASE ELSE`/`END SELECT`, `EXIT FOR`/`EXIT WHILE`, `LINE INPUT`

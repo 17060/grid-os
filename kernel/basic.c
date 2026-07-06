@@ -3,12 +3,15 @@
 #include "ai.h"
 #include "btc.h"
 #include "console.h"
+#include "dns.h"
 #include "gfs.h"
 #include "http.h"
+#include "iso.h"
 #include "log.h"
 #include "irc.h"
 #include "net.h"
 #include "program.h"
+#include "sched.h"
 #include "security.h"
 #include "serial.h"
 #include "storage.h"
@@ -39,7 +42,10 @@ typedef enum {
     KW_REM, KW_INPUT, KW_DIM, KW_END, KW_STOP,
     KW_AND, KW_OR, KW_NOT, KW_MOD, KW_DIV,
     KW_CONST, KW_DATA, KW_READ, KW_RESTORE, KW_RANDOMIZE,
-    KW_SELECT, KW_CASE, KW_EXIT, KW_LINE
+    KW_SELECT, KW_CASE, KW_EXIT, KW_LINE,
+    KW_ELSEIF, KW_ON, KW_ERROR, KW_RESUME, KW_OPTION, KW_BASE,
+    KW_DEF, KW_FN, KW_SUB, KW_FUNCTION, KW_LOCAL, KW_SHARED,
+    KW_CONTINUE, KW_CALL
 } kw_t;
 
 typedef struct {
@@ -56,6 +62,8 @@ typedef struct {
 #define MAX_LINES  512
 #define MAX_VARS   128
 #define MAX_FRAMES 64
+#define MAX_DEF_FN 32
+#define MAX_SUBS   16
 
 /* GridBASIC numbers are stored as signed 64-bit fixed-point with 6 decimal
  * places: a value V is represented as V * SCALE. This avoids all hardware
@@ -76,10 +84,36 @@ typedef struct {
     int is_str;        /* variable's value type */
     int is_array;
     int is_const;
-    int dim;           /* array upper bound (inclusive), 0 if scalar */
-    value_t *cells;    /* dim+1 cells if array */
+    int dim;           /* primary upper bound (inclusive), 0 if scalar */
+    int dim2;          /* second dimension upper bound, -1 if 1D */
+    value_t *cells;    /* (dim+1)*(dim2+1) cells if 2D, else dim+1 */
     value_t scalar;
 } var_t;
+
+typedef struct {
+    char name[24];
+    char param[24];
+    int expr_start;
+    int expr_end;
+    int used;
+} def_fn_t;
+
+typedef struct {
+    char name[24];
+    char params[4][24];
+    int nparams;
+    int body_start;
+    int body_end;
+    int is_function;
+    int used;
+} sub_def_t;
+
+typedef struct {
+    int return_tok;
+    int saved_nvars;
+    int is_function;
+    char func_name[24];
+} sub_frame_t;
 
 typedef struct {
     int tok_index;     /* where to resume */
@@ -106,6 +140,12 @@ static var_t g_vars[MAX_VARS];
 static int g_nvars;
 
 static void set_error(const char *msg);  /* forward */
+static void basic_error(const char *msg);
+static int find_label(int lineno);
+static void skip_sub_or_function_body(void);
+static int match_end_sub(void);
+static int match_end_function(void);
+static void collect_subs(void);
 
 /* Bump allocator for array cell storage (no malloc in the kernel). */
 static value_t g_array_pool[2048];
@@ -127,12 +167,25 @@ static for_frame_t g_for_stack[MAX_FRAMES];
 static int g_for_sp;
 static gosub_frame_t g_gosub_stack[MAX_FRAMES];
 static int g_gosub_sp;
+static sub_frame_t g_sub_stack[MAX_FRAMES];
+static int g_sub_sp;
 
 #define MAX_DATA 512
 static value_t g_data[MAX_DATA];
 static int g_ndata;
 static int g_data_read;
 static uint32_t g_rnd_state = 0xC0FFEEu;
+static int g_option_base = 0;
+static int g_on_error_line = 0;
+static int g_in_error_handler = 0;
+static int g_error_resume_tok = 0;
+
+static def_fn_t g_def_fns[MAX_DEF_FN];
+static int g_ndef_fn;
+static sub_def_t g_subs[MAX_SUBS];
+static int g_nsubs;
+
+static int g_def_fn_param_idx = -1;
 
 static int g_running;
 static int g_error;
@@ -166,6 +219,8 @@ static uint32_t rnd_local(void);
 static value_t make_num(num_t v);
 static value_t make_str(const char *s);
 static value_t eval_expr(void);
+static num_t to_num(const value_t *v);
+static void assign_from_value(var_t *v, value_t *cell, value_t val);
 static token_t *cur(void);
 static void advance(void);
 static int match_kw(kw_t kw);
@@ -184,6 +239,25 @@ static void set_error(const char *msg) {
         }
     }
     g_running = 0;
+}
+
+static void basic_error(const char *msg) {
+    if (g_on_error_line > 0 && !g_in_error_handler) {
+        g_error_resume_tok = g_cur;
+        for (size_t i = 0; i < sizeof(g_errmsg) - 1 && msg[i]; ++i) {
+            g_errmsg[i] = msg[i];
+            g_errmsg[i + 1] = '\0';
+        }
+        int target = find_label(g_on_error_line);
+        if (target >= 0) {
+            g_in_error_handler = 1;
+            g_error = 0;
+            g_running = 1;
+            g_cur = target;
+            return;
+        }
+    }
+    set_error(msg);
 }
 
 static int strequal(const char *a, const char *b) {
@@ -244,6 +318,20 @@ static kw_t match_keyword(const char *w) {
     if (strequal(w, "CASE")) return KW_CASE;
     if (strequal(w, "EXIT")) return KW_EXIT;
     if (strequal(w, "LINE")) return KW_LINE;
+    if (strequal(w, "ELSEIF")) return KW_ELSEIF;
+    if (strequal(w, "ON")) return KW_ON;
+    if (strequal(w, "ERROR")) return KW_ERROR;
+    if (strequal(w, "RESUME")) return KW_RESUME;
+    if (strequal(w, "OPTION")) return KW_OPTION;
+    if (strequal(w, "BASE")) return KW_BASE;
+    if (strequal(w, "DEF")) return KW_DEF;
+    if (strequal(w, "FN")) return KW_FN;
+    if (strequal(w, "SUB")) return KW_SUB;
+    if (strequal(w, "FUNCTION")) return KW_FUNCTION;
+    if (strequal(w, "LOCAL")) return KW_LOCAL;
+    if (strequal(w, "SHARED")) return KW_SHARED;
+    if (strequal(w, "CONTINUE")) return KW_CONTINUE;
+    if (strequal(w, "CALL")) return KW_CALL;
     return KW_NONE;
 }
 
@@ -459,6 +547,7 @@ static var_t *get_var(const char *name, int want_str) {
     v->is_array = 0;
     v->is_const = 0;
     v->dim = 0;
+    v->dim2 = -1;
     v->cells = 0;
     v->scalar.is_str = want_str;
     v->scalar.n = 0;
@@ -468,14 +557,29 @@ static var_t *get_var(const char *name, int want_str) {
 
 static value_t *var_cell(var_t *v, int idx) {
     if (!v->is_array) return &v->scalar;
-    if (idx < 0 || idx > v->dim) { set_error("ARRAY: index out of range"); return 0; }
+    idx -= g_option_base;
+    if (idx < 0) { basic_error("ARRAY: index out of range"); return 0; }
+    if (v->dim2 >= 0) { basic_error("ARRAY: need two indices"); return 0; }
+    if (idx > v->dim) { basic_error("ARRAY: index out of range"); return 0; }
     return &v->cells[idx];
+}
+
+static value_t *var_cell2(var_t *v, int i, int j) {
+    if (!v->is_array || v->dim2 < 0) { basic_error("ARRAY: not 2D"); return 0; }
+    i -= g_option_base;
+    j -= g_option_base;
+    if (i < 0 || j < 0 || i > v->dim || j > v->dim2) {
+        basic_error("ARRAY: index out of range");
+        return 0;
+    }
+    return &v->cells[i * (v->dim2 + 1) + j];
 }
 
 static void reset_state(void) {
     g_nvars = 0;
     g_for_sp = 0;
     g_gosub_sp = 0;
+    g_sub_sp = 0;
     g_pool_used = 0;
     g_ndata = 0;
     g_data_read = 0;
@@ -483,6 +587,13 @@ static void reset_state(void) {
     g_error = 0;
     g_errmsg[0] = '\0';
     g_running = 1;
+    g_option_base = 0;
+    g_on_error_line = 0;
+    g_in_error_handler = 0;
+    g_error_resume_tok = 0;
+    g_ndef_fn = 0;
+    g_nsubs = 0;
+    g_def_fn_param_idx = -1;
 }
 
 static void collect_data(void) {
@@ -510,6 +621,187 @@ static void collect_data(void) {
             }
         }
     }
+}
+
+static int find_label(int lineno) {
+    for (int i = 0; i < g_nlabels; ++i) {
+        if (g_labels[i] == lineno) return g_label_tok[i];
+    }
+    return -1;
+}
+
+static def_fn_t *find_def_fn(const char *name) {
+    for (int i = 0; i < g_ndef_fn; ++i) {
+        if (g_def_fns[i].used && strequal(g_def_fns[i].name, name)) {
+            return &g_def_fns[i];
+        }
+    }
+    return 0;
+}
+
+static sub_def_t *find_sub(const char *name) {
+    for (int i = 0; i < g_nsubs; ++i) {
+        if (g_subs[i].used && strequal(g_subs[i].name, name)) {
+            return &g_subs[i];
+        }
+    }
+    return 0;
+}
+
+static int match_end_sub(void) {
+    if (!(cur()->type == T_KW && cur()->kw == KW_END)) return 0;
+    int saved = g_cur;
+    advance();
+    if (cur()->type == T_KW && cur()->kw == KW_SUB) { advance(); return 1; }
+    g_cur = saved;
+    return 0;
+}
+
+static int match_end_function(void) {
+    if (!(cur()->type == T_KW && cur()->kw == KW_END)) return 0;
+    int saved = g_cur;
+    advance();
+    if (cur()->type == T_KW && cur()->kw == KW_FUNCTION) { advance(); return 1; }
+    g_cur = saved;
+    return 0;
+}
+
+static void skip_sub_or_function_body(void) {
+    int depth = 1;
+    while (cur()->type != T_EOF && depth > 0) {
+        if (cur()->type == T_KW &&
+            (cur()->kw == KW_SUB || cur()->kw == KW_FUNCTION)) {
+            depth++;
+        } else if (match_end_sub() || match_end_function()) {
+            depth--;
+        } else {
+            advance();
+        }
+    }
+}
+
+static void collect_subs(void) {
+    g_nsubs = 0;
+    for (int i = 0; i < g_ntok && g_nsubs < MAX_SUBS; ++i) {
+        if (g_tokens[i].type != T_KW) continue;
+        if (g_tokens[i].kw != KW_SUB && g_tokens[i].kw != KW_FUNCTION) continue;
+        int j = i + 1;
+        if (j >= g_ntok || g_tokens[j].type != T_ID) continue;
+        sub_def_t *sd = &g_subs[g_nsubs++];
+        sd->used = 1;
+        sd->is_function = (g_tokens[i].kw == KW_FUNCTION);
+        size_t k = 0;
+        while (g_tokens[j].text[k] && k < sizeof(sd->name) - 1) {
+            sd->name[k] = g_tokens[j].text[k];
+            k++;
+        }
+        sd->name[k] = '\0';
+        sd->nparams = 0;
+        j++;
+        if (j < g_ntok && g_tokens[j].type == T_OP && g_tokens[j].op == '(') {
+            j++;
+            while (j < g_ntok && sd->nparams < 4) {
+                if (g_tokens[j].type == T_ID) {
+                    k = 0;
+                    while (g_tokens[j].text[k] && k < sizeof(sd->params[sd->nparams]) - 1) {
+                        sd->params[sd->nparams][k] = g_tokens[j].text[k];
+                        k++;
+                    }
+                    sd->params[sd->nparams][k] = '\0';
+                    sd->nparams++;
+                    j++;
+                }
+                if (j < g_ntok && g_tokens[j].type == T_OP && g_tokens[j].op == ',') j++;
+                else if (j < g_ntok && g_tokens[j].type == T_OP && g_tokens[j].op == ')') {
+                    j++;
+                    break;
+                } else break;
+            }
+        }
+        while (j < g_ntok && g_tokens[j].type != T_NEWLINE) j++;
+        sd->body_start = j + 1;
+        sd->body_end = sd->body_start;
+        int depth = 1;
+        for (j = sd->body_start; j < g_ntok && depth > 0; ++j) {
+            if (g_tokens[j].type == T_KW &&
+                (g_tokens[j].kw == KW_SUB || g_tokens[j].kw == KW_FUNCTION)) {
+                depth++;
+            } else if (g_tokens[j].type == T_KW && g_tokens[j].kw == KW_END) {
+                if (j + 1 < g_ntok && g_tokens[j + 1].type == T_KW) {
+                    if (sd->is_function && g_tokens[j + 1].kw == KW_FUNCTION) {
+                        depth--;
+                        if (depth == 0) { sd->body_end = j; break; }
+                    } else if (!sd->is_function && g_tokens[j + 1].kw == KW_SUB) {
+                        depth--;
+                        if (depth == 0) { sd->body_end = j; break; }
+                    }
+                }
+            }
+        }
+    }
+}
+
+static void str_trim_copy(const char *src, char *out, size_t cap, int mode) {
+    size_t n = 0;
+    if (!src || !out || cap == 0) return;
+    const char *s = src;
+    const char *end = src;
+    while (*end) end++;
+    if (mode != 1) {
+        while (*s == ' ' || *s == '\t') s++;
+    }
+    if (mode != 2) {
+        while (end > s && (end[-1] == ' ' || end[-1] == '\t')) end--;
+    }
+    while (s < end && n + 1 < cap) out[n++] = *s++;
+    out[n] = '\0';
+}
+
+static value_t call_user_function(sub_def_t *sd, int argc, value_t *argv) {
+    if (g_sub_sp >= MAX_FRAMES) { basic_error("CALL: too deep"); return make_num(0); }
+    num_t saved_params[4];
+    int param_idx[4];
+    int i;
+    for (i = 0; i < sd->nparams && i < 4; ++i) {
+        var_t *pv = get_var(sd->params[i], 0);
+        if (!pv) return make_num(0);
+        saved_params[i] = pv->scalar.n;
+        param_idx[i] = (int)(pv - g_vars);
+        if (i < argc) {
+            pv->scalar.is_str = argv[i].is_str;
+            if (argv[i].is_str) pv->scalar = argv[i];
+            else pv->scalar.n = to_num(&argv[i]);
+        }
+    }
+    sub_frame_t *fr = &g_sub_stack[g_sub_sp++];
+    fr->return_tok = g_cur;
+    fr->saved_nvars = g_nvars;
+    fr->is_function = sd->is_function;
+    size_t k = 0;
+    while (sd->name[k] && k < sizeof(fr->func_name) - 1) {
+        fr->func_name[k] = sd->name[k];
+        k++;
+    }
+    fr->func_name[k] = '\0';
+    g_cur = sd->body_start;
+    value_t result = make_num(0);
+    while (g_running && !g_error && g_cur < sd->body_end) {
+        if (cur()->type == T_NEWLINE) { g_cur++; continue; }
+        if (cur()->type == T_OP && cur()->op == ':') { g_cur++; continue; }
+        if (match_end_function() || match_end_sub()) break;
+        exec_statement();
+    }
+    if (sd->is_function) {
+        var_t *rv = find_var(sd->name);
+        if (rv) result = rv->scalar;
+    }
+    g_nvars = fr->saved_nvars;
+    g_sub_sp--;
+    g_cur = fr->return_tok;
+    for (i = 0; i < sd->nparams && i < 4; ++i) {
+        g_vars[param_idx[i]].scalar.n = saved_params[i];
+    }
+    return result;
 }
 
 /* ---- expression evaluator (recursive descent) ---- */
@@ -648,13 +940,74 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         }
         return make_num(0);
     }
+    if (strequal(name, "MIN")) {
+        num_t m = argc > 0 ? to_num(&argv[0]) : 0;
+        for (int i = 1; i < argc; ++i) {
+            num_t v = to_num(&argv[i]);
+            if (v < m) m = v;
+        }
+        return make_num(m);
+    }
+    if (strequal(name, "MAX")) {
+        num_t m = argc > 0 ? to_num(&argv[0]) : 0;
+        for (int i = 1; i < argc; ++i) {
+            num_t v = to_num(&argv[i]);
+            if (v > m) m = v;
+        }
+        return make_num(m);
+    }
+    if (strequal(name, "FIX")) {
+        num_t x = argc > 0 ? to_num(&argv[0]) : 0;
+        num_t ip = x / BASIC_SCALE;
+        if (x < 0 && x % BASIC_SCALE != 0) ip -= BASIC_SCALE;
+        return make_num(ip);
+    }
+    if (strequal(name, "ROUND")) {
+        num_t x = argc > 0 ? to_num(&argv[0]) : 0;
+        num_t ip = x / BASIC_SCALE;
+        num_t rem = x % BASIC_SCALE;
+        if (rem < 0) rem += BASIC_SCALE;
+        if (rem >= BASIC_SCALE / 2) ip += (x >= 0 ? BASIC_SCALE : -BASIC_SCALE);
+        return make_num(ip);
+    }
+    if (strequal(name, "TRIM$") || strequal(name, "LTRIM$") || strequal(name, "RTRIM$")) {
+        char b[160];
+        int mode = strequal(name, "LTRIM$") ? 1 : strequal(name, "RTRIM$") ? 2 : 0;
+        if (!(argc > 0 && argv[0].is_str)) return make_str("");
+        str_trim_copy(argv[0].s, b, sizeof(b), mode);
+        return make_str(b);
+    }
+    if (strequal(name, "SPACE$")) {
+        int n = (int)(argc > 0 ? to_num(&argv[0]) / BASIC_SCALE : 0);
+        if (n < 0) n = 0;
+        if (n > 120) n = 120;
+        char b[128];
+        int i = 0;
+        while (i < n && i + 1 < (int)sizeof(b)) b[i++] = ' ';
+        b[i] = '\0';
+        return make_str(b);
+    }
+    if (strequal(name, "STRING$")) {
+        int n = (int)(argc > 0 ? to_num(&argv[0]) / BASIC_SCALE : 0);
+        char ch = (argc > 1 && argv[1].is_str && argv[1].s[0]) ? argv[1].s[0] : ' ';
+        if (n < 0) n = 0;
+        if (n > 120) n = 120;
+        char b[128];
+        int i = 0;
+        while (i < n && i + 1 < (int)sizeof(b)) b[i++] = ch;
+        b[i] = '\0';
+        return make_str(b);
+    }
+    if (strequal(name, "ERR$")) {
+        return make_str(g_errmsg);
+    }
     if (strequal(name, "PI"))      return make_num(3141593LL);  /* 3.141593 * SCALE */
     /* GRID.* bindings exposed as functions */
     if (strequal(name, "GRID.TIME"))    return make_num((num_t)timer_ticks() * BASIC_SCALE);
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) == 0 ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.6 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.7 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     {
         if (argc > 0) {
             uint32_t cap = (uint32_t)(to_num(&argv[0]) / BASIC_SCALE);
@@ -780,6 +1133,46 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.BTC.STATUS$")) {
         char b[BTC_RESP_MAX]; btc_status(b, sizeof(b)); return make_str(b);
     }
+    if (strequal(name, "GRID.DNS.RESOLVE$")) {
+        char b[32];
+        if (!(argc > 0 && argv[0].is_str)) return make_str("");
+        uint32_t ip;
+        if (net_resolve_host(argv[0].s, &ip) != 0) return make_str("");
+        net_format_ip(ip, b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.NET.STATUS$")) {
+        char b[128];
+        net_format_status(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.LOG.TAIL$")) {
+        char b[512];
+        int n = (int)(argc > 0 ? to_num(&argv[0]) / BASIC_SCALE : 10);
+        log_copy_tail(b, sizeof(b), n);
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.WHOAMI$")) {
+        return make_str(security_entity_name());
+    }
+    if (strequal(name, "GRID.CAPS$")) {
+        const grid_identity_t *id = security_current_identity();
+        char b[16];
+        if (!id) return make_str("0");
+        num_t v = (num_t)id->capabilities * BASIC_SCALE;
+        num_to_string(v, b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.JOBS.LIST$")) {
+        char b[128];
+        sched_format_jobs(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.ISO.LIST$")) {
+        char b[128];
+        iso_format_list(b, sizeof(b));
+        return make_str(b);
+    }
     set_error("FUNC: unknown function");
     return make_num(0);
 }
@@ -791,6 +1184,10 @@ static int is_builtin_name(const char *name) {
         strequal(name, "STR$") || strequal(name, "UPPER$") || strequal(name, "LOWER$") ||
         strequal(name, "LEFT$") || strequal(name, "RIGHT$") || strequal(name, "MID$") ||
         strequal(name, "INSTR$") ||
+        strequal(name, "MIN") || strequal(name, "MAX") || strequal(name, "FIX") ||
+        strequal(name, "ROUND") || strequal(name, "TRIM$") || strequal(name, "LTRIM$") ||
+        strequal(name, "RTRIM$") || strequal(name, "SPACE$") || strequal(name, "STRING$") ||
+        strequal(name, "ERR$") ||
         strequal(name, "PI") ||
         strequal(name, "GRID.TIME") || strequal(name, "GRID.RND") ||
         strequal(name, "GRID.PING") || strequal(name, "GRID.SERIAL.READ$") ||
@@ -808,7 +1205,11 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.BTC.BLOCKCHAIN$") || strequal(name, "GRID.BTC.NETWORK$") ||
         strequal(name, "GRID.BTC.WALLET$") || strequal(name, "GRID.BTC.BALANCE$") ||
         strequal(name, "GRID.BTC.ADDRESS$") || strequal(name, "GRID.BTC.HELP$") ||
-        strequal(name, "GRID.BTC.STATUS$")) {
+        strequal(name, "GRID.BTC.STATUS$") ||
+        strequal(name, "GRID.DNS.RESOLVE$") || strequal(name, "GRID.NET.STATUS$") ||
+        strequal(name, "GRID.LOG.TAIL$") || strequal(name, "GRID.WHOAMI$") ||
+        strequal(name, "GRID.CAPS$") || strequal(name, "GRID.JOBS.LIST$") ||
+        strequal(name, "GRID.ISO.LIST$")) {
         return 1;
     }
     return 0;
@@ -847,6 +1248,33 @@ static value_t eval_primary(void) {
             }
             return eval_builtin(name, argc, argv);
         }
+        sub_def_t *sd = find_sub(name);
+        if (sd && sd->is_function && cur()->type == T_OP && cur()->op == '(') {
+            value_t argv[8];
+            int argc = 0;
+            advance();
+            if (!(cur()->type == T_OP && cur()->op == ')')) {
+                do {
+                    if (argc < 8) argv[argc++] = eval_expr();
+                } while (match_op(','));
+            }
+            match_op(')');
+            return call_user_function(sd, argc, argv);
+        }
+        def_fn_t *df = find_def_fn(name);
+        if (df && cur()->type == T_OP && cur()->op == '(') {
+            advance();
+            value_t arg = eval_expr();
+            match_op(')');
+            var_t *pv = get_var(df->param, 0);
+            num_t saved = pv ? pv->scalar.n : 0;
+            if (pv) { pv->scalar.is_str = 0; pv->scalar.n = to_num(&arg); }
+            g_cur = df->expr_start;
+            value_t r = eval_expr();
+            g_cur = df->expr_end;
+            if (pv) pv->scalar.n = saved;
+            return r;
+        }
         /* variable or array access */
         int want_str = name_is_str(name);
         var_t *v = get_var(name, want_str);
@@ -854,6 +1282,15 @@ static value_t eval_primary(void) {
         if (cur()->type == T_OP && cur()->op == '(') {
             advance();
             value_t idx = eval_expr();
+            if (cur()->type == T_OP && cur()->op == ',') {
+                advance();
+                value_t idx2 = eval_expr();
+                match_op(')');
+                value_t *cell = var_cell2(v, (int)(to_num(&idx) / BASIC_SCALE),
+                                            (int)(to_num(&idx2) / BASIC_SCALE));
+                if (!cell) return make_num(0);
+                return *cell;
+            }
             match_op(')');
             value_t *cell = var_cell(v, (int)(to_num(&idx) / BASIC_SCALE));
             if (!cell) return make_num(0);
@@ -987,7 +1424,7 @@ static void exec_print(void) {
     int suppress_nl = 0;
     while (cur()->type != T_NEWLINE && cur()->type != T_EOF &&
            !(cur()->type == T_OP && cur()->op == ':') &&
-           !(cur()->type == T_KW && (cur()->kw == KW_ELSE || cur()->kw == KW_END || cur()->kw == KW_STOP))) {
+           !(cur()->type == T_KW && (cur()->kw == KW_ELSE || cur()->kw == KW_ELSEIF || cur()->kw == KW_END || cur()->kw == KW_STOP))) {
         if (match_op(';')) { last_was_sep = 1; suppress_nl = 1; continue; }
         if (match_op(',')) {
             /* tab to next multiple of 14 */
@@ -1015,32 +1452,34 @@ static void exec_assign(void) {
     int want_str = name_is_str(name);
     var_t *v = get_var(name, want_str);
     if (!v) return;
-    if (v->is_const) { set_error("CONST: cannot assign"); return; }
+    if (v->is_const) { basic_error("CONST: cannot assign"); return; }
     value_t *cell = &v->scalar;
     if (cur()->type == T_OP && cur()->op == '(') {
         advance();
         value_t idx = eval_expr();
-        match_op(')');
-        if (!v->is_array) {
-            /* auto-dim to idx */
-            int d = (int)(to_num(&idx) / BASIC_SCALE);
-            if (d < 0) d = 0;
-            v->is_array = 1; v->dim = d;
-            v->cells = alloc_cells(d + 1);
+        if (cur()->type == T_OP && cur()->op == ',') {
+            advance();
+            value_t idx2 = eval_expr();
+            match_op(')');
+            cell = var_cell2(v, (int)(to_num(&idx) / BASIC_SCALE),
+                             (int)(to_num(&idx2) / BASIC_SCALE));
+            if (!cell) return;
+        } else {
+            match_op(')');
+            if (!v->is_array) {
+                int d = (int)(to_num(&idx) / BASIC_SCALE) - g_option_base;
+                if (d < 0) d = 0;
+                v->is_array = 1; v->dim = d; v->dim2 = -1;
+                v->cells = alloc_cells(d + 1);
+            }
+            cell = var_cell(v, (int)(to_num(&idx) / BASIC_SCALE));
+            if (!cell) return;
         }
-        cell = var_cell(v, (int)(to_num(&idx) / BASIC_SCALE));
-        if (!cell) return;
     }
-    if (!match_op('=') && !match_op('E')) { set_error("LET: expected ="); return; }
+    if (!match_op('=') && !match_op('E')) { basic_error("LET: expected ="); return; }
     value_t val = eval_expr();
     if (g_error) return;
-    if (cell->is_str || v->is_str) {
-        if (val.is_str) *cell = val;
-        else { char b[32]; num_to_string(val.n, b, sizeof(b)); *cell = make_str(b); }
-    } else {
-        cell->is_str = 0;
-        cell->n = to_num(&val);
-    }
+    assign_from_value(v, cell, val);
 }
 
 static void exec_dim(void) {
@@ -1050,15 +1489,26 @@ static void exec_dim(void) {
         int want_str = name_is_str(name);
         advance();
         int dim = 0;
+        int dim2 = -1;
         if (match_op('(')) {
             value_t d = eval_expr();
-            dim = (int)(to_num(&d) / BASIC_SCALE);
+            dim = (int)(to_num(&d) / BASIC_SCALE) - g_option_base;
+            if (dim < 0) dim = 0;
+            if (match_op(',')) {
+                value_t d2 = eval_expr();
+                dim2 = (int)(to_num(&d2) / BASIC_SCALE) - g_option_base;
+                if (dim2 < 0) dim2 = 0;
+            }
             match_op(')');
         }
         var_t *v = get_var(name, want_str);
         if (v) {
-            v->is_array = 1; v->dim = dim;
-            v->cells = alloc_cells(dim + 1);
+            v->is_array = 1; v->dim = dim; v->dim2 = dim2;
+            if (dim2 >= 0) {
+                v->cells = alloc_cells((dim + 1) * (dim2 + 1));
+            } else {
+                v->cells = alloc_cells(dim + 1);
+            }
         }
         if (!match_op(',')) break;
     }
@@ -1229,6 +1679,33 @@ static void exec_grid_stmt(void) {
     if (strequal(name, "GRID.CLS")) { console_clear(); return; }
     if (strequal(name, "GRID.LOG")) { value_t v = eval_expr(); char b[180]; if(v.is_str){size_t j=0;while(v.s[j]&&j<sizeof(b)-1){b[j]=v.s[j];j++;}b[j]='\0';}else num_to_string(v.n,b,sizeof(b)); log_event(b); return; }
     if (strequal(name, "GRID.SPAWN")) { value_t v = eval_expr(); char n[40]; if(v.is_str){size_t j=0;while(v.s[j]&&j<sizeof(n)-1){n[j]=v.s[j];j++;}n[j]='\0';}else num_to_string(v.n,n,sizeof(n)); program_spawn_named(n); return; }
+    if (strequal(name, "GRID.SPAWN.BG")) {
+        value_t v = eval_expr();
+        char n[40];
+        if (v.is_str) { size_t j=0; while(v.s[j]&&j<sizeof(n)-1){n[j]=v.s[j];j++;} n[j]='\0'; }
+        else num_to_string(v.n, n, sizeof(n));
+        if (program_run_background(n) < 0) basic_error("GRID.SPAWN.BG failed");
+        return;
+    }
+    if (strequal(name, "GRID.VAULT.EXPORT")) { storage_export_serial(); return; }
+    if (strequal(name, "GRID.VAULT.IMPORT")) {
+        if (storage_import_serial() != 0) basic_error("GRID.VAULT.IMPORT failed");
+        return;
+    }
+    if (strequal(name, "GRID.JOBS.KILL")) {
+        value_t v = eval_expr();
+        int id = (int)(to_num(&v) / BASIC_SCALE);
+        if (sched_kill(id) != 0) basic_error("GRID.JOBS.KILL failed");
+        return;
+    }
+    if (strequal(name, "GRID.ISO.SPAWN")) {
+        value_t v = eval_expr();
+        char n[ISO_NAME_MAX];
+        if (v.is_str) { size_t j=0; while(v.s[j]&&j<sizeof(n)-1){n[j]=v.s[j];j++;} n[j]='\0'; }
+        else num_to_string(v.n, n, sizeof(n));
+        if (iso_spawn(n) < 0) basic_error("GRID.ISO.SPAWN failed");
+        return;
+    }
     if (strequal(name, "GRID.SERIAL.WRITE")) { value_t v = eval_expr(); if(v.is_str) serial_write(v.s); else { char b[32]; num_to_string(v.n,b,sizeof(b)); serial_write(b); } return; }
     if (strequal(name, "GRID.COLOR")) { value_t v = eval_expr(); console_set_color((uint8_t)(to_num(&v) / BASIC_SCALE)); return; }
     if (strequal(name, "GRID.WAIT")) { value_t v = eval_expr(); uint32_t ticks = (uint32_t)(to_num(&v) / BASIC_SCALE); uint32_t start = timer_ticks(); while (timer_ticks() - start < ticks && g_running) { /* spin */ } return; }
@@ -1364,21 +1841,219 @@ static void exec_grid_stmt(void) {
     set_error("GRID: unknown statement");
 }
 
-static int find_label(int lineno) {
-    for (int i = 0; i < g_nlabels; ++i) {
-        if (g_labels[i] == lineno) return g_label_tok[i];
-    }
-    return -1;
-}
-
 static void skip_to_newline(void) {
     while (cur()->type != T_NEWLINE && cur()->type != T_EOF) advance();
 }
 
-static void skip_to_else_or_newline(void) {
+static void skip_if_false_branch(void) {
     while (cur()->type != T_NEWLINE && cur()->type != T_EOF) {
-        if (cur()->type == T_KW && cur()->kw == KW_ELSE) return;
+        if (cur()->type == T_KW &&
+            (cur()->kw == KW_ELSE || cur()->kw == KW_ELSEIF)) {
+            return;
+        }
         advance();
+    }
+}
+
+static void exec_if_chain(void) {
+    for (;;) {
+        value_t cond = eval_expr();
+        if (!match_kw(KW_THEN)) { set_error("IF: missing THEN"); return; }
+        if (to_bool(&cond)) {
+            if (cur()->type == T_NUM) {
+                int ln = (int)(cur()->num / BASIC_SCALE); advance();
+                int target = find_label(ln);
+                if (target < 0) { set_error("GOTO: no such line"); return; }
+                g_cur = target; return;
+            }
+            exec_statement();
+            while (cur()->type == T_OP && cur()->op == ':') {
+                advance();
+                exec_statement();
+            }
+            skip_to_newline();
+            return;
+        }
+        skip_if_false_branch();
+        if (cur()->type == T_KW && cur()->kw == KW_ELSEIF) {
+            advance();
+            continue;
+        }
+        if (cur()->type == T_KW && cur()->kw == KW_ELSE) {
+            advance();
+            exec_statement();
+            while (cur()->type == T_OP && cur()->op == ':') {
+                advance();
+                exec_statement();
+            }
+        }
+        return;
+    }
+}
+
+static void exec_on_computed(void) {
+    if (match_kw(KW_ERROR)) {
+        if (!match_kw(KW_GOTO)) { set_error("ON ERROR: need GOTO"); return; }
+        if (cur()->type != T_NUM) { set_error("ON ERROR: need line"); return; }
+        g_on_error_line = (int)(cur()->num / BASIC_SCALE);
+        advance();
+        return;
+    }
+    value_t idxv = eval_expr();
+    int idx = (int)(to_num(&idxv) / BASIC_SCALE);
+    if (idx < 1) { basic_error("ON: index out of range"); return; }
+    int is_gosub = match_kw(KW_GOSUB);
+    if (!is_gosub && !match_kw(KW_GOTO)) { set_error("ON: need GOTO or GOSUB"); return; }
+    int n = 0;
+    int target = -1;
+    while (cur()->type != T_NEWLINE && cur()->type != T_EOF &&
+           !(cur()->type == T_OP && cur()->op == ':')) {
+        if (cur()->type == T_NUM) {
+            n++;
+            if (n == idx) target = (int)(cur()->num / BASIC_SCALE);
+            advance();
+        } else {
+            advance();
+        }
+        if (cur()->type == T_OP && cur()->op == ',') advance();
+    }
+    if (target < 0) { basic_error("ON: no such branch"); return; }
+    int tok = find_label(target);
+    if (tok < 0) { basic_error("ON: no such line"); return; }
+    if (is_gosub) {
+        if (g_gosub_sp >= MAX_FRAMES) { basic_error("GOSUB: too deep"); return; }
+        g_gosub_stack[g_gosub_sp++].tok_index = g_cur;
+    }
+    g_cur = tok;
+}
+
+static void exec_def_fn(void) {
+    if (!match_kw(KW_FN)) { set_error("DEF: need FN"); return; }
+    if (cur()->type != T_ID) { set_error("DEF FN: need name"); return; }
+    if (g_ndef_fn >= MAX_DEF_FN) { set_error("DEF FN: too many"); return; }
+    def_fn_t *df = &g_def_fns[g_ndef_fn++];
+    df->used = 1;
+    size_t k = 0;
+    while (cur()->text[k] && k < sizeof(df->name) - 1) { df->name[k] = cur()->text[k]; k++; }
+    df->name[k] = '\0';
+    advance();
+    if (!(cur()->type == T_OP && cur()->op == '(')) { set_error("DEF FN: need ("); return; }
+    advance();
+    if (cur()->type != T_ID) { set_error("DEF FN: need param"); return; }
+    k = 0;
+    while (cur()->text[k] && k < sizeof(df->param) - 1) { df->param[k] = cur()->text[k]; k++; }
+    df->param[k] = '\0';
+    advance();
+    match_op(')');
+    if (!match_op('=')) { set_error("DEF FN: need ="); return; }
+    df->expr_start = g_cur;
+    while (cur()->type != T_NEWLINE && cur()->type != T_EOF &&
+           !(cur()->type == T_OP && cur()->op == ':')) {
+        advance();
+    }
+    df->expr_end = g_cur;
+}
+
+static void exec_option(void) {
+    if (!match_kw(KW_BASE)) { set_error("OPTION: need BASE"); return; }
+    value_t v = eval_expr();
+    int b = (int)(to_num(&v) / BASIC_SCALE);
+    if (b != 0 && b != 1) { set_error("OPTION BASE: need 0 or 1"); return; }
+    g_option_base = b;
+}
+
+static void exec_resume(void) {
+    if (cur()->type == T_NUM) {
+        int ln = (int)(cur()->num / BASIC_SCALE);
+        advance();
+        int target = find_label(ln);
+        if (target < 0) { set_error("RESUME: no such line"); return; }
+        g_cur = target;
+    } else if (match_kw(KW_NEXT)) {
+        while (cur()->type != T_NEWLINE && cur()->type != T_EOF) advance();
+        if (g_cur < g_ntok - 1) g_cur++;
+    } else {
+        g_cur = g_error_resume_tok;
+    }
+    g_error = 0;
+    g_in_error_handler = 0;
+    g_errmsg[0] = '\0';
+}
+
+static void exec_continue_loop(void) {
+    if (match_kw(KW_FOR)) {
+        for (int i = g_for_sp - 1; i >= 0; --i) {
+            if (g_for_stack[i].var_index >= 0) {
+                for_frame_t *f = &g_for_stack[i];
+                var_t *v = &g_vars[f->var_index];
+                v->scalar.n += f->step_val;
+                int cont = (f->step_val >= 0) ?
+                    (v->scalar.n <= f->end_val) : (v->scalar.n >= f->end_val);
+                if (cont) g_cur = f->tok_index;
+                else g_for_sp = i;
+                return;
+            }
+        }
+        basic_error("CONTINUE FOR: no FOR loop");
+        return;
+    }
+    if (match_kw(KW_WHILE)) {
+        for (int i = g_for_sp - 1; i >= 0; --i) {
+            if (g_for_stack[i].var_index == -1) {
+                g_cur = g_for_stack[i].tok_index;
+                value_t cond = eval_expr();
+                if (!to_bool(&cond)) {
+                    g_for_sp = i;
+                    int depth = 1;
+                    while (cur()->type != T_EOF) {
+                        if (cur()->type == T_KW && cur()->kw == KW_WHILE) depth++;
+                        else if (cur()->type == T_KW && cur()->kw == KW_WEND) {
+                            depth--;
+                            if (depth == 0) { advance(); break; }
+                        }
+                        advance();
+                    }
+                }
+                return;
+            }
+        }
+        basic_error("CONTINUE WHILE: no WHILE loop");
+        return;
+    }
+    basic_error("CONTINUE: need FOR or WHILE");
+}
+
+static void exec_call(void) {
+    if (cur()->type != T_ID) { set_error("CALL: need name"); return; }
+    char name[64];
+    size_t k = 0;
+    while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
+    name[k] = '\0';
+    advance();
+    sub_def_t *sd = find_sub(name);
+    if (!sd) { basic_error("CALL: unknown SUB"); return; }
+    value_t argv[8];
+    int argc = 0;
+    if (cur()->type == T_OP && cur()->op == '(') {
+        advance();
+        if (!(cur()->type == T_OP && cur()->op == ')')) {
+            do {
+                if (argc < 8) argv[argc++] = eval_expr();
+            } while (match_op(','));
+        }
+        match_op(')');
+    }
+    call_user_function(sd, argc, argv);
+}
+
+static void exec_local(void) {
+    while (cur()->type == T_ID) {
+        char name[64];
+        size_t k = 0;
+        while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
+        name[k] = '\0';
+        get_var(name, name_is_str(name));
+        if (!match_op(',')) break;
     }
 }
 
@@ -1521,30 +2196,7 @@ static void exec_statement(void) {
         switch (t->kw) {
         case KW_PRINT: advance(); exec_print(); return;
         case KW_LET:   advance(); exec_assign(); return;
-        case KW_IF:    advance(); {
-            value_t cond = eval_expr();
-            if (!match_kw(KW_THEN)) { set_error("IF: missing THEN"); return; }
-            if (to_bool(&cond)) {
-                /* THEN may be a line number or a statement */
-                if (cur()->type == T_NUM) {
-                    int ln = (int)(cur()->num / BASIC_SCALE); advance();
-                    int target = find_label(ln);
-                    if (target < 0) { set_error("GOTO: no such line"); return; }
-                    g_cur = target; return;
-                }
-                exec_statement();   /* run inline statement */
-                /* after inline statement, if we hit ELSE skip it */
-                if (cur()->type == T_KW && cur()->kw == KW_ELSE) skip_to_newline();
-                return;
-            } else {
-                skip_to_else_or_newline();
-                if (cur()->type == T_KW && cur()->kw == KW_ELSE) {
-                    advance();
-                    exec_statement();
-                }
-                return;
-            }
-        }
+        case KW_IF:    advance(); exec_if_chain(); return;
         case KW_FOR: advance(); {
             if (cur()->type != T_ID) { set_error("FOR: need variable"); return; }
             char name[64]; size_t k=0; while(cur()->text[k]&&k<sizeof(name)-1){name[k]=cur()->text[k];k++;} name[k]='\0';
@@ -1657,14 +2309,25 @@ static void exec_statement(void) {
         case KW_RANDOMIZE: advance(); exec_randomize(); return;
         case KW_SELECT: advance(); exec_select_case(); return;
         case KW_EXIT:  advance(); exec_exit_loop(); return;
+        case KW_CONTINUE: advance(); exec_continue_loop(); return;
+        case KW_ON: advance(); exec_on_computed(); return;
+        case KW_DEF: advance(); exec_def_fn(); return;
+        case KW_OPTION: advance(); exec_option(); return;
+        case KW_RESUME: advance(); exec_resume(); return;
+        case KW_CALL: advance(); exec_call(); return;
+        case KW_LOCAL: advance(); exec_local(); return;
+        case KW_SHARED: skip_to_newline(); return;
+        case KW_SUB:
+        case KW_FUNCTION: advance(); skip_sub_or_function_body(); return;
         case KW_REM:   skip_to_newline(); return;
         case KW_END: {
             if (match_end_select()) return;
             advance(); g_running = 0; return;
         }
         case KW_STOP: advance(); g_running = 0; return;
-        case KW_THEN: case KW_ELSE: case KW_TO: case KW_STEP: case KW_CASE:
+        case KW_THEN: case KW_ELSE: case KW_ELSEIF: case KW_TO: case KW_STEP: case KW_CASE:
         case KW_AND: case KW_OR: case KW_NOT: case KW_MOD: case KW_DIV:
+        case KW_ERROR: case KW_BASE: case KW_FN:
             set_error("SYNTAX: unexpected keyword"); return;
         case KW_NONE: break;
         }
@@ -1781,6 +2444,7 @@ int basic_run_source(const char *source) {
     }
     reset_state();
     collect_data();
+    collect_subs();
     run_loop();
     if (g_error) {
         console_set_color(GRID_COL_ERROR);
@@ -1829,11 +2493,13 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 6.6 — Advanced BASIC for the Grid");
+    console_write_line("GridBASIC 6.7 — Advanced BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("PRINT LET CONST DIM DATA/READ/RESTORE RANDOMIZE INSTR$");
-    console_write_line("IF/THEN/ELSE SELECT CASE CASE ELSE END SELECT EXIT FOR/WHILE");
-    console_write_line("FOR/NEXT WHILE/WEND REPEAT/UNTIL GOTO GOSUB LINE INPUT");
+    console_write_line("DEF FN SUB/FUNCTION LOCAL CALL ELSEIF ON ERROR GOTO");
+    console_write_line("ON GOTO/GOSUB OPTION BASE CONTINUE MIN MAX TRIM$ 2D DIM");
+    console_write_line("PRINT LET CONST DIM DATA/READ RESTORE RANDOMIZE INSTR$");
+    console_write_line("IF/THEN/ELSE SELECT CASE EXIT/CONTINUE FOR/WHILE LINE INPUT");
+    console_write_line("GRID.DNS.* GRID.JOBS.* GRID.ISO.* GRID.VAULT.EXPORT GRID.SPAWN.BG");
     console_write_line("GRID.VAULT.* GRID.GFS.* GRID.HTTP.* GRID.LOCATE GRID.INKEY$");
     console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
 }

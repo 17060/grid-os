@@ -1,4 +1,4 @@
-# Grid OS 6.6 — Commands & GridBASIC Reference
+# Grid OS 6.7 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -16,7 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `cycles` | Same as `status` (elapsed cycles) |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 6.6 |
+| `about` | About Grid OS 6.7 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs
@@ -214,7 +214,7 @@ On the GEM desktop, keys **1–8** launch icons.
 
 ### Statement keywords
 
-`PRINT` / `?` · `LET` · `CONST` · `IF` · `THEN` · `ELSE` · `SELECT` · `CASE` · `END SELECT` · `FOR` · `TO` · `STEP` · `NEXT` · `EXIT FOR` · `WHILE` · `WEND` · `EXIT WHILE` · `REPEAT` · `UNTIL` · `GOTO` · `GOSUB` · `RETURN` · `INPUT` · `LINE INPUT` · `DIM` · `DATA` · `READ` · `RESTORE` · `RANDOMIZE` · `REM` · `'` · `END` · `STOP`
+`PRINT` / `?` · `LET` · `CONST` · `IF` · `THEN` · `ELSE` · `ELSEIF` · `SELECT` · `CASE` · `END SELECT` · `FOR` · `TO` · `STEP` · `NEXT` · `EXIT FOR` · `CONTINUE FOR` · `WHILE` · `WEND` · `EXIT WHILE` · `CONTINUE WHILE` · `REPEAT` · `UNTIL` · `GOTO` · `GOSUB` · `ON GOTO` · `ON GOSUB` · `ON ERROR GOTO` · `RESUME` · `RETURN` · `DEF FN` · `SUB` · `FUNCTION` · `END SUB` · `END FUNCTION` · `CALL` · `LOCAL` · `SHARED` · `OPTION BASE` · `INPUT` · `LINE INPUT` · `DIM` · `DATA` · `READ` · `RESTORE` · `RANDOMIZE` · `REM` · `'` · `END` · `STOP`
 
 Multiple statements on one line are separated with `:` (e.g. `X = 1: PRINT X`).
 
@@ -232,7 +232,8 @@ String concat: `+` (when either side is a string)
 
 - Numeric: `N`, `COUNT`, …
 - String: trailing `$` → `S$`, `MSG$`
-- Arrays: `A(0)`, `A(10)` — 0-based after `DIM A(10)`
+- Arrays: `A(0)`, `A(10)` — default 0-based; `OPTION BASE 1` for 1-based indexing
+- 2D arrays: `DIM A(10,10)` then `A(i,j)`
 - Constants: `CONST MAX=10` — read-only; assignment, `READ`, or `INPUT` to a CONST variable is an error
 
 ### Control flow
@@ -252,6 +253,18 @@ END SELECT
 
 **EXIT FOR** / **EXIT WHILE** — leave the innermost matching loop early.
 
+**CONTINUE FOR** / **CONTINUE WHILE** — skip to the next loop iteration.
+
+**ELSEIF** — chain conditions: `IF a THEN … ELSEIF b THEN … ELSE …`
+
+**ON expr GOTO** / **ON expr GOSUB** — branch table dispatch (1-based index).
+
+**ON ERROR GOTO** / **RESUME** — jump to an error handler; `ERR$` returns the error message.
+
+**DEF FN name(x)=expr** — single-line function. **SUB** / **FUNCTION** … **END SUB/FUNCTION** with **CALL** and **LOCAL**.
+
+**OPTION BASE 0|1** — set array index origin.
+
 **DATA / READ / RESTORE** — static numeric/string literals collected at run start; `RESTORE` resets the read pointer to the first `DATA` line.
 
 **RANDOMIZE [seed]** — seed the pseudo-random generator used by `RND()`.
@@ -260,8 +273,8 @@ END SELECT
 
 ### Built-in functions
 
-**Math:** `ABS` `INT` `SGN` `SQR` `RND` `PI`  
-**String:** `LEN` `VAL` `ASC` `CHR$` `STR$` `UPPER$` `LOWER$` `LEFT$` `RIGHT$` `MID$` `INSTR$(hay$, needle$ [, start])`
+**Math:** `ABS` `INT` `SGN` `SQR` `RND` `PI` `MIN` `MAX` `FIX` `ROUND`  
+**String:** `LEN` `VAL` `ASC` `CHR$` `STR$` `UPPER$` `LOWER$` `LEFT$` `RIGHT$` `MID$` `INSTR$(hay$, needle$ [, start])` `TRIM$` `LTRIM$` `RTRIM$` `SPACE$(n)` `STRING$(n,c$)` `ERR$`
 
 ### GRID.* bindings
 
@@ -272,6 +285,11 @@ END SELECT
 | `GRID.CLS` | Clear screen |
 | `GRID.LOG` expr | Write to audit log |
 | `GRID.SPAWN` expr | Spawn ring-3 program by name |
+| `GRID.SPAWN.BG` expr | Queue background sandbox job |
+| `GRID.VAULT.EXPORT` | Export vault over COM1 |
+| `GRID.VAULT.IMPORT` | Import vault from COM1 |
+| `GRID.JOBS.KILL` n | Stop background job *n* |
+| `GRID.ISO.SPAWN` name$ | Seed ISO research entity |
 | `GRID.SERIAL.WRITE` expr | Write to COM1 |
 | `GRID.COLOR` n | Set console color |
 | `GRID.WAIT` ticks | Busy-wait (timer ticks) |
@@ -298,6 +316,13 @@ END SELECT
 | `GRID.GFS.LIST$(path$)` | GridFS directory listing |
 | `GRID.HTTP.GET$(host$, port, path$)` | HTTP GET response body |
 | `GRID.HTTP.POST$(host$, port, path$, body$)` | HTTP POST response body |
+| `GRID.DNS.RESOLVE$(host$)` | Resolved IPv4 string |
+| `GRID.NET.STATUS$` | Network summary |
+| `GRID.LOG.TAIL$(n)` | Last *n* audit log messages |
+| `GRID.WHOAMI$` | Entity type (`User` / `Program`) |
+| `GRID.CAPS$` | Capability bitmask (decimal) |
+| `GRID.JOBS.LIST$` | Background job list |
+| `GRID.ISO.LIST$` | ISO zone entity list |
 | `GRID.AI.ASK$(prompt$)` | AI answer |
 | `GRID.AI.COMPLETE$(fragment$)` | Complete BASIC fragment |
 | `GRID.AI.EXPLAIN$(line$)` | Explain a BASIC line |

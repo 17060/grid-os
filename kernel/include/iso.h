@@ -47,5 +47,6 @@ int iso_import_entity(int id, const char *name, const uint8_t disc[16],
                       uint32_t fitness, iso_state_t state);
 void iso_clear_all(void);
 void iso_autopilot_step(void);
+int iso_format_list(char *out, size_t out_len);
 
 #endif

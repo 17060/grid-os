@@ -162,7 +162,9 @@ static int is_basic_keyword(const char *w) {
         "PRINT", "LET", "IF", "THEN", "ELSE", "FOR", "TO", "STEP", "NEXT",
         "WHILE", "WEND", "REPEAT", "UNTIL", "GOTO", "GOSUB", "RETURN",
         "INPUT", "LINE", "DIM", "CONST", "DATA", "READ", "RESTORE", "RANDOMIZE",
-        "SELECT", "CASE", "EXIT", "REM", "END", "STOP",
+        "SELECT", "CASE", "EXIT", "CONTINUE", "ELSEIF", "ON", "ERROR", "RESUME",
+        "OPTION", "BASE", "DEF", "FN", "SUB", "FUNCTION", "LOCAL", "SHARED", "CALL",
+        "REM", "END", "STOP",
         "AND", "OR", "NOT", "MOD", "DIV", 0
     };
     char upper[48];
@@ -854,14 +856,19 @@ static void cmd_help(void) {
     console_write_line("  help                  Flynn Grid shell commands");
     console_write_line("  poweroff              exit Grid OS");
     console_write_line("GridBASIC statements:");
-    console_write_line("  PRINT expr;expr   CONST v=expr   DIM A(10)   DATA/READ/RESTORE");
+    console_write_line("  PRINT expr;expr   CONST v=expr   DIM A(10,10)   DATA/READ/RESTORE");
+    console_write_line("  DEF FN f(x)=expr   SUB/END SUB   FUNCTION/END FUNCTION   CALL f(a)");
+    console_write_line("  ELSEIF c THEN s   ON ERROR GOTO n   ON n GOTO a,b   OPTION BASE 0|1");
     console_write_line("  SELECT CASE x : CASE n .. : CASE ELSE .. : END SELECT");
-    console_write_line("  IF c THEN s ELSE s  FOR i=a TO b .. NEXT   EXIT FOR/WHILE");
+    console_write_line("  IF c THEN s ELSE s  FOR i=a TO b .. NEXT   EXIT/CONTINUE FOR/WHILE");
     console_write_line("  WHILE c .. WEND   REPEAT .. UNTIL c   LINE INPUT s$");
+    console_write_line("  MIN MAX FIX ROUND TRIM$ SPACE$ STRING$   LOCAL x   2D arrays");
     console_write_line("  RANDOMIZE [seed]   INSTR$(hay$,needle$)   GOTO n  GOSUB n");
     console_write_line("Grid bindings:");
-    console_write_line("  GRID.VAULT.GET$/PUT/SYNC/LIST$   GRID.GFS.READ$/WRITE/LIST$");
-    console_write_line("  GRID.HTTP.GET$/POST$   GRID.LOCATE row,col   GRID.INKEY$");
+    console_write_line("  GRID.DNS.RESOLVE$   GRID.NET.STATUS$   GRID.LOG.TAIL$(n)");
+    console_write_line("  GRID.WHOAMI$   GRID.CAPS$   GRID.JOBS.LIST$/KILL   GRID.ISO.LIST$/SPAWN");
+    console_write_line("  GRID.VAULT.* (+ EXPORT/IMPORT)   GRID.GFS.*   GRID.HTTP.*");
+    console_write_line("  GRID.SPAWN / GRID.SPAWN.BG   GRID.LOCATE   GRID.INKEY$");
     console_write_line("  GRID.CLS  GRID.COLOR n  GRID.LOG msg  GRID.WAIT ticks");
     console_write_line("  GRID.SPAWN \"name\"  GRID.TIME  GRID.PING(ip$)  GRID.CAP(n)");
     console_write_line("  GRID.AI.ASK$/PRINT   GRID.IRC.*   GRID.BTC.*");

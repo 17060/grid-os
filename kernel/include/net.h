@@ -10,6 +10,8 @@ void net_poll(void);
 int net_ping(uint32_t ip);
 int net_send_arp(uint32_t target_ip);
 void net_print_status(void);
+int net_format_status(char *out, size_t out_len);
+int net_format_ip(uint32_t ip, char *out, size_t out_len);
 int net_parse_ip(const char *text, uint32_t *out);
 int net_resolve_host(const char *host, uint32_t *out);
 uint32_t net_local_ip(void);
