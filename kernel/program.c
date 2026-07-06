@@ -253,7 +253,8 @@ int program_spawn(const char *name, const void *image, size_t image_size, uint64
     program->entry_point = USER_CODE_VADDR + entry_offset;
 
     if (program_enter(program, program->entry_point) != 0) {
-        return slot + 1;
+        program_release(slot + 1);
+        return -1;
     }
 
     return slot + 1;
@@ -455,7 +456,8 @@ int program_spawn_elf(const char *name, const void *image, size_t image_size) {
 
     programs[slot].state = PROGRAM_RUNNING;
     if (program_enter(&programs[slot], programs[slot].entry_point) != 0) {
-        return id;
+        program_release(id);
+        return -1;
     }
 
     return id;

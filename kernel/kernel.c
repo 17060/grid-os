@@ -9,6 +9,7 @@
 #include "mouse.h"
 #include "net.h"
 #include "pci.h"
+#include "tcp.h"
 #include "program.h"
 #include "sched.h"
 #include "security.h"
@@ -38,6 +39,7 @@ void kernel_main(void) {
     storage_init();
     gfs_init();
     net_init();
+    tcp_init();
 
     log_event("Grid OS 6.0 boot");
 

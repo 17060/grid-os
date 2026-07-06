@@ -163,9 +163,17 @@ static int is_basic_keyword(const char *w) {
         "WHILE", "WEND", "REPEAT", "UNTIL", "GOTO", "GOSUB", "RETURN",
         "INPUT", "DIM", "REM", "END", "STOP", "AND", "OR", "NOT", "MOD", "DIV", 0
     };
+    char upper[48];
+    size_t wi = 0;
+    while (w[wi] && wi + 1 < sizeof(upper)) {
+        char c = w[wi];
+        upper[wi] = (c >= 'a' && c <= 'z') ? (char)(c - 32) : c;
+        wi++;
+    }
+    upper[wi] = '\0';
     for (int i = 0; kws[i]; ++i) {
         const char *k = kws[i];
-        const char *p = w;
+        const char *p = upper;
         while (*k && *p && *k == *p) {
             k++;
             p++;
