@@ -9,6 +9,11 @@
 - **`hello.bas`** — version banner updated to 6.9
 - Runtime banners updated to 6.9
 
+### Audit fixes
+- Boot welcome survives IDE startup via IDE status hint (autoexec output no longer wiped silently)
+- `tutorial` checks GFS before run (no duplicate error lines)
+- QEMU tests always copy a seeded Flynn disk (`make seed-disk` prerequisite)
+
 ## 6.8 — Android (Termux) release bundles
 
 - **Android Termux launcher** — `GridOS-*-Android-Termux.sh` single-file boot (headless serial default)

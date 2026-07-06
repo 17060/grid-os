@@ -58,10 +58,15 @@ typedef struct {
 static void run_shell_line(ide_t *e, const char *line);
 
 static ide_t ide;
+static char g_boot_hint[96];
 
 static size_t slen(const char *s) { size_t n = 0; while (s[n]) n++; return n; }
 static void scopy(char *d, size_t cap, const char *s) {
     size_t n = 0; while (s[n] && n + 1 < cap) { d[n] = s[n]; n++; } d[n] = '\0';
+}
+
+void basic_ide_set_boot_hint(const char *msg) {
+    scopy(g_boot_hint, sizeof(g_boot_hint), msg ? msg : "");
 }
 static int sequal(const char *a, const char *b) {
     while (*a && *b) { if (*a != *b) return 0; a++; b++; } return *a == *b;
@@ -957,6 +962,11 @@ int basic_ide(const char *path) {
     ide.row = 0; ide.col = 0; ide.top = 0; ide.dirty = 0;
     ide.path[0] = '\0';
     ide.status[0] = '\0'; ide.status_attr = GRID_COL_DIM;
+    if (g_boot_hint[0]) {
+        scopy(ide.status, sizeof(ide.status), g_boot_hint);
+        ide.status_attr = GRID_COL_OK;
+        g_boot_hint[0] = '\0';
+    }
     if (path && path[0]) {
         char buf[8192]; size_t got = 0;
         if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) == 0) {

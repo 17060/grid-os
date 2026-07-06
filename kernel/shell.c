@@ -1214,26 +1214,32 @@ static void cmd_samples(void) {
 }
 
 static void cmd_tutorial(void) {
-    if (basic_run_file("/programs/tutorial.bas") != 0) {
+    char probe[8];
+    size_t got = 0;
+
+    if (gfs_read_file("/programs/tutorial.bas", probe, sizeof(probe), &got) != 0 || got == 0) {
         console_set_color(GRID_COL_WARN);
         console_write_line("Tutorial missing — run: gfs seed   or attach Flynn disk");
         console_set_color(GRID_COL_DEFAULT);
+        return;
     }
+    basic_run_file("/programs/tutorial.bas");
 }
 
-static void shell_run_autoexec(void) {
+static int shell_run_autoexec(void) {
     char probe[8];
     size_t got = 0;
     const char *flag;
 
     flag = storage_get("autoexec");
     if (flag && equals(flag, "off")) {
-        return;
+        return 0;
     }
     if (gfs_read_file("/programs/autoexec.bas", probe, sizeof(probe), &got) != 0 || got == 0) {
-        return;
+        return 0;
     }
     basic_run_file("/programs/autoexec.bas");
+    return 1;
 }
 
 static void cmd_basic(int argc, char *argv[]) {
@@ -1873,6 +1879,8 @@ void shell_dispatch_line(char *line) {
 void shell_run(void) {
     console_set_serial_mirror(1);
     print_banner();
-    shell_run_autoexec();
+    if (shell_run_autoexec()) {
+        basic_ide_set_boot_hint("Welcome — Esc: grid> tutorial | :load tutorial | :samples");
+    }
     basic_ide(0);
 }

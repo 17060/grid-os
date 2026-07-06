@@ -88,7 +88,7 @@ PROG ?= gridsh
 install-prog: $(DISK_IMAGE) build/$(PROG).elf
 	python3 tools/gfs_install.py /programs/$(PROG) build/$(PROG).elf
 
-$(DISK_TEST_IMAGE): $(DISK_IMAGE) | build
+$(DISK_TEST_IMAGE): seed-disk
 	cp $(DISK_IMAGE) $(DISK_TEST_IMAGE)
 
 build/boot.o: boot/boot.s | build
@@ -175,6 +175,8 @@ test-host-basic:
 	@printf '10 PRINT TRIM$$("  hi  ")\n20 END\n' | build/basic_host | grep -qx 'hi'
 	@printf '10 PRINT MIN(3,7)\n20 END\n' | build/basic_host | grep -qx '3'
 	@printf '10 DEF FN DBL(X)=X*2\n20 PRINT DBL(5)\n30 END\n' | build/basic_host | grep -qx '10'
+	@printf '10 SUB GREET(N$$)\n20 PRINT "Hello, "; N$$\n30 END SUB\n40 CALL GREET("Flynn")\n50 END\n' | build/basic_host | grep -qx 'Hello, Flynn'
+	@printf '10 DIM M(3,3)\n20 M(2,3)=23\n30 PRINT M(2,3)\n40 END\n' | build/basic_host | grep -qx '23'
 	@printf '10 IF 0 THEN PRINT 1 ELSEIF 1 THEN PRINT 2 ELSE PRINT 3\n20 END\n' | build/basic_host | grep -qx '2'
 
 test-host-vault:

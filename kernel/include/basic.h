@@ -24,6 +24,9 @@ int basic_run_file(const char *path);
  * loads an existing program; pass NULL for a fresh buffer. */
 int basic_ide(const char *path);
 
+/* One-line hint shown on the IDE command row after boot (e.g. Flynn welcome). */
+void basic_ide_set_boot_hint(const char *msg);
+
 /* Lexer / value types shared with the IDE for syntax help. */
 void basic_print_version(void);
 
