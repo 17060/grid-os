@@ -1,6 +1,6 @@
-# Getting Started with Grid OS 6.0
+# Getting Started with Grid OS 6.4
 
-Flynn's Grid — a bootable x86_64 hobby OS with GridBASIC IDE, ring-3 sandboxes, networking, and host bridges for AI and Bitcoin.
+Flynn's Grid — a bootable x86_64 hobby OS with GridBASIC IDE, ring-3 sandboxes, multi-session TCP networking, and host bridges for AI and Bitcoin.
 
 ## Prerequisites
 
@@ -43,6 +43,14 @@ You land in the **GridBASIC IDE**. Press **Esc** to open the embedded `grid>` sh
 4. Press **Esc**, type `:save hello`, Enter — writes `/programs/hello.bas`.
 5. Later from `grid>`: `basic run /programs/hello.bas`
 
+Try the seeded samples:
+
+```text
+grid> basic run /programs/hello.bas
+grid> basic run /programs/netdemo.bas
+grid> basic run /programs/vaultdemo.bas
+```
+
 ### Useful IDE commands
 
 | Command | Action |
@@ -66,22 +74,25 @@ grid> status
 grid> ls /
 grid> cat /programs/hello.bas
 grid> spawn lightcycle    # WASD game in ring 3
-grid> net ping 10.0.2.2   # ping QEMU gateway
+grid> net ping gateway    # ping QEMU gateway (DNS name)
+grid> http get gateway /  # HTTP/1.1 with keep-alive pool
 grid> poweroff            # exit QEMU
 ```
 
 ## IRC chat
 
-Guest IP: **10.0.2.15**, gateway: **10.0.2.2**
+Guest IP: **10.0.2.15**, gateway: **10.0.2.2** (alias: `gateway`)
 
 ```text
-grid> irc connect 10.0.2.2 6667 gridbot
+grid> irc connect gateway 6667 gridbot
 grid> irc join #gridos
 grid> irc say #gridos hello from Grid OS
 grid> irc read
 ```
 
-Or from IDE: `:irc connect 10.0.2.2 6667 gridbot`
+Or from IDE: `:irc connect gateway 6667 gridbot`
+
+See [NETWORKING.md](NETWORKING.md) for concurrent TCP sessions (IRC + HTTP + AI + BTC together).
 
 ## Grid AI (host bridge)
 
@@ -117,15 +128,16 @@ grid> btc balance
 grid> btc info
 ```
 
-## HTTP fetch (minimal client)
+## HTTP fetch
 
 Fetch a page over plain HTTP (port 80):
 
 ```text
+grid> http get gateway /
 grid> http get 10.0.2.2 /
 ```
 
-Uses the in-kernel TCP stack. TLS is not supported in-guest — use host bridges for encrypted services.
+Uses HTTP/1.1 with a keep-alive connection pool. TLS is not supported in-guest — use host bridges for encrypted services.
 
 ## Vault persistence
 
@@ -136,10 +148,25 @@ grid> vault sync          # write to arcade disk
 ```
 
 Host backup:
+
 ```bash
 ./tools/gridctl backup              # creates grid-os-backup-YYYYMMDD-HHMMSS.tar.gz
 ./tools/gridctl backup mygrid.tar.gz
 ```
+
+Restores kernel source, disk image, and build artifacts. Re-seed with `make disk seed-disk` if you need a fresh Flynn archive.
+
+## Mac Silicon distribution
+
+On a Mac with Homebrew:
+
+```bash
+make release-mac
+# → dist/grid-os-macos-arm64-v6.4.tar.gz
+# → dist/GridOS-6.4-macOS-AppleSilicon.command
+```
+
+Upload to GitHub releases with `gh release upload v6.4 dist/*`
 
 ## Host tools (`gridctl`)
 
@@ -158,14 +185,26 @@ Host backup:
 make test
 ```
 
-Runs host GridBASIC math, QEMU smoke boot, and full e2e (basictest → spawn gridsh → poweroff).
+Runs:
+
+| Target | Coverage |
+|--------|----------|
+| `test-host-basic` | GridBASIC math, `:=`, `;`, status string |
+| `test-host-vault` | v5 migration, full vault, genome parse |
+| `test-host-vault-disk` | Simulated v5 disk → v6 round-trip |
+| `test-host-tcp` | Dual/triple port dispatch, 8-slot limit |
+| `test-host-net` | Static DNS resolver |
+| `test-host-spawn` | Sandbox spawn fault regression |
+| `test-qemu-smoke` | Boot stability |
+| `test-e2e` | basictest → spawn gridsh → poweroff |
 
 CI runs the same on every push to `main` via GitHub Actions.
 
-## What’s not in-guest yet
+## What's not in-guest yet
 
 - Native high-resolution framebuffer (80×25 VGA is scaled in HD/4K windows)
 - TLS/HTTPS (use host bridges)
 - Full Bitcoin node or LLM in-kernel (128 MB RAM — bridges instead)
+- Real DNS (static hostname table only)
 
 See `docs/COMMANDS.md` for the complete command reference.

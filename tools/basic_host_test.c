@@ -28,6 +28,10 @@ int gfs_write_file(const char *p, const void *d, size_t n)         { (void)p;(vo
 
 /* ---- net stubs ---- */
 int net_parse_ip(const char *t, uint32_t *o) { (void)t; if(o)*o=0; return -1; }
+int net_resolve_host(const char *t, uint32_t *o) {
+    if (t && t[0] == 'g' && t[1] == 'a') { if (o) *o = 0x0A000202u; return 0; }
+    return net_parse_ip(t, o);
+}
 int net_ping(uint32_t ip)                    { (void)ip; return 1; }
 int net_present(void)                         { return 1; }
 

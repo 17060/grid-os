@@ -17,8 +17,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y nasm qemu-system-x86 gcc
 
-      - name: Build and test
+      - name: Build
+        run: make
+
+      - name: Seed disk
+        run: make disk seed-disk
+
+      - name: Host tests
+        run: make test-host
+
+      - name: QEMU tests
         run: |
-          make
-          make disk seed-disk
-          make test
+          make test-qemu-smoke
+          make test-e2e

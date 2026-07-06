@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 #define TCP_WINDOW 4096u
-#define TCP_MAX_CONNECTIONS 4
 
 static tcp_conn_t *conn_slots[TCP_MAX_CONNECTIONS];
 static uint16_t next_local_port = 0xC000u;
