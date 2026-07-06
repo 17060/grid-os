@@ -1,5 +1,13 @@
 # Grid OS — Changelog
 
+## 6.5.2 — Windows release bundles
+
+- **Windows x64 bundles** — `make release-windows` produces `GridOS-*-Windows-x64.zip` (launcher) and `grid-os-windows-x64-*.zip` (full source)
+- **`GridOS.bat`** — double-click launcher with QEMU discovery (winget/Chocolatey/Scoop paths)
+- **`docs/WINDOWS.md`** — install, display modes, bridges, troubleshooting
+- **`gridctl save-windows` / `standalone-windows`** — host helpers for Windows packaging
+- **CI** — `windows-release` job builds zip artifacts on Ubuntu
+
 ## 6.5.1 — Audit fixes
 
 - **`GRID.PING()`** — fixed inverted success/failure return (0 from `net_ping()` now maps to 1)

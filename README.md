@@ -6,6 +6,8 @@
 
 **Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.
 
+**Windows?** See [docs/WINDOWS.md](docs/WINDOWS.md) — download `GridOS-*-Windows-x64.zip` or `make release-windows` to build bundles.
+
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
 
 ## What's new in 6.5.1
@@ -34,6 +36,7 @@ Patch release — audit fixes for PING, vault migration, HTTP keep-alive, DNS, I
 - **Expanded host tests** — vault disk round-trip, DNS, triple TCP, spawn fault regression
 - **Sample programs** — `/programs/netdemo.bas`, `/programs/vaultdemo.bas`
 - **`make release-mac`** — Mac Silicon tarball + standalone `.command` launcher
+- **`make release-windows`** — Windows x64 zip + `GridOS.bat` double-click launcher
 
 ## What's new in 6.3
 

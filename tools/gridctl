@@ -21,6 +21,8 @@ gridctl — host helper for Grid OS arcade disk
   gridctl backup [file] save disk + kernel tarball
   gridctl save-macos     Mac Silicon bundle (kernel + disk + source)
   gridctl standalone     Single .command file (double-click to run)
+  gridctl save-windows   Windows x64 zip (kernel + disk + source)
+  gridctl standalone-windows  GridOS.bat zip (double-click to run)
   gridctl run-legacy    boot with legacy IDE disk (older QEMU profiles)
   gridctl wipe          delete arcade disk (fresh frontier)
   gridctl hexdump       show FLYNGRID signature sector
@@ -136,6 +138,12 @@ case "$cmd" in
     ;;
   standalone|standalone-macos)
     make -C "$ROOT" standalone-macos
+    ;;
+  save-windows|save-windows-x64)
+    make -C "$ROOT" save-windows-x64
+    ;;
+  standalone-windows)
+    make -C "$ROOT" standalone-windows
     ;;
   run-legacy)
     make -C "$ROOT" run-legacy

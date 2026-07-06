@@ -69,7 +69,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge https-bridge save-macos-arm64 standalone-macos release-mac clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge https-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows clean
 
 all: $(TARGET)
 
@@ -250,6 +250,20 @@ release-mac: $(TARGET) $(DISK_IMAGE)
 	GRID_OS_VERSION=v6.5.1 ./tools/save_mac_silicon.sh
 	GRID_OS_VERSION=6.5.1 ./tools/build_standalone_mac.sh
 	@echo "Upload dist/* to GitHub release v6.5.1 with: gh release upload v6.5.1 dist/*"
+
+save-windows-x64: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/save_windows_x64.sh
+	./tools/save_windows_x64.sh
+
+standalone-windows: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/build_standalone_windows.sh
+	./tools/build_standalone_windows.sh
+
+release-windows: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/save_windows_x64.sh tools/build_standalone_windows.sh
+	GRID_OS_VERSION=v6.5.1 ./tools/save_windows_x64.sh
+	GRID_OS_VERSION=6.5.1 ./tools/build_standalone_windows.sh
+	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v6.5.1 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
 
 clean:
 	rm -rf build
