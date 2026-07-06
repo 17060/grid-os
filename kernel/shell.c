@@ -98,8 +98,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 6.5 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.5  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 6.5.1 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.5.1  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -152,7 +152,7 @@ static void cmd_help(void) {
     console_write_line("  net [status|ping <ip|host>]  Grid network (virtio-net)");
     console_write_line("  http get <host|ip> [port] <path>        HTTP/1.1 GET (keep-alive)");
     console_write_line("  http post <host|ip> [port] <path> <body>  HTTP/1.1 POST");
-    console_write_line("  irc connect <ip> <port> <nick>   Connect IRC session");
+    console_write_line("  irc connect <host|ip> <port> <nick>   Connect IRC session");
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
@@ -969,7 +969,7 @@ static void cmd_net(int argc, char *argv[]) {
     console_write_line("  net status        Show virtio-net + IP + packet counts");
     console_write_line("  net ping <ip|host>  Send ICMP echo (e.g. 10.0.2.2 or gateway)");
     console_write_line("  net poll          Drain the receive queue");
-    console_write_line("  irc connect <ip> <port> <nick>  Connect to IRC server");
+    console_write_line("  irc connect <host|ip> <port> <nick>  Connect to IRC server");
     console_write_line("  irc join <#chan>                Join channel");
     console_write_line("  irc say <#chan> <message>       Send PRIVMSG");
     console_write_line("  irc read                        Print queued messages");
@@ -1027,7 +1027,7 @@ static void irc_print_queue(void) {
 static void cmd_irc(int argc, char *argv[]) {
     if (argc >= 2 && equals(argv[1], "connect")) {
         if (argc < 5) {
-            console_write_line("Usage: irc connect <server-ip> <port> <nick>");
+            console_write_line("Usage: irc connect <host|ip> <port> <nick>");
             return;
         }
         uint16_t port = parse_port_str(argv[3]);
@@ -1144,7 +1144,7 @@ static void cmd_irc(int argc, char *argv[]) {
     }
 
     console_write_line("IRC commands:");
-    console_write_line("  irc connect <ip> <port> <nick>  Connect persistent session");
+    console_write_line("  irc connect <host|ip> <port> <nick>  Connect persistent session");
     console_write_line("  irc join <#chan>                Join a channel");
     console_write_line("  irc part <#chan>                Leave a channel");
     console_write_line("  irc say <#chan> <message>       Send chat message");
@@ -1420,7 +1420,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 6.5 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 6.5.1 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }

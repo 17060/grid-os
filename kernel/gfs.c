@@ -1,5 +1,6 @@
 #include "console.h"
 #include "disk.h"
+#include "dns.h"
 #include "gfs.h"
 
 #include <stddef.h>
@@ -366,6 +367,12 @@ int gfs_write_file(const char *path, const void *data, size_t size) {
 
         written += chunk;
         lba++;
+    }
+
+    if (path[0] == '/' && path[1] == 'e' && path[2] == 't' && path[3] == 'c' &&
+        path[4] == '/' && path[5] == 'h' && path[6] == 'o' && path[7] == 's' &&
+        path[8] == 't' && path[9] == 's' && path[10] == '\0') {
+        hosts_reload();
     }
 
     return store_inodes();

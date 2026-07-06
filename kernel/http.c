@@ -48,6 +48,43 @@ static int header_has_close(const uint8_t *buf, size_t len) {
     return 0;
 }
 
+static int parse_content_length(const uint8_t *buf, size_t len, size_t *out) {
+    for (size_t i = 0; i + 15 < len; ++i) {
+        if ((buf[i] == 'C' || buf[i] == 'c') &&
+            (buf[i + 1] == 'o' || buf[i + 1] == 'O') &&
+            (buf[i + 2] == 'n' || buf[i + 2] == 'N') &&
+            (buf[i + 3] == 't' || buf[i + 3] == 'T') &&
+            (buf[i + 4] == 'e' || buf[i + 4] == 'E') &&
+            (buf[i + 5] == 'n' || buf[i + 5] == 'N') &&
+            (buf[i + 6] == 't' || buf[i + 6] == 'T') &&
+            buf[i + 7] == '-' &&
+            (buf[i + 8] == 'L' || buf[i + 8] == 'l') &&
+            (buf[i + 9] == 'e' || buf[i + 9] == 'E') &&
+            (buf[i + 10] == 'n' || buf[i + 10] == 'N') &&
+            (buf[i + 11] == 'g' || buf[i + 11] == 'G') &&
+            (buf[i + 12] == 't' || buf[i + 12] == 'T') &&
+            (buf[i + 13] == 'h' || buf[i + 13] == 'H') &&
+            buf[i + 14] == ':') {
+            size_t j = i + 15;
+            while (j < len && (buf[j] == ' ' || buf[j] == '\t')) {
+                j++;
+            }
+            size_t val = 0;
+            int got = 0;
+            while (j < len && buf[j] >= '0' && buf[j] <= '9') {
+                val = val * 10u + (size_t)(buf[j] - '0');
+                got = 1;
+                j++;
+            }
+            if (got) {
+                *out = val;
+                return 0;
+            }
+        }
+    }
+    return -1;
+}
+
 static size_t scopy(char *dst, size_t cap, const char *src) {
     size_t i = 0;
     if (src) {
@@ -68,6 +105,31 @@ static size_t append(char *dst, size_t cap, size_t pos, const char *src) {
     return pos;
 }
 
+static void format_ip(uint32_t ip, char *buf, size_t cap) {
+    char tmp[16];
+    size_t pos = 0;
+
+    for (int part = 3; part >= 0; --part) {
+        uint32_t octet = (ip >> (part * 8)) & 0xFFu;
+        if (octet >= 100) {
+            tmp[pos++] = (char)('0' + (octet / 100));
+            octet %= 100;
+            tmp[pos++] = (char)('0' + (octet / 10));
+            tmp[pos++] = (char)('0' + (octet % 10));
+        } else if (octet >= 10) {
+            tmp[pos++] = (char)('0' + (octet / 10));
+            tmp[pos++] = (char)('0' + (octet % 10));
+        } else {
+            tmp[pos++] = (char)('0' + octet);
+        }
+        if (part > 0) {
+            tmp[pos++] = '.';
+        }
+    }
+    tmp[pos] = '\0';
+    scopy(buf, cap, tmp);
+}
+
 void http_close_idle(void) {
     if (g_http_pool.active) {
         tcp_close(&g_http_pool.conn);
@@ -75,16 +137,21 @@ void http_close_idle(void) {
     }
 }
 
-static int http_request(const char *method, uint32_t ip, uint16_t port, const char *path,
-                        const char *body, char *out, size_t cap) {
+static int http_request(const char *method, const char *host, uint32_t ip, uint16_t port,
+                        const char *path, const char *body, char *out, size_t cap) {
     tcp_conn_t *conn;
     char req[512];
+    char hostbuf[48];
     size_t n = 0;
     size_t total = 0;
+    size_t body_copied = 0;
+    size_t content_length = 0;
     int headers_done = 0;
+    int has_content_length = 0;
     size_t path_len;
     size_t body_len = 0;
     int saw_close = 0;
+    int body_complete = 0;
 
     if (!out || cap == 0 || !path || path[0] != '/' || !method) {
         return -1;
@@ -99,6 +166,11 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
     path_len = str_len(path);
     if (path_len + 96 + body_len >= sizeof(req)) {
         return -1;
+    }
+
+    if (!host || !host[0]) {
+        format_ip(ip, hostbuf, sizeof(hostbuf));
+        host = hostbuf;
     }
 
     out[0] = '\0';
@@ -123,7 +195,9 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
     n = scopy(req, sizeof(req), method);
     n = append(req, sizeof(req), n, " ");
     n = append(req, sizeof(req), n, path);
-    n = append(req, sizeof(req), n, " HTTP/1.1\r\nHost: grid\r\nConnection: keep-alive\r\n");
+    n = append(req, sizeof(req), n, " HTTP/1.1\r\nHost: ");
+    n = append(req, sizeof(req), n, host);
+    n = append(req, sizeof(req), n, "\r\nConnection: keep-alive\r\n");
     if (body_len > 0) {
         char clen[16];
         size_t cl = 0;
@@ -156,7 +230,7 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
         return -1;
     }
 
-    for (int tries = 0; tries < 300000 && !conn->error; ++tries) {
+    for (int tries = 0; tries < 300000 && !conn->error && !body_complete; ++tries) {
         net_poll();
 
         if (conn->rx_len > 0) {
@@ -170,6 +244,13 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
                             conn->rx_buf[j + 2] == '\r' && conn->rx_buf[j + 3] == '\n') {
                             if (header_has_close(conn->rx_buf, j + 4)) {
                                 saw_close = 1;
+                            }
+                            {
+                                size_t cl = 0;
+                                if (parse_content_length(conn->rx_buf, j + 4, &cl) == 0) {
+                                    content_length = cl;
+                                    has_content_length = 1;
+                                }
                             }
                             headers_done = 1;
                             i = j + 4;
@@ -187,9 +268,16 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
                     continue;
                 }
 
+                if (has_content_length && body_copied >= content_length) {
+                    body_complete = 1;
+                    break;
+                }
+
                 if (total + 1 >= cap) {
                     if (saw_close || conn->closed) {
                         http_close_idle();
+                    } else if (has_content_length && body_copied >= content_length) {
+                        body_complete = 1;
                     } else {
                         conn->rx_len = 0;
                     }
@@ -197,6 +285,7 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
                     return (int)total;
                 }
                 out[total++] = conn->rx_buf[i++];
+                body_copied++;
             }
 
             if (i > 0) {
@@ -208,6 +297,11 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
             }
         }
 
+        if (has_content_length && body_copied >= content_length) {
+            body_complete = 1;
+            break;
+        }
+
         if (conn->closed) {
             saw_close = 1;
             break;
@@ -217,6 +311,8 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
 
     if (saw_close || conn->closed || conn->error) {
         http_close_idle();
+    } else if (body_complete) {
+        /* Leave surplus bytes in rx_buf for the next keep-alive response. */
     } else {
         conn->rx_len = 0;
     }
@@ -228,12 +324,12 @@ static int http_request(const char *method, uint32_t ip, uint16_t port, const ch
 }
 
 int http_get(uint32_t ip, uint16_t port, const char *path, char *out, size_t cap) {
-    return http_request("GET", ip, port, path, 0, out, cap);
+    return http_request("GET", 0, ip, port, path, 0, out, cap);
 }
 
 int http_post(uint32_t ip, uint16_t port, const char *path, const char *body,
               char *out, size_t cap) {
-    return http_request("POST", ip, port, path, body ? body : "", out, cap);
+    return http_request("POST", 0, ip, port, path, body ? body : "", out, cap);
 }
 
 int http_get_host(const char *host, uint16_t port, const char *path, char *out, size_t cap) {
@@ -241,7 +337,7 @@ int http_get_host(const char *host, uint16_t port, const char *path, char *out, 
     if (net_resolve_host(host, &ip) != 0) {
         return -1;
     }
-    return http_get(ip, port, path, out, cap);
+    return http_request("GET", host, ip, port, path, 0, out, cap);
 }
 
 int http_post_host(const char *host, uint16_t port, const char *path, const char *body,
@@ -250,5 +346,5 @@ int http_post_host(const char *host, uint16_t port, const char *path, const char
     if (net_resolve_host(host, &ip) != 0) {
         return -1;
     }
-    return http_post(ip, port, path, body, out, cap);
+    return http_request("POST", host, ip, port, path, body, out, cap);
 }

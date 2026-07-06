@@ -20,6 +20,17 @@ import sys
 import urllib.error
 import urllib.request
 
+HOP_BY_HOP = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+}
+
 
 def upstream_request(raw: bytes, timeout: float) -> bytes:
     text = raw.decode("utf-8", errors="replace")
@@ -34,18 +45,24 @@ def upstream_request(raw: bytes, timeout: float) -> bytes:
     host = ""
     body_start = 0
     content_length = 0
+    forward_headers: list[tuple[str, str]] = []
     for i, line in enumerate(lines[1:], start=1):
         if line == "":
             body_start = i + 1
             break
         key, _, val = line.partition(":")
-        if key.strip().lower() == "host":
-            host = val.strip()
-        if key.strip().lower() == "content-length":
+        key_stripped = key.strip()
+        val_stripped = val.strip()
+        lk = key_stripped.lower()
+        if lk == "host":
+            host = val_stripped
+        if lk == "content-length":
             try:
-                content_length = int(val.strip())
+                content_length = int(val_stripped)
             except ValueError as exc:
                 raise ValueError("bad Content-Length") from exc
+        if lk not in HOP_BY_HOP and lk not in {"host", "content-length"}:
+            forward_headers.append((key_stripped, val_stripped))
 
     if not host:
         raise ValueError("missing Host header")
@@ -63,8 +80,10 @@ def upstream_request(raw: bytes, timeout: float) -> bytes:
 
     data = body.encode("utf-8") if body else None
     req = urllib.request.Request(url, data=data if method in {"POST", "PUT"} else None, method=method)
-    req.add_header("Host", host.split(":")[0])
-    req.add_header("User-Agent", "GridOS-HTTPS-Bridge/6.5")
+    req.add_header("Host", host)
+    req.add_header("User-Agent", "GridOS-HTTPS-Bridge/6.5.1")
+    for key, val in forward_headers:
+        req.add_header(key, val)
 
     ctx = ssl.create_default_context()
     try:
@@ -90,6 +109,7 @@ def upstream_request(raw: bytes, timeout: float) -> bytes:
 
 
 def handle_client(conn: socket.socket, timeout: float) -> None:
+    conn.settimeout(timeout)
     chunks: list[bytes] = []
     while True:
         part = conn.recv(4096)
@@ -117,7 +137,7 @@ def serve(host: str, port: int, timeout: float) -> None:
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((host, port))
     sock.listen(8)
-    print(f"Grid HTTPS bridge listening on {host}:{port} (Grid OS 6.5)", flush=True)
+    print(f"Grid HTTPS bridge listening on {host}:{port} (Grid OS 6.5.1)", flush=True)
     while True:
         conn, addr = sock.accept()
         with conn:
@@ -125,12 +145,13 @@ def serve(host: str, port: int, timeout: float) -> None:
                 handle_client(conn, timeout)
                 print(f"[tcp {addr[0]}:{addr[1]}] proxied OK", flush=True)
             except Exception as exc:  # noqa: BLE001
+                body = str(exc).encode("utf-8")
                 err = (
                     "HTTP/1.1 502 Bad Gateway\r\n"
                     "Content-Type: text/plain\r\n"
-                    f"Content-Length: {len(str(exc))}\r\n\r\n{exc}"
-                )
-                conn.sendall(err.encode("utf-8"))
+                    f"Content-Length: {len(body)}\r\n\r\n"
+                ).encode("utf-8") + body
+                conn.sendall(err)
                 print(f"[tcp {addr[0]}:{addr[1]}] error: {exc}", flush=True)
 
 

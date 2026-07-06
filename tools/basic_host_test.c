@@ -32,7 +32,7 @@ int net_resolve_host(const char *t, uint32_t *o) {
     if (t && t[0] == 'g' && t[1] == 'a') { if (o) *o = 0x0A000202u; return 0; }
     return net_parse_ip(t, o);
 }
-int net_ping(uint32_t ip)                    { (void)ip; return 1; }
+int net_ping(uint32_t ip)                    { (void)ip; return 0; }
 int net_present(void)                         { return 1; }
 
 /* ---- irc stubs ---- */

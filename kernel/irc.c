@@ -420,7 +420,7 @@ int irc_connect(const char *host_ip, uint16_t port, const char *nick) {
     if (g_irc.active) {
         irc_disconnect();
     }
-    if (net_parse_ip(host_ip, &g_irc.host_ip) != 0) {
+    if (net_resolve_host(host_ip, &g_irc.host_ip) != 0) {
         return -1;
     }
     if (!net_present()) {
@@ -438,8 +438,6 @@ int irc_connect(const char *host_ip, uint16_t port, const char *nick) {
     g_irc.echo_console = 0;
     g_irc.line_overflow = 0;
 
-    tcp_init();
-    net_set_tcp_input(tcp_input);
     if (tcp_connect(&g_irc.conn, g_irc.host_ip, port) != 0) {
         return -1;
     }

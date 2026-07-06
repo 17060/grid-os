@@ -221,24 +221,55 @@ void dns_input(uint32_t src_ip, const uint8_t *udp_payload, size_t len) {
     size_t i = 12;
     while (i < len && udp_payload[i] != 0) {
         if ((udp_payload[i] & 0xC0u) == 0xC0u) {
+            if (i + 2 > len) {
+                return;
+            }
             i += 2;
             break;
         }
-        i += 1 + udp_payload[i];
+        {
+            uint8_t lablen = udp_payload[i];
+            if (i + 1u + (size_t)lablen > len) {
+                return;
+            }
+            i += 1u + (size_t)lablen;
+        }
     }
-    if (i < len && udp_payload[i] == 0) {
+    if (i >= len) {
+        return;
+    }
+    if (udp_payload[i] == 0) {
         i++;
+    }
+    if (i + 4 > len) {
+        return;
     }
     i += 4;
 
     for (uint16_t a = 0; a < ancount && i + 10 < len; ++a) {
         if ((udp_payload[i] & 0xC0u) == 0xC0u) {
+            if (i + 2 > len) {
+                break;
+            }
             i += 2;
         } else {
             while (i < len && udp_payload[i] != 0) {
-                i += 1 + udp_payload[i];
+                if ((udp_payload[i] & 0xC0u) == 0xC0u) {
+                    if (i + 2 > len) {
+                        break;
+                    }
+                    i += 2;
+                    break;
+                }
+                {
+                    uint8_t lablen = udp_payload[i];
+                    if (i + 1u + (size_t)lablen > len) {
+                        break;
+                    }
+                    i += 1u + (size_t)lablen;
+                }
             }
-            if (i < len) {
+            if (i < len && udp_payload[i] == 0) {
                 i++;
             }
         }

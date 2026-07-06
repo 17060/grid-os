@@ -484,14 +484,16 @@ int net_ping(uint32_t ip) {
     memcpy8(frame, ip_hdr, 20);
     memcpy8(frame + 20, icmp, 8);
 
-    /* Resolve via ARP first: send ARP request, poll briefly, then send echo. */
+    /* Resolve gateway MAC when pinging the QEMU user-net gateway. */
     net_send_arp(ip);
-    for (int i = 0; i < 50; ++i) {
-        net_poll();
-        if (net.arp_replies > 0) {
-            break;
+    if (ip == NET_GATEWAY_IP) {
+        for (int i = 0; i < 50; ++i) {
+            net_poll();
+            if (net.gateway_resolved) {
+                break;
+            }
+            for (volatile int s = 0; s < 10000; ++s) { }
         }
-        for (volatile int s = 0; s < 10000; ++s) { }
     }
 
     /* We don't keep an ARP cache MAC per host yet, so broadcast the ICMP.
@@ -534,6 +536,9 @@ const uint8_t *net_resolve_gateway(void) {
 
 int net_send_ip(uint32_t dst_ip, uint8_t proto, const uint8_t *payload, size_t len) {
     if (!net.present) {
+        return -1;
+    }
+    if (len + 20u > NET_BUF_SIZE - NET_HDR_SIZE - 14u) {
         return -1;
     }
     const uint8_t *gw = net_resolve_gateway();
