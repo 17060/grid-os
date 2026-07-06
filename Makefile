@@ -69,7 +69,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge save-macos-arm64 standalone-macos clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-tcp test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge save-macos-arm64 standalone-macos clean
 
 all: $(TARGET)
 
@@ -161,9 +161,22 @@ run-legacy: $(TARGET) $(DISK_IMAGE)
 	$(QEMU) -kernel build/grid-os.elf -drive file=$(DISK_IMAGE),if=ide,format=raw \
 		$(QEMU_SERIAL) -no-reboot -no-shutdown
 
-test-host:
+test-host-basic:
 	@cc -std=c11 -Ikernel/include -O2 -o build/basic_host tools/basic_host_test.c kernel/basic.c
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
+	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
+	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.2'
+
+test-host-vault:
+	@cc -std=c11 -Ikernel/include -O2 -o build/vault_host tools/vault_host_test.c
+	@build/vault_host
+
+test-host-tcp:
+	@cc -std=c11 -Ikernel/include -O2 -o build/tcp_host tools/tcp_host_test.c kernel/tcp.c
+	@build/tcp_host
+
+test-host: test-host-basic test-host-vault test-host-tcp
 
 test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 	@$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

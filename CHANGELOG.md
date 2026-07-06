@@ -1,5 +1,13 @@
 # Grid OS — Changelog
 
+## 6.3 — Multi-TCP, vault migration, tests, hardening
+
+- **Multi-connection TCP** — up to 4 concurrent outbound TCP sessions with per-connection local ports and tuple-based dispatch (IRC + HTTP + AI + BTC can run together)
+- **Vault v5→v6 migration** — automatically loads legacy 2-sector v5 vaults, zero-fills the tail, re-checksums, and re-saves as v6
+- **Input hardening** — HTTP rejects overlong paths and oversized headers; IRC reports truncated lines; serial import validates DISC hex length and ISO genome byte pairs
+- **Host test suite** — `test-host-basic` (GridBASIC math, `:=`, trailing comma, status), `test-host-vault` (v5 migration, full vault, genome parse), `test-host-tcp` (dual-port dispatch, slot limit)
+- **Vault checksum validation** — compare against a zeroed checksum field so saved vaults actually validate on load
+
 ## 6.2 — Deep audit bug fixes
 
 - **TCP handler registration** — `tcp_init()` now registers `tcp_input` at boot, so HTTP/AI/BTC (not just IRC) actually receive inbound segments

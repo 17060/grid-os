@@ -6,8 +6,10 @@
 #include <stdint.h>
 
 #define TCP_WINDOW 4096u
+#define TCP_MAX_CONNECTIONS 4
 
-static tcp_conn_t *active_conn;
+static tcp_conn_t *conn_slots[TCP_MAX_CONNECTIONS];
+static uint16_t next_local_port = 0xC000u;
 
 static void put_u16_be(uint8_t *p, uint16_t v) {
     p[0] = (uint8_t)(v >> 8);
@@ -76,7 +78,6 @@ static void send_segment(tcp_conn_t *c, uint8_t flags, const uint8_t *data, size
     seg[12] = 0x50;  /* data offset = 5 (20 bytes) */
     seg[13] = flags;
     put_u16_be(seg + 14, TCP_WINDOW);
-    /* checksum at 16-17, written below */
     if (data && len) {
         for (size_t i = 0; i < len; ++i) {
             seg[20 + i] = data[i];
@@ -89,8 +90,52 @@ static void send_segment(tcp_conn_t *c, uint8_t flags, const uint8_t *data, size
     net_send_ip(c->remote_ip, 6, seg, 20 + len);
 }
 
+static int register_conn(tcp_conn_t *c) {
+    for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
+        if (conn_slots[i] == 0) {
+            conn_slots[i] = c;
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static void unregister_conn(tcp_conn_t *c) {
+    for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
+        if (conn_slots[i] == c) {
+            conn_slots[i] = 0;
+            return;
+        }
+    }
+}
+
+static tcp_conn_t *lookup_conn(uint32_t remote_ip, uint16_t remote_port, uint16_t local_port) {
+    for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
+        tcp_conn_t *c = conn_slots[i];
+        if (!c) {
+            continue;
+        }
+        if (c->local_port == local_port && c->remote_port == remote_port &&
+            c->remote_ip == remote_ip) {
+            return c;
+        }
+    }
+    return 0;
+}
+
+static uint16_t alloc_local_port(void) {
+    next_local_port++;
+    if (next_local_port < 0xC001u) {
+        next_local_port = 0xC001u;
+    }
+    return next_local_port;
+}
+
 void tcp_init(void) {
-    active_conn = 0;
+    for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
+        conn_slots[i] = 0;
+    }
+    next_local_port = 0xC000u;
     net_set_tcp_input(tcp_input);
 }
 
@@ -102,12 +147,16 @@ static uint32_t next_isn(void) {
 }
 
 int tcp_connect(tcp_conn_t *c, uint32_t ip, uint16_t port) {
-    if (!net_present()) {
+    if (!net_present() || !c) {
         return -1;
     }
+    if (register_conn(c) != 0) {
+        return -1;
+    }
+
     c->remote_ip = ip;
     c->remote_port = port;
-    c->local_port = 0xC001u;
+    c->local_port = alloc_local_port();
     c->tx_seq = next_isn();
     c->rx_seq = 0;
     c->established = 0;
@@ -115,33 +164,28 @@ int tcp_connect(tcp_conn_t *c, uint32_t ip, uint16_t port) {
     c->error = 0;
     c->rx_len = 0;
 
-    active_conn = c;
-
-    /* SYN */
     send_segment(c, TCP_SYN, 0, 0);
     c->tx_seq++;
 
-    /* Wait for SYN-ACK */
     for (int i = 0; i < 400; ++i) {
         net_poll();
         if (c->established) {
             return 0;
         }
         if (c->closed || c->error) {
-            active_conn = 0;
+            unregister_conn(c);
             return -1;
         }
         for (volatile int s = 0; s < 20000; ++s) { }
     }
-    active_conn = 0;
+    unregister_conn(c);
     return -1;
 }
 
 int tcp_send(tcp_conn_t *c, const void *data, size_t len) {
-    if (!c->established || c->closed) {
+    if (!c || !c->established || c->closed) {
         return -1;
     }
-    active_conn = c;
     const uint8_t *p = (const uint8_t *)data;
     size_t off = 0;
     while (off < len) {
@@ -152,7 +196,6 @@ int tcp_send(tcp_conn_t *c, const void *data, size_t len) {
         send_segment(c, TCP_PSH | TCP_ACK, p + off, chunk);
         c->tx_seq += (uint32_t)chunk;
         off += chunk;
-        /* drain ACKs so the device keeps moving */
         for (int s = 0; s < 50; ++s) {
             net_poll();
         }
@@ -161,10 +204,9 @@ int tcp_send(tcp_conn_t *c, const void *data, size_t len) {
 }
 
 int tcp_recv(tcp_conn_t *c, uint32_t timeout_loops) {
-    if (!c->established || c->closed) {
+    if (!c || !c->established || c->closed) {
         return -1;
     }
-    active_conn = c;
     if (c->rx_len > 0) {
         return (int)c->rx_len;
     }
@@ -179,39 +221,38 @@ int tcp_recv(tcp_conn_t *c, uint32_t timeout_loops) {
 }
 
 void tcp_close(tcp_conn_t *c) {
-    if (!c->established) {
-        active_conn = 0;
+    if (!c) {
         return;
     }
-    active_conn = c;
-    send_segment(c, TCP_FIN | TCP_ACK, 0, 0);
-    c->tx_seq++;
-    for (int i = 0; i < 100; ++i) {
-        net_poll();
-        if (c->closed) {
-            break;
+    if (c->established && !c->closed) {
+        send_segment(c, TCP_FIN | TCP_ACK, 0, 0);
+        c->tx_seq++;
+        for (int i = 0; i < 100; ++i) {
+            net_poll();
+            if (c->closed) {
+                break;
+            }
+            for (volatile int s = 0; s < 10000; ++s) { }
         }
-        for (volatile int s = 0; s < 10000; ++s) { }
     }
-    active_conn = 0;
+    unregister_conn(c);
 }
 
 void tcp_input(uint32_t src_ip, const uint8_t *pkt, size_t len) {
-    (void)src_ip;
-    tcp_conn_t *c = active_conn;
-    if (!c || len < 20) {
+    if (len < 20) {
         return;
     }
     uint16_t src_port = get_u16_be(pkt + 0);
     uint16_t dst_port = get_u16_be(pkt + 2);
+    tcp_conn_t *c = lookup_conn(src_ip, src_port, dst_port);
+    if (!c) {
+        return;
+    }
+
     uint32_t seq = get_u32_be(pkt + 4);
-    uint32_t ack = get_u32_be(pkt + 8);
     uint8_t data_off = (uint8_t)((pkt[12] >> 4) * 4);
     uint8_t flags = pkt[13];
     if (data_off < 20 || data_off > len) {
-        return;
-    }
-    if (dst_port != c->local_port || src_port != c->remote_port) {
         return;
     }
 
@@ -225,10 +266,8 @@ void tcp_input(uint32_t src_ip, const uint8_t *pkt, size_t len) {
     }
 
     if ((flags & TCP_SYN) && (flags & TCP_ACK)) {
-        /* SYN-ACK: confirm our SYN was acked (ack == isn+1) */
         c->rx_seq = seq + 1;
-        c->tx_seq = ack;  /* server tells us our next seq */
-        /* send ACK */
+        c->tx_seq = get_u32_be(pkt + 8);
         send_segment(c, TCP_ACK, 0, 0);
         c->established = 1;
         return;
@@ -236,7 +275,6 @@ void tcp_input(uint32_t src_ip, const uint8_t *pkt, size_t len) {
 
     if (flags & TCP_ACK) {
         if (data_len > 0) {
-            /* deliver */
             if (c->rx_seq == 0) {
                 c->rx_seq = seq;
             }

@@ -10,6 +10,8 @@
 #define TCP_PSH 0x08u
 #define TCP_ACK 0x10u
 
+#define TCP_MAX_CONNECTIONS 4
+
 typedef struct {
     uint32_t remote_ip;
     uint16_t remote_port;
