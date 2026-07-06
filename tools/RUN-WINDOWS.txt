@@ -1,0 +1,25 @@
+Grid OS — Windows x64 quick boot
+================================
+
+1. Install QEMU for Windows:
+     winget install SoftwareFreedomConservancy.QEMU
+   Or Chocolatey:  choco install qemu
+   Or Scoop:       scoop install qemu
+
+2. Unzip this folder and double-click:
+     GridOS.bat
+
+3. In GridBASIC IDE press Esc for the grid> shell.
+   Type  poweroff  to quit cleanly.
+
+Optional environment variables (cmd.exe):
+  set GRIDOS_MODE=hd      1920x1080 HDMI window
+  set GRIDOS_MODE=4k      3840x2160 HDMI window
+  set GRIDOS_HEADLESS=1   serial shell only (no GUI window)
+
+Host bridges (run in a separate terminal with Python 3):
+  python tools/gridai_bridge.py
+  python tools/gridbtc_bridge.py
+  python tools/gridhttps_bridge.py
+
+Read WINDOWS.md for full details.

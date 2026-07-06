@@ -52,3 +52,29 @@ jobs:
         with:
           name: grid-os-macos-v6.5.1
           path: dist/*
+
+  windows-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nasm gcc zip
+
+      - name: Build kernel and disk
+        run: |
+          make
+          make disk seed-disk
+
+      - name: Build Windows release bundles
+        run: make release-windows
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: grid-os-windows-v6.5.1
+          path: |
+            dist/GridOS-*-Windows-x64.zip
+            dist/grid-os-windows-x64-*.zip
