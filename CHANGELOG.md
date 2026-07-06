@@ -1,5 +1,13 @@
 # Grid OS — Changelog
 
+## 6.8 — Android (Termux) release bundles
+
+- **Android Termux launcher** — `GridOS-*-Android-Termux.sh` single-file boot (headless serial default)
+- **`grid-os-android-termux-*.zip`** — full source + prebuilt kernel/disk for on-device builds
+- **`docs/ANDROID_TERMUX.md`** — install, headless boot, Termux:X11 display, bridges
+- **`make release-termux`** / `gridctl standalone-termux` — build bundles on Linux CI
+- **CI** — `termux-release` job uploads Android artifacts
+
 ## 6.7 — Full advanced GridBASIC (Tier 1–3)
 
 ### Language (Tier 1)

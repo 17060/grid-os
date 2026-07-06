@@ -1,0 +1,28 @@
+Grid OS on Android (Termux) — quick start
+============================================
+
+1. Install Termux from F-Droid (not Play Store build).
+
+2. Install QEMU in Termux:
+   pkg update && pkg install qemu-system-x86
+
+3. Download GridOS-*-Android-Termux.sh to ~/storage/downloads (or wget in Termux).
+
+4. Run:
+   cp ~/storage/downloads/GridOS-*-Android-Termux.sh ~/
+   chmod +x ~/GridOS-*-Android-Termux.sh
+   ~/GridOS-*-Android-Termux.sh
+
+5. At the grid> prompt:
+   basic ide          GridBASIC IDE (Esc for commands)
+   basic run /programs/hello.bas
+   grid> poweroff     quit
+
+Headless is the default (serial console). For a window, install Termux:X11 and:
+   GRIDOS_HEADLESS=0 ./GridOS-*-Android-Termux.sh
+
+Host bridges (run on a PC on the same Wi‑Fi, guest uses 10.0.2.2):
+   make ai-bridge     port 8766
+   make btc-bridge    port 8767
+
+See docs/ANDROID_TERMUX.md for full details.

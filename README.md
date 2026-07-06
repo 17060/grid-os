@@ -8,7 +8,13 @@
 
 **Windows?** See [docs/WINDOWS.md](docs/WINDOWS.md) — download `GridOS-*-Windows-x64.zip` or `make release-windows` to build bundles.
 
+**Android (Termux)?** See [docs/ANDROID_TERMUX.md](docs/ANDROID_TERMUX.md) — download `GridOS-*-Android-Termux.sh` or `make release-termux`.
+
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 6.8
+
+Android (Termux) release — `GridOS-*-Android-Termux.sh` headless launcher, full source zip, `docs/ANDROID_TERMUX.md`, `make release-termux`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 6.7
 
@@ -45,6 +51,7 @@ Patch release — audit fixes for PING, vault migration, HTTP keep-alive, DNS, I
 - **Sample programs** — `/programs/netdemo.bas`, `/programs/vaultdemo.bas`
 - **`make release-mac`** — Mac Silicon tarball + standalone `.command` launcher
 - **`make release-windows`** — Windows x64 zip + `GridOS.bat` double-click launcher
+- **`make release-termux`** — Android Termux `.sh` launcher + source zip
 
 ## What's new in 6.3
 
