@@ -2,6 +2,8 @@
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
+**Full encyclopedia (examples for every command & keyword):** [docs/wiki/README.md](wiki/README.md)
+
 ## Shell commands (`grid>`)
 
 ### Identity & system

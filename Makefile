@@ -71,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -85,6 +85,9 @@ disk: $(DISK_IMAGE)
 
 seed-disk: $(TARGET) $(DISK_IMAGE)
 	python3 tools/gfs_seed.py
+
+sync-basic-wiki:
+	python3 tools/sync_basic_wiki.py
 
 PROG ?= gridsh
 install-prog: $(DISK_IMAGE) build/$(PROG).elf

@@ -2,6 +2,8 @@
 
 Grid OS includes a lightweight package manager for Flynn disk (`GFS2FLYN`). Packages bundle GridBASIC **IDE modules** — special-purpose scripts you can run from the shell, IDE, or GridBASIC.
 
+**Encyclopedia:** [wiki/README.md](wiki/README.md) · [Package modules](wiki/package-modules.md)
+
 ## Quick start
 
 At the `grid>` prompt:

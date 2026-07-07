@@ -16,6 +16,8 @@
 
 **Packages & IDE modules?** See [docs/PACKAGES.md](docs/PACKAGES.md) — `pkg`, GridLink `.gridpkg`, `:mod run`.
 
+**GridBASIC IDE encyclopedia?** See [docs/wiki/README.md](docs/wiki/README.md) — full command/keyword reference with examples.
+
 ## What's new in 7.1
 
 Grid package manager — `pkg list|mods|install|remove|recv`, seeded **flynn-ide-tools** with **25 IDE modules**, shell `basic mod run|load`, IDE `:mods`/`:mod run|load`, `GRID.PKG.*` bindings, host `tools/gridpkg_build.py`. See [docs/PACKAGES.md](docs/PACKAGES.md) and [CHANGELOG.md](CHANGELOG.md).

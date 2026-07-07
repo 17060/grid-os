@@ -377,6 +377,8 @@ def main() -> int:
     block = write_gfs_c_block()
     patch_gfs_c(block)
     print(f"Generated {len(MODULES)} modules + MANIFEST + gfs.c seeds")
+    import subprocess
+    subprocess.run([sys.executable, str(ROOT / "tools" / "sync_basic_wiki.py")], check=False)
     return 0
 
 

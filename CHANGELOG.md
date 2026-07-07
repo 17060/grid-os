@@ -15,6 +15,8 @@
 
 ### Docs
 - **`docs/PACKAGES.md`** — manifest format, install, GridLink push
+- **`docs/wiki/`** — GridBASIC IDE encyclopedia (commands, keywords, `GRID.*`, modules, examples)
+- **`tools/sync_basic_wiki.py`** — refresh auto-synced wiki sections from MANIFEST / version
 
 ## 7.0 — Elite GridBASIC + platform expansion
 
