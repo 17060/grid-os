@@ -1,5 +1,15 @@
 # Grid OS — Changelog
 
+## 7.1.2 — GridBASIC TCP server from IDE
+
+### Grid TCP server
+- **`kernel/server.c`** — line-based TCP server API (listen, accept, poll, reply, built-in dispatch)
+- **`tcp_listen` / `tcp_accept`** — inbound connections on listening ports
+- **`GRID.SERVER.*`** — GridBASIC bindings for custom command servers with built-in **PING/HELP/STATUS/ECHO/QUIT**
+- **IDE** — `:server new|listen|status|stop|help` loads an editable template with sample custom keywords
+- **Shell** — `server listen|status|stop|help`
+- **`flynn-net-tools`** — new **`grid-server`** module
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI

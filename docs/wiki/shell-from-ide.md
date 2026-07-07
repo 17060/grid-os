@@ -199,6 +199,22 @@ Esc irc read
 
 ---
 
+## TCP server
+
+### `:server new` · `:server listen <port>` · `:server status` · `:server stop [port]`
+
+Same as shell **`server listen|status|stop|help`**. `:server new` loads a GridBASIC template with custom keywords (**TIME**, **VER**, **HELLO** *name*) plus built-in **PING/HELP/STATUS/ECHO/QUIT**.
+
+**Example:**
+
+```text
+Esc :server new
+Esc :run
+Esc server status
+```
+
+---
+
 ## Portal & serial
 
 ### `portal` · `portal export` · `portal import` · `portal recv` · `portal pkg` · `portal duel`

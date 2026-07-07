@@ -20,6 +20,7 @@
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
+#include "server.h"
 #include "speaker.h"
 #include "storage.h"
 #include "timer.h"
@@ -1115,6 +1116,35 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         if (port == 0) { return make_str("error: bad port"); }
         return make_str(irc_connect(argv[0].s, port, argv[2].s) == 0 ? "ok" : "error: connect failed");
     }
+    if (strequal(name, "GRID.SERVER.ACCEPT$")) {
+        char b[16];
+        int slot = grid_server_accept();
+        if (slot <= 0) { return make_str(""); }
+        num_to_string((num_t)slot * BASIC_SCALE, b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.SERVER.CMD$")) {
+        if (!(argc >= 1)) { return make_str(""); }
+        int slot = (int)(to_num(&argv[0]) / BASIC_SCALE);
+        char line[GRID_SERVER_LINE_MAX];
+        if (grid_server_read_line(slot, line, sizeof(line)) <= 0) { return make_str(""); }
+        return make_str(line);
+    }
+    if (strequal(name, "GRID.SERVER.STATUS$")) {
+        char b[192];
+        grid_server_format_status(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.SERVER.LISTEN$")) {
+        if (!(argc >= 1)) { return make_str("error: need port"); }
+        uint16_t port = (uint16_t)(to_num(&argv[0]) / BASIC_SCALE);
+        return make_str(grid_server_listen(port) == 0 ? "ok" : "error: listen failed");
+    }
+    if (strequal(name, "GRID.SERVER.BUILTIN$")) {
+        if (!(argc >= 2 && argv[1].is_str)) { return make_str("0"); }
+        int slot = (int)(to_num(&argv[0]) / BASIC_SCALE);
+        return make_str(grid_server_dispatch_builtin(slot, argv[1].s) ? "1" : "0");
+    }
     if (strequal(name, "GRID.BTC.CALL$")) {
         if (!(argc >= 1 && argv[0].is_str)) { return make_str(""); }
         const char *params = (argc >= 2 && argv[1].is_str) ? argv[1].s : "";
@@ -1239,6 +1269,9 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.AI.MODELS$") ||
         strequal(name, "GRID.IRC.READ$") || strequal(name, "GRID.IRC.STATUS$") ||
         strequal(name, "GRID.IRC.CONNECT$") ||
+        strequal(name, "GRID.SERVER.ACCEPT$") || strequal(name, "GRID.SERVER.CMD$") ||
+        strequal(name, "GRID.SERVER.STATUS$") || strequal(name, "GRID.SERVER.LISTEN$") ||
+        strequal(name, "GRID.SERVER.BUILTIN$") ||
         strequal(name, "GRID.BTC.CALL$") || strequal(name, "GRID.BTC.INFO$") ||
         strequal(name, "GRID.BTC.BLOCKCHAIN$") || strequal(name, "GRID.BTC.NETWORK$") ||
         strequal(name, "GRID.BTC.WALLET$") || strequal(name, "GRID.BTC.BALANCE$") ||
@@ -1833,6 +1866,62 @@ static void exec_grid_stmt(void) {
     if (strequal(name, "GRID.IRC.QUIT")) { irc_quit("GridBASIC"); return; }
     if (strequal(name, "GRID.IRC.POLL")) { irc_poll(); return; }
     if (strequal(name, "GRID.IRC.DISCONNECT")) { irc_disconnect(); return; }
+    if (strequal(name, "GRID.SERVER.LISTEN")) {
+        value_t portv = eval_expr();
+        uint16_t port = (uint16_t)(to_num(&portv) / BASIC_SCALE);
+        if (grid_server_listen(port) != 0) { set_error("GRID.SERVER.LISTEN failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.SERVER.POLL")) { grid_server_poll(); return; }
+    if (strequal(name, "GRID.SERVER.WRITE")) {
+        value_t slotv = eval_expr();
+        if (!match_op(',')) { set_error("GRID.SERVER.WRITE: need slot,text"); return; }
+        value_t text = eval_expr();
+        char tb[GRID_SERVER_LINE_MAX];
+        int slot = (int)(to_num(&slotv) / BASIC_SCALE);
+        if (text.is_str) { size_t j=0; while(text.s[j]&&j<sizeof(tb)-1){tb[j]=text.s[j];j++;} tb[j]='\0'; }
+        else { num_to_string(text.n, tb, sizeof(tb)); }
+        if (grid_server_write(slot, tb) != 0) { set_error("GRID.SERVER.WRITE failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.SERVER.REPLY")) {
+        value_t slotv = eval_expr();
+        if (!match_op(',')) { set_error("GRID.SERVER.REPLY: need slot,text"); return; }
+        value_t text = eval_expr();
+        char tb[GRID_SERVER_LINE_MAX];
+        int slot = (int)(to_num(&slotv) / BASIC_SCALE);
+        if (text.is_str) { size_t j=0; while(text.s[j]&&j<sizeof(tb)-1){tb[j]=text.s[j];j++;} tb[j]='\0'; }
+        else { num_to_string(text.n, tb, sizeof(tb)); }
+        if (grid_server_reply(slot, tb) != 0) { set_error("GRID.SERVER.REPLY failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.SERVER.CLOSE")) {
+        value_t slotv = eval_expr();
+        grid_server_close((int)(to_num(&slotv) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.SERVER.STOP")) {
+        if (cur()->type == T_NEWLINE || cur()->type == T_EOF ||
+            (cur()->type == T_OP && cur()->op == ':')) {
+            grid_server_stop_all();
+            return;
+        }
+        value_t portv = eval_expr();
+        uint16_t port = (uint16_t)(to_num(&portv) / BASIC_SCALE);
+        grid_server_unlisten(port);
+        return;
+    }
+    if (strequal(name, "GRID.SERVER.BUILTIN")) {
+        value_t slotv = eval_expr();
+        if (!match_op(',')) { set_error("GRID.SERVER.BUILTIN: need slot,cmd"); return; }
+        value_t cmdv = eval_expr();
+        char cb[GRID_SERVER_LINE_MAX];
+        int slot = (int)(to_num(&slotv) / BASIC_SCALE);
+        if (cmdv.is_str) { size_t j=0; while(cmdv.s[j]&&j<sizeof(cb)-1){cb[j]=cmdv.s[j];j++;} cb[j]='\0'; }
+        else { num_to_string(cmdv.n, cb, sizeof(cb)); }
+        (void)grid_server_dispatch_builtin(slot, cb);
+        return;
+    }
     if (strequal(name, "GRID.BTC.SEND")) {
         value_t addr = eval_expr(); if (!match_op(',')) { set_error("BTC.SEND: need ,"); return; }
         value_t amt = eval_expr();
@@ -2845,7 +2934,7 @@ void basic_print_version(void) {
     console_write_line("GRID.PLOT/LINE/CIRCLE BEEP NOTE DISC.* RECOGNIZER.* PORTAL.*");
     console_write_line("GRID.DNS.* GRID.JOBS.* GRID.ISO.* GRID.WORKSHOP.SPAWN");
     console_write_line("GRID.VAULT.* GRID.GFS.* GRID.HTTP.* GRID.LOCATE GRID.INKEY$");
-    console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
+    console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.SERVER.* / GRID.BTC.* bindings");
 }
 
 /* keep append_char referenced */

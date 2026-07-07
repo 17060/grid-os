@@ -8,6 +8,10 @@
 #define TCP_WINDOW 4096u
 
 static tcp_conn_t *conn_slots[TCP_MAX_CONNECTIONS];
+static tcp_conn_t pending_slots[TCP_MAX_PENDING];
+static int pending_used[TCP_MAX_PENDING];
+static uint16_t listen_ports[TCP_MAX_LISTENERS];
+static int listen_count = 0;
 static uint16_t next_local_port = 0xC000u;
 
 static void put_u16_be(uint8_t *p, uint16_t v) {
@@ -122,6 +126,108 @@ static tcp_conn_t *lookup_conn(uint32_t remote_ip, uint16_t remote_port, uint16_
     return 0;
 }
 
+static int listen_port_active(uint16_t port) {
+    for (int i = 0; i < listen_count; ++i) {
+        if (listen_ports[i] == port) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int alloc_pending(tcp_conn_t **out) {
+    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
+        if (!pending_used[i]) {
+            pending_used[i] = 1;
+            for (size_t k = 0; k < sizeof(pending_slots[i]); ++k) {
+                ((uint8_t *)&pending_slots[i])[k] = 0;
+            }
+            *out = &pending_slots[i];
+            return 0;
+        }
+    }
+    return -1;
+}
+
+static void free_pending(tcp_conn_t *c) {
+    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
+        if (&pending_slots[i] == c) {
+            pending_used[i] = 0;
+            return;
+        }
+    }
+}
+
+static int accept_pending(tcp_conn_t *p) {
+    if (!p || !p->established || p->closed) {
+        return -1;
+    }
+    if (register_conn(p) != 0) {
+        return -1;
+    }
+    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
+        if (&pending_slots[i] == p) {
+            pending_used[i] = 0;
+            return 0;
+        }
+    }
+    return 0;
+}
+
+static void reject_syn(uint32_t src_ip, uint16_t src_port, uint16_t dst_port,
+                       uint32_t seq, uint32_t ack) {
+    tcp_conn_t tmp;
+    for (size_t k = 0; k < sizeof(tmp); ++k) {
+        ((uint8_t *)&tmp)[k] = 0;
+    }
+    tmp.remote_ip = src_ip;
+    tmp.remote_port = src_port;
+    tmp.local_port = dst_port;
+    tmp.tx_seq = ack;
+    tmp.rx_seq = seq + 1;
+    tmp.established = 1;
+    send_segment(&tmp, TCP_RST | TCP_ACK, 0, 0);
+}
+
+static uint32_t isn_seed = 0x47424C45u;
+
+static uint32_t next_isn(void) {
+    isn_seed = isn_seed * 1103515245u + 12345u;
+    return isn_seed;
+}
+
+static int handle_listen_syn(uint32_t src_ip, const uint8_t *pkt, size_t len) {
+    (void)len;
+    uint16_t src_port = get_u16_be(pkt + 0);
+    uint16_t dst_port = get_u16_be(pkt + 2);
+    uint32_t seq = get_u32_be(pkt + 4);
+    uint32_t ack = get_u32_be(pkt + 8);
+
+    if (!listen_port_active(dst_port)) {
+        return 0;
+    }
+
+    tcp_conn_t *c = 0;
+    if (alloc_pending(&c) != 0) {
+        reject_syn(src_ip, src_port, dst_port, seq, ack);
+        return -1;
+    }
+
+    c->remote_ip = src_ip;
+    c->remote_port = src_port;
+    c->local_port = dst_port;
+    c->tx_seq = next_isn();
+    c->rx_seq = seq + 1;
+    c->established = 1;
+    c->closed = 0;
+    c->error = 0;
+    c->rx_len = 0;
+
+    send_segment(c, TCP_SYN | TCP_ACK, 0, 0);
+    c->tx_seq++;
+    return 0;
+}
+
 static uint16_t alloc_local_port(void) {
     next_local_port++;
     if (next_local_port < 0xC001u) {
@@ -134,15 +240,63 @@ void tcp_init(void) {
     for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
         conn_slots[i] = 0;
     }
+    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
+        pending_used[i] = 0;
+    }
+    listen_count = 0;
     next_local_port = 0xC000u;
     net_set_tcp_input(tcp_input);
 }
 
-static uint32_t isn_seed = 0x47424C45u;
+int tcp_listen(uint16_t port) {
+    if (port == 0) {
+        return -1;
+    }
+    if (listen_port_active(port)) {
+        return 0;
+    }
+    if (listen_count >= TCP_MAX_LISTENERS) {
+        return -1;
+    }
+    listen_ports[listen_count++] = port;
+    return 0;
+}
 
-static uint32_t next_isn(void) {
-    isn_seed = isn_seed * 1103515245u + 12345u;
-    return isn_seed;
+void tcp_unlisten(uint16_t port) {
+    for (int i = 0; i < listen_count; ++i) {
+        if (listen_ports[i] == port) {
+            for (int j = i + 1; j < listen_count; ++j) {
+                listen_ports[j - 1] = listen_ports[j];
+            }
+            listen_count--;
+            return;
+        }
+    }
+}
+
+int tcp_listen_active(uint16_t port) {
+    return listen_port_active(port);
+}
+
+int tcp_accept(tcp_conn_t **out) {
+    if (!out) {
+        return -1;
+    }
+    *out = 0;
+    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
+        tcp_conn_t *p = &pending_slots[i];
+        if (!pending_used[i] || !p->established || p->closed) {
+            continue;
+        }
+        if (accept_pending(p) != 0) {
+            tcp_close(p);
+            free_pending(p);
+            return -1;
+        }
+        *out = p;
+        return 0;
+    }
+    return -1;
 }
 
 int tcp_connect(tcp_conn_t *c, uint32_t ip, uint16_t port) {
@@ -202,6 +356,34 @@ int tcp_send(tcp_conn_t *c, const void *data, size_t len) {
     return 0;
 }
 
+size_t tcp_peek(const tcp_conn_t *c, void *out, size_t cap) {
+    if (!c || !out || cap == 0) {
+        return 0;
+    }
+    size_t n = c->rx_len < cap ? c->rx_len : cap;
+    for (size_t i = 0; i < n; ++i) {
+        ((uint8_t *)out)[i] = c->rx_buf[i];
+    }
+    return n;
+}
+
+size_t tcp_consume(tcp_conn_t *c, size_t n) {
+    if (!c || n == 0) {
+        return 0;
+    }
+    if (n > c->rx_len) {
+        n = c->rx_len;
+    }
+    if (n == 0) {
+        return 0;
+    }
+    for (size_t i = n; i < c->rx_len; ++i) {
+        c->rx_buf[i - n] = c->rx_buf[i];
+    }
+    c->rx_len -= n;
+    return n;
+}
+
 int tcp_recv(tcp_conn_t *c, uint32_t timeout_loops) {
     if (!c || !c->established || c->closed) {
         return -1;
@@ -243,14 +425,17 @@ void tcp_input(uint32_t src_ip, const uint8_t *pkt, size_t len) {
     }
     uint16_t src_port = get_u16_be(pkt + 0);
     uint16_t dst_port = get_u16_be(pkt + 2);
+    uint8_t flags = pkt[13];
     tcp_conn_t *c = lookup_conn(src_ip, src_port, dst_port);
     if (!c) {
+        if ((flags & TCP_SYN) && !(flags & TCP_ACK)) {
+            (void)handle_listen_syn(src_ip, pkt, len);
+        }
         return;
     }
 
     uint32_t seq = get_u32_be(pkt + 4);
     uint8_t data_off = (uint8_t)((pkt[12] >> 4) * 4);
-    uint8_t flags = pkt[13];
     if (data_off < 20 || data_off > len) {
         return;
     }

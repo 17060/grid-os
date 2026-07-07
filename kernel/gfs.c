@@ -948,11 +948,13 @@ int gfs_seed_defaults(void) {
              "file=/packages/flynn-net-tools/modules/http-probe.bas\n"
              "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
              "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
+             "file=/packages/flynn-net-tools/modules/grid-server.bas\n"
              "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
              "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
              "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
+             "mod=grid-server:/packages/flynn-net-tools/modules/grid-server.bas:TCP line server with custom keywords:network\n"
              "\n",
-             599);
+             765);
 
     seed_one("/packages/flynn-net-tools/modules/http-probe.bas",
              "10 REM Flynn net-tools: http-probe\n"
@@ -982,6 +984,18 @@ int gfs_seed_defaults(void) {
              "60 END\n"
              "\n",
              212);
+
+    seed_one("/packages/flynn-net-tools/modules/grid-server.bas",
+             "10 REM Flynn net-tools: grid-server\n"
+             "20 PRINT \"=== Grid TCP Server ===\"\n"
+             "30 PRINT \"IDE: Esc :server new — edit template\"\n"
+             "40 PRINT \"Shell: server listen 7700\"\n"
+             "50 PRINT GRID.SERVER.STATUS$\n"
+             "60 PRINT \"Built-ins: PING HELP STATUS ECHO QUIT\"\n"
+             "70 PRINT \"Custom keywords: TIME VER HELLO <name> in template\"\n"
+             "80 END\n"
+             "\n",
+             305);
 
     return 0;
 }

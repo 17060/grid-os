@@ -40,7 +40,7 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/program.o build/serial.o build/disk.o build/pci.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
-               build/timer.o build/link.o build/net.o build/dns.o build/tcp.o build/irc.o build/http.o \
+               build/timer.o build/link.o build/net.o build/dns.o build/tcp.o build/server.o build/irc.o build/http.o \
                build/basic.o build/basic_pp.o build/basic_ide.o build/speaker.o \
                build/graphics.o build/recognizer.o build/disc.o build/pkg.o \
                build/ai.o build/btc.o build/shell.o $(USER_EMBED)

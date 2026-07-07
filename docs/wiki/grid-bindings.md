@@ -262,6 +262,49 @@ Host: `make ai-bridge` (TCP :8766)
 
 ---
 
+## Grid TCP server
+
+Line-oriented TCP server for custom command protocols from GridBASIC.
+
+| Binding | Role |
+|---------|------|
+| `GRID.SERVER.LISTEN` port | Start listening (stmt) |
+| `GRID.SERVER.LISTEN$(port)` | Returns `"ok"` or error |
+| `GRID.SERVER.POLL` | Poll network + read client lines |
+| `GRID.SERVER.ACCEPT$()` | Accept client; returns slot number string |
+| `GRID.SERVER.CMD$(slot)` | Next complete line from client |
+| `GRID.SERVER.WRITE` slot, text | Raw write (no CRLF) |
+| `GRID.SERVER.REPLY` slot, text | Write line with CRLF |
+| `GRID.SERVER.BUILTIN` slot, line | Dispatch PING/HELP/STATUS/ECHO/QUIT |
+| `GRID.SERVER.BUILTIN$(slot, line$)` | `"1"` if handled, else `"0"` |
+| `GRID.SERVER.CLOSE` slot | Close client |
+| `GRID.SERVER.STOP` [port] | Unlisten port or stop all |
+| `GRID.SERVER.STATUS$` | Listener + client summary |
+
+Built-in commands: **PING**, **HELP**, **STATUS**, **ECHO** *text*, **QUIT** / **EXIT**.
+
+**IDE:** `Esc` `:server new` loads an editable template with sample custom keywords (**TIME**, **VER**, **HELLO** *name*).
+
+**Shell:** `server listen 7700`, `server status`, `server stop`
+
+**Sample:**
+
+```basic
+10 R$ = GRID.SERVER.LISTEN$(7700)
+20 WHILE 1
+30   GRID.SERVER.POLL
+40   S = VAL(GRID.SERVER.ACCEPT$())
+50   IF S > 0 THEN GOSUB SERVE
+60 WEND
+70 SERVE:
+80   CMD$ = GRID.SERVER.CMD$(S)
+90   IF CMD$ = "TIME" THEN GRID.SERVER.REPLY S, STR$(GRID.TIME): RETURN
+100  IF GRID.SERVER.BUILTIN$(S, CMD$) = "0" THEN GRID.SERVER.REPLY S, "502 unknown"
+110  RETURN
+```
+
+---
+
 ## Grid BTC
 
 | Binding | RPC / role |

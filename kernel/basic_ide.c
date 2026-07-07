@@ -7,6 +7,7 @@
 #include "irc.h"
 #include "pkg.h"
 #include "security.h"
+#include "server.h"
 #include "shell.h"
 #include "storage.h"
 
@@ -1165,6 +1166,112 @@ static int handle_irc_ide(ide_t *e, const char *line) {
     return 1;
 }
 
+static void load_server_template(ide_t *e) {
+    static const char *lines[] = {
+        "10 REM Grid TCP server — edit PORT and custom keywords below",
+        "20 REM Built-ins: PING HELP STATUS ECHO <text> QUIT",
+        "30 REM Custom: TIME VER HELLO <name>",
+        "40 PORT = 7700",
+        "50 R$ = GRID.SERVER.LISTEN$(PORT)",
+        "60 IF R$ <> \"ok\" THEN PRINT \"listen failed: \"; R$: END",
+        "70 PRINT \"Server listening on port \"; PORT",
+        "80 WHILE 1",
+        "90   GRID.SERVER.POLL",
+        "100  S = VAL(GRID.SERVER.ACCEPT$())",
+        "110  IF S > 0 THEN GOSUB HANDLE",
+        "120 WEND",
+        "130 HANDLE:",
+        "140 CMD$ = GRID.SERVER.CMD$(S)",
+        "150 IF CMD$ = \"\" THEN RETURN",
+        "160 IF CMD$ = \"TIME\" THEN GRID.SERVER.REPLY S, \"TIME \" + STR$(GRID.TIME): RETURN",
+        "170 IF CMD$ = \"VER\" THEN GRID.SERVER.REPLY S, \"Grid OS Flynn server\": RETURN",
+        "180 IF LEFT$(CMD$, 6) = \"HELLO \" THEN GRID.SERVER.REPLY S, \"HI \" + MID$(CMD$, 7): RETURN",
+        "190 IF GRID.SERVER.BUILTIN$(S, CMD$) = \"0\" THEN GRID.SERVER.REPLY S, \"502 unknown command\"",
+        "200 RETURN",
+        0
+    };
+    e->n = 0;
+    e->row = 0;
+    e->col = 0;
+    e->top = 0;
+    for (int i = 0; lines[i]; ++i) {
+        if (i >= IDE_MAX_LINES) {
+            break;
+        }
+        scopy(e->lines[i], IDE_LINE_LEN, lines[i]);
+        e->n = i + 1;
+    }
+    if (e->n == 0) {
+        e->n = 1;
+        e->lines[0][0] = '\0';
+    }
+    e->path[0] = '\0';
+    e->dirty = 1;
+    ide_redraw(e);
+    ide_status(e, "server template loaded — edit keywords, then :run", GRID_COL_OK);
+}
+
+static int handle_server_ide(ide_t *e, const char *line) {
+    char buf[96];
+    scopy(buf, sizeof(buf), line);
+    if (starts_with(buf, "server ")) {
+        scopy(buf, sizeof(buf), line + 7);
+    } else if (sequal(buf, "server")) {
+        ide_status(e, "server new|listen|status|stop|help", GRID_COL_WARN);
+        return 1;
+    }
+    char *argv[4];
+    int argc = split_words(buf, argv, 4);
+    if (argc == 0 || sequal(argv[0], "help")) {
+        ide_status(e, "server new|listen <port>|status|stop [port]", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "new")) {
+        load_server_template(e);
+        return 1;
+    }
+    if (sequal(argv[0], "listen")) {
+        if (argc < 2) {
+            ide_status(e, "usage: server listen <port>", GRID_COL_ERROR);
+            return 1;
+        }
+        uint16_t port = ide_parse_port(argv[1]);
+        if (port == 0 || grid_server_listen(port) != 0) {
+            ide_status(e, "server listen failed", GRID_COL_ERROR);
+            return 1;
+        }
+        char msg[48];
+        scopy(msg, sizeof(msg), "listening on port ");
+        scopy(msg + 17, sizeof(msg) - 17, argv[1]);
+        ide_status(e, msg, GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "status")) {
+        grid_server_poll();
+        char st[192];
+        grid_server_format_status(st, sizeof(st));
+        ide_status(e, st, GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "stop")) {
+        if (argc >= 2) {
+            uint16_t port = ide_parse_port(argv[1]);
+            if (port == 0) {
+                ide_status(e, "usage: server stop <port>", GRID_COL_ERROR);
+                return 1;
+            }
+            grid_server_unlisten(port);
+            ide_status(e, "server stopped listening", GRID_COL_DIM);
+            return 1;
+        }
+        grid_server_stop_all();
+        ide_status(e, "all servers stopped", GRID_COL_DIM);
+        return 1;
+    }
+    ide_status(e, "server new|listen|status|stop|help", GRID_COL_WARN);
+    return 1;
+}
+
 static void cmd_help(void) {
     console_clear();
     console_set_color(GRID_COL_TITLE);
@@ -1186,6 +1293,7 @@ static void cmd_help(void) {
     console_write_line("  :mod run <name>       run installed IDE module");
     console_write_line("  :mod load <name>      load module into editor");
     console_write_line("  :pkg list|mods|run|load  package manager from IDE");
+    console_write_line("  :server new|listen|status|stop  TCP command server");
     console_write_line("  :find <text>          search buffer from cursor");
     console_write_line("  :goto <line>          jump to line number");
     console_write_line("  :samples              list /programs/*.bas samples");
@@ -1214,6 +1322,7 @@ static void cmd_help(void) {
     console_write_line("  GRID.CLS  GRID.COLOR n  GRID.LOG msg  GRID.WAIT ticks");
     console_write_line("  GRID.SPAWN \"name\"  GRID.TIME  GRID.PING(ip$)  GRID.CAP(n)");
     console_write_line("  GRID.AI.ASK$/PRINT   GRID.IRC.*   GRID.BTC.*");
+    console_write_line("  GRID.SERVER.*        TCP line server (listen/accept/reply)");
     console_write_line("  GRID.PKG.LIST$/MODS$   GRID.PKG.INSTALL/REMOVE/MOD.RUN/RECV");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
@@ -1261,6 +1370,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "btc ")) { run_shell_line(e, cmd); return 1; }
     if (sequal(cmd, "vault") || starts_with(cmd, "vault ")) { return handle_vault_ide(e, cmd); }
     if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) { return handle_irc_ide(e, cmd); }
+    if (sequal(cmd, "server") || starts_with(cmd, "server ")) { return handle_server_ide(e, cmd); }
     return 0;
 }
 
@@ -1302,6 +1412,10 @@ static void handle_command(ide_t *e) {
     }
     if (sequal(cmd, "vault") || starts_with(cmd, "vault ")) {
         handle_vault_ide(e, cmd);
+        return;
+    }
+    if (sequal(cmd, "server") || starts_with(cmd, "server ")) {
+        handle_server_ide(e, cmd);
         return;
     }
 

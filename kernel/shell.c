@@ -20,6 +20,7 @@
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
+#include "server.h"
 #include "storage.h"
 #include "timer.h"
 
@@ -158,6 +159,8 @@ static void cmd_help(void) {
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
+    console_write_line("  server listen <port>            Start TCP line server");
+    console_write_line("  server status|stop [port]|help  Manage Grid TCP server");
     console_write_line("  pkg [list|mods|info|install|remove|recv]  Grid package manager");
     console_write_line("  basic [ide|run|compile|samples|mod|help]  GridBASIC language + IDE");
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
@@ -1183,6 +1186,74 @@ static void cmd_irc(int argc, char *argv[]) {
     console_write_line("  irc <ip> <port> <nick> <#ch>    Legacy one-shot listen");
 }
 
+static void cmd_server(int argc, char *argv[]) {
+    if (argc >= 2 && equals(argv[1], "listen")) {
+        if (argc < 3) {
+            console_write_line("Usage: server listen <port>");
+            return;
+        }
+        uint16_t port = parse_port_str(argv[2]);
+        if (port == 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Bad port.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (grid_server_listen(port) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Server: listen failed (no network?).");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write("Server: listening on port ");
+        console_write_line(argv[2]);
+        console_set_color(GRID_COL_DEFAULT);
+        console_write_line("Run a GridBASIC server loop (:server new in IDE) or poll with GRID.SERVER.*");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "status")) {
+        grid_server_poll();
+        char st[192];
+        grid_server_format_status(st, sizeof(st));
+        console_write_line(st);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "stop")) {
+        if (argc >= 3) {
+            uint16_t port = parse_port_str(argv[2]);
+            if (port == 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Bad port.");
+                console_set_color(GRID_COL_DEFAULT);
+                return;
+            }
+            grid_server_unlisten(port);
+            console_write_line("Server: stopped listening on port.");
+            return;
+        }
+        grid_server_stop_all();
+        console_write_line("Server: all listeners and clients stopped.");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "help")) {
+        console_write_line("Server commands:");
+        console_write_line("  server listen <port>   Open TCP listen port for GridBASIC server");
+        console_write_line("  server status          Show listeners and client count");
+        console_write_line("  server stop [port]     Unlisten port or stop everything");
+        console_write_line("  server help            This help");
+        console_write_line("IDE: Esc :server new      Load editable server template with custom keywords");
+        return;
+    }
+
+    console_write_line("Server commands:");
+    console_write_line("  server listen <port>   Open TCP listen port for GridBASIC server");
+    console_write_line("  server status          Show listeners and client count");
+    console_write_line("  server stop [port]     Unlisten port or stop everything");
+    console_write_line("  server help            This help");
+    console_write_line("IDE: Esc :server new      Load editable server template with custom keywords");
+}
+
 static int path_ends_with(const char *path, const char *suffix) {
     size_t plen = 0;
     size_t slen = 0;
@@ -2008,6 +2079,8 @@ void shell_dispatch_line(char *line) {
         cmd_http(argc, argv);
     } else if (equals(argv[0], "irc")) {
         cmd_irc(argc, argv);
+    } else if (equals(argv[0], "server")) {
+        cmd_server(argc, argv);
     } else if (equals(argv[0], "pkg")) {
         cmd_pkg(argc, argv);
     } else if (equals(argv[0], "basic")) {

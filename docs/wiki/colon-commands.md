@@ -257,6 +257,33 @@ Esc irc say #grid End of line.
 
 ---
 
+## TCP server (`:server …` or `server …`)
+
+| Syntax | Description |
+|--------|-------------|
+| `:server new` | Load editable TCP server template into the buffer |
+| `:server listen <port>` | Open listen port (same as shell `server listen`) |
+| `:server status` | Show listeners and connected clients |
+| `:server stop [port]` | Unlisten one port or stop all |
+| `:server help` | Command summary |
+
+After `:server new`, edit custom keywords in the template (e.g. **TIME**, **VER**, **HELLO** *name*), then `:run`.
+
+Built-in client commands handled by `GRID.SERVER.BUILTIN`: **PING**, **HELP**, **STATUS**, **ECHO** *text*, **QUIT**.
+
+**Example:**
+
+```text
+Esc :server new
+Esc :run
+```
+
+From another host (QEMU user net): `nc -v 127.0.0.1 7700` then type `PING` or `HELLO Flynn`.
+
+**See also:** [grid-bindings.md](grid-bindings.md) — `GRID.SERVER.*`
+
+---
+
 ## Bitcoin (`btc …`)
 
 | Syntax | Description |
