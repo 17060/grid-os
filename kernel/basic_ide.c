@@ -593,13 +593,13 @@ static void cmd_compile(ide_t *e, const char *name) {
 
 static void cmd_tutorial_steps(ide_t *e) {
     static const char *hints[] = {
-        "=== GridBASIC interactive tutorial ===",
+        "=== Welcome to Flynn's workshop ===",
         "Step 1: PRINT shows text — try :run on a PRINT line",
         "Step 2: Esc grid> tutorial runs /programs/tutorial.bas",
         "Step 3: :load subdemo — SUB/FUNCTION/CALL demo",
         "Step 4: :compile hello — writes bytecode .grid on Flynn disk",
         "Step 5: GRID.PLOT/LINE/CIRCLE draw on the VGA grid",
-        "End of line — type :samples for more programs"
+        "Help us build the Grid — :samples   End of line is optional."
     };
     for (int i = 0; i < 7; ++i) {
         console_clear();
@@ -1400,6 +1400,12 @@ static void cmd_help(void) {
     console_set_color(GRID_COL_TITLE);
     console_write_line("=== GridBASIC IDE help ===");
     console_set_color(GRID_COL_DEFAULT);
+    console_write_line("Flynn's workshop — editor, language, and path into Grid OS");
+    console_write_line("on one screen. Esc opens :run :save :mods or the grid> shell.");
+    console_write_line("");
+    console_write_line("Use the machine. Shape the machine. Help us build the Grid.");
+    console_write_line("End of line is optional.");
+    console_write_line("");
     console_write_line("Editing:");
     console_write_line("  Arrows / Home / End   move cursor");
     console_write_line("  Enter                 split line (new line below)");
@@ -1449,6 +1455,10 @@ static void cmd_help(void) {
     console_write_line("  GRID.SERVER.*        TCP line server (listen/accept/reply)");
     console_write_line("  GRID.IRCSERVER.*     IRC server (JOIN/PRIVMSG/!bot commands)");
     console_write_line("  GRID.PKG.LIST$/MODS$   GRID.PKG.INSTALL/REMOVE/MOD.RUN/RECV");
+    console_write_line("");
+    console_set_color(GRID_COL_DIM);
+    console_write_line("Docs: github.com/17060/grid-os — docs/INTRODUCTION.md");
+    console_write_line("Everyone invited to expand Grid OS. Fork. PR. Welcome.");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
     console_set_color(GRID_COL_DEFAULT);

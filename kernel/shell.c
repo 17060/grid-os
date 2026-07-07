@@ -103,10 +103,10 @@ static int parse_args(char *line, char *argv[], int max_args) {
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("=\\========== GRID OS 7.1.1 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1.1  |  CODE THE GRID");
-    console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
+    console_write_line(" FLYNN'S GRID  |  OS + IDE as one workshop  |  END OF LINE");
+    console_write_line("=/======= use the machine · shape the machine =====\\=");
     console_set_color(GRID_COL_DIM);
-    console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
+    console_write_line(" Esc :help  :tutorial  :mods  —  Help us build the Grid.");
     console_set_color(GRID_COL_DEFAULT);
     if (gfs_present()) {
         console_set_color(GRID_COL_OK);
@@ -126,6 +126,12 @@ static void print_banner(void) {
 }
 
 static void cmd_help(void) {
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("=== Flynn Grid shell ===");
+    console_set_color(GRID_COL_DEFAULT);
+    console_write_line("The grid> prompt — Flynn shell behind the IDE.");
+    console_write_line("Programs, disk, network, packages. Shape the frontier.");
+    console_write_line("");
     console_write_line("Commands:");
     console_write_line("  help              Show this help");
     console_write_line("  disc              Display your identity disc");
@@ -175,6 +181,10 @@ static void cmd_help(void) {
     console_write_line("  vault             Persistent grid storage");
     console_write_line("  serial            COM1 serial I/O");
     console_write_line("  about             About Grid OS");
+    console_write_line("");
+    console_set_color(GRID_COL_DIM);
+    console_write_line("Help us build the Grid — github.com/17060/grid-os");
+    console_set_color(GRID_COL_DEFAULT);
 }
 
 static void cmd_serial(int argc, char *argv[]) {
@@ -1824,9 +1834,11 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 7.1.1 — Flynn's real digital frontier.");
-    console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
-    console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
+    console_write_line("Grid OS 7.1.1 — Flynn's digital frontier.");
+    console_write_line("A bootable OS and GridBASIC IDE mixed into one workshop.");
+    console_write_line("Not CLU's perfect system — open, creative, user-first.");
+    console_write_line("We are not a daily driver yet. We are a call for builders.");
+    console_write_line("Help us build the Grid. End of line is optional.");
 }
 
 static void cmd_portal(int argc, char *argv[]) {
@@ -2219,7 +2231,7 @@ void shell_run(void) {
     console_set_serial_mirror(1);
     print_banner();
     if (shell_run_autoexec()) {
-        basic_ide_set_boot_hint("Welcome — Esc: grid> tutorial | :load tutorial | :samples");
+        basic_ide_set_boot_hint("Esc :help — workshop + OS as one. :tutorial | Help us build the Grid.");
     }
     basic_ide(0);
 }
