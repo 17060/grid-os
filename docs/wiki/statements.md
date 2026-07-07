@@ -125,6 +125,8 @@ Assignment works with or without **`LET`**.
 
 ### `SELECT CASE` / `CASE` / `END SELECT`
 
+**Description:** Match `expr` against comma-separated value lists per `CASE`. **`CASE ELSE`** catches unmatched values. There is **no** `CASE a .. b` range syntax — list values explicitly (`CASE 2, 3`).
+
 **Example:**
 
 ```basic
@@ -222,6 +224,8 @@ Nested `SELECT` blocks are supported.
 ```
 
 ### `ON ERROR GOTO` · `RESUME`
+
+**Description:** `ON ERROR GOTO line` jumps to the error handler. **`RESUME`** resumes at the faulting statement; **`RESUME NEXT`** continues after it; **`RESUME line`** jumps to a line number.
 
 **Example:**
 

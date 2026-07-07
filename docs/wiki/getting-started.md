@@ -64,9 +64,9 @@ Esc :tutorial          → interactive walkthrough
 grid> tutorial         → run /programs/tutorial.bas (from shell)
 ```
 
-## Package modules (25 tools)
+## Package modules (30 tools)
 
-Special-purpose scripts shipped in **`flynn-ide-tools`**:
+Special-purpose scripts in **`flynn-ide-tools`** (25) and **`flynn-net-tools`** (5):
 
 ```text
 Esc :mods              → list all modules

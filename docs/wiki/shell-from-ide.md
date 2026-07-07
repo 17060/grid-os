@@ -137,6 +137,8 @@ Also available at the main `grid>` prompt when not in the IDE.
 
 ### `vault save` · `vault sync` · `vault export` · `vault import`
 
+**Note:** From the IDE Esc prompt, only **`vault list|get|put|sync`** are wired — use export/import/save from the main shell or GridBASIC `GRID.VAULT.*`.
+
 **Example:**
 
 ```text
@@ -188,6 +190,10 @@ Esc vault get motd
 
 ### `irc read` · `irc status` · `irc nick <name>` · `irc quit` · `irc disconnect`
 
+### `irc <ip> <port> <nick> <#chan>`
+
+**Description:** One-shot join + listen (legacy shortcut).
+
 **Example:**
 
 ```text
@@ -203,7 +209,9 @@ Esc irc read
 
 ### `:server new` · `:server listen <port>` · `:server status` · `:server stop [port]`
 
-Same as shell **`server listen|status|stop|help`**. `:server new` loads a GridBASIC template with custom keywords (**TIME**, **VER**, **HELLO** *name*) plus built-in **PING/HELP/STATUS/ECHO/QUIT**.
+### `server listen <port>` · `server status` · `server stop [port]` · `server help`
+
+**Note:** `:server new` is **IDE-only** (loads GridBASIC template). Shell has listen/status/stop/help only.
 
 **Example:**
 
@@ -219,7 +227,9 @@ Esc server status
 
 ### `:ircserver new` · `:ircserver listen <port>` · `:ircserver status` · `:ircserver stop [port]`
 
-Same as shell **`ircserver listen|status|stop|help`**. `:ircserver new` loads a GridBASIC IRC bot template. Edit **`!commands`** in channel `#grid` (**!time**, **!help**, **!motd**, **!ver**).
+### `:ircserver new` · `:ircserver listen <port>` · `:ircserver status` · `:ircserver stop [port]`
+
+Same as shell **`ircserver listen|status|stop|help`**. `:ircserver new` is **IDE-only** — loads a GridBASIC IRC bot template. Edit **`!commands`** in channel `#grid` (**!time**, **!help**, **!motd**, **!ver**).
 
 **Example:**
 
@@ -248,9 +258,11 @@ In `#grid`, type `!time` or `!help`.
 
 ## Package manager
 
-### `pkg list` · `pkg mods` · `pkg info <name>`
+### `pkg` · `pkg help` · `pkg list` · `pkg mods` · `pkg info <name>`
 
 ### `pkg install <manifest-path>` · `pkg remove <name>` · `pkg recv`
+
+Bare **`pkg`** prints full package-manager help.
 
 **Example:**
 
@@ -266,13 +278,15 @@ See [Package modules](package-modules.md).
 
 ## GridBASIC shell
 
-### `basic` · `basic ide [file]` · `basic run <file>`
+### `basic` (bare) · `basic ide [file]` · `basic run <file>`
 
 ### `basic mod run <name>` · `basic mod load <name>`
 
 ### `basic compile <in.bas> <out.grid>` · `basic samples` · `basic help`
 
 ### `tutorial` · `samples` · `basictest`
+
+Bare **`basic`** opens the GridBASIC IDE (same as boot default).
 
 **Examples:**
 
@@ -287,9 +301,11 @@ Esc basictest
 
 ## Grid AI
 
-### `ai` · `ai ask <prompt>` · `ai explain [line]` · `ai fix <code>` · `ai complete <code>` · `ai models`
+### `ai` · `ai ask <prompt>` · `ai explain [line]` · `ai fix <code>` · `ai complete [code]` · `ai models`
 
-**Example:** `Esc ai ask How do I use FOR loops?`
+**Description:** Bare **`ai <prompt>`** (without `ask`) sends a prompt directly.
+
+**Example:** `Esc ai ask How do I use FOR loops?` · `Esc ai What is DIM?`
 
 Host: `make ai-bridge`
 
@@ -297,9 +313,13 @@ Host: `make ai-bridge`
 
 ## Grid BTC
 
-### `btc` · `btc help` · `btc status` · `btc info` · `btc balance` · `btc send <addr> <amt>` · `btc call <method> [json]`
+### `btc` · `btc help` · `btc status` · `btc info` · `btc balance`
 
-**Example:** `Esc btc status`
+### `btc blockchain` · `btc network` · `btc wallet` · `btc address [label]`
+
+### `btc tx <txid>` · `btc block <hash>` · `btc send <addr> <amt>` · `btc call <method> [json]` · `btc stop`
+
+**Example:** `Esc btc status` · `Esc btc balance`
 
 Host: `make btc-bridge`
 

@@ -19,6 +19,28 @@ WIKI_MODULES = ROOT / "docs" / "wiki" / "package-modules.md"
 BASIC_C = ROOT / "kernel" / "basic.c"
 
 
+def parse_mod_line(rest: str) -> tuple[str, str, str, str] | None:
+    """Parse mod=name:path:description:category — description may contain ':'."""
+    first = rest.find(":")
+    if first <= 0:
+        return None
+    second = rest.find(":", first + 1)
+    if second < 0:
+        return None
+    name = rest[:first]
+    path = rest[first + 1 : second]
+    if not path.startswith("/"):
+        return None
+    last = rest.rfind(":")
+    if last > second:
+        desc = rest[second + 1 : last]
+        category = rest[last + 1 :]
+    else:
+        desc = rest[second + 1 :]
+        category = "general"
+    return name, path, desc, category
+
+
 def parse_manifest(path: Path) -> tuple[str, str, str, list[tuple[str, str, str, str]]]:
     name = version = desc = ""
     mods: list[tuple[str, str, str, str]] = []
@@ -27,14 +49,13 @@ def parse_manifest(path: Path) -> tuple[str, str, str, list[tuple[str, str, str,
         if line.startswith("name="):
             name = line[5:]
         elif line.startswith("version="):
-            version = line[5:]
+            version = line[8:]
         elif line.startswith("desc="):
             desc = line[5:]
         elif line.startswith("mod="):
-            parts = line[4:].split(":")
-            if len(parts) >= 3:
-                category = parts[3] if len(parts) >= 4 else "general"
-                mods.append((parts[0], parts[1], parts[2], category))
+            parsed = parse_mod_line(line[4:])
+            if parsed:
+                mods.append(parsed)
     return name, version, desc, mods
 
 

@@ -33,7 +33,7 @@ Seeded packages:
 | Package | Modules | Focus |
 |---------|---------|-------|
 | `flynn-ide-tools` v2.1 | 25 | Disc, grid, vault, patrol, IDE cheatsheets |
-| `flynn-net-tools` v1.0 | 3 | HTTP probe, IRC helper, HTTPS bridge docs |
+| `flynn-net-tools` v1.0 | 5 | HTTP probe, IRC client/server helpers, TCP server, bridges |
 
 ## Compile and run bytecode
 

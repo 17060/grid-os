@@ -36,7 +36,7 @@ GridBASIC runs a **preprocessor** before interpret or compile. Directives start 
 
 ## `#INCLUDE "path"`
 
-**Description:** Insert contents of a GFS file before parsing. Path is Flynn disk path (e.g. `/programs/shared.bas`). Nested includes up to depth 4.
+**Description:** Insert contents of a GFS file before parsing. Path is Flynn disk path (e.g. `/programs/shared.bas`). Nested includes up to depth **4**. Missing or unreadable files are **silently skipped** (no error).
 
 **Example — `/programs/config.bas`:**
 

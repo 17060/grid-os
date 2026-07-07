@@ -41,6 +41,7 @@
 ### Introduction & community
 - **`docs/INTRODUCTION.md`** — who the GridBASIC IDE is for, why it's fun/useful, potential, open invitation to contributors
 - **Same voice in-product** — boot banner, IDE `:help`, shell `about`, autoexec welcome, boot hint
+- **Wiki encyclopedia** — colon commands, GRID bindings, shell, statements, modules synced to 7.1.x IDE
 
 ### P2/P3 audit follow-up
 - **`pkg_parse_mod_line`** — last-colon category split; descriptions may contain `:`

@@ -64,7 +64,8 @@ OS status string.
 |---------|------|---------|
 | `GRID.WHOAMI$` | fn | `PRINT GRID.WHOAMI$` |
 | `GRID.CAPS$` | fn | Capability bitmask (decimal string) |
-| `GRID.CAP(n)` | fn | `IF GRID.CAP(1) THEN PRINT "ok"` |
+| `GRID.CAP(n)` | fn | Test capability bit *n* |
+| `GRID.CAP()` | fn | Shorthand — true if `CAP_READ_GRID` granted |
 | `GRID.DISC.STATUS$` | fn | Disc summary line |
 | `GRID.DISC.ENTITY$` | fn | User / Program |
 | `GRID.DISC.LEVEL` | fn | Disc level (numeric) |
@@ -190,11 +191,12 @@ OS status string.
 | Binding | Example |
 |---------|---------|
 | `GRID.PKG.LIST$` | Installed package names |
-| `GRID.PKG.MODS$` | IDE module names |
-| `GRID.PKG.INSTALL` path$ | Register MANIFEST |
-| `GRID.PKG.REMOVE` name$ | Uninstall package |
+| `GRID.PKG.MODS$` | IDE module names (comma-separated) |
+| `GRID.PKG.MOD.LIST$` | Alias for `GRID.PKG.MODS$` |
+| `GRID.PKG.INSTALL` path$ | Register MANIFEST (**STORAGE** cap) |
+| `GRID.PKG.REMOVE` name$ | Uninstall package (**STORAGE** cap) |
 | `GRID.PKG.MOD.RUN` name$ | Run IDE module |
-| `GRID.PKG.RECV` | Receive PKG on COM1 |
+| `GRID.PKG.RECV` | Receive PKG on COM1 (**STORAGE** cap) |
 
 **Sample:**
 
@@ -235,8 +237,9 @@ Host: `make ai-bridge` (TCP :8766)
 **Sample:**
 
 ```basic
-10 PRINT GRID.AI.ASK$("What is PRINT?", "EXPLAIN")
-20 END
+10 PRINT GRID.AI.EXPLAIN$("What does PRINT do?")
+20 GRID.AI.PRINT "Explain DIM", "EXPLAIN"
+30 END
 ```
 
 ---
