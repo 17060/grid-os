@@ -1556,29 +1556,48 @@ static void handle_command(ide_t *e) {
 
 int basic_ide(const char *path) {
     shell_set_in_basic_ide(1);
+    ide.n = 1;
+    ide.lines[0][0] = '\0';
     ide.row = 0;
     ide.col = 0;
     ide.top = 0;
     ide.dirty = 0;
+    ide.path[0] = '\0';
     ide.status[0] = '\0';
     ide.status_attr = GRID_COL_DIM;
-    if (path && path[0]) {
-        if (load_path_into(&ide, path) != 0) {
-            ide.n = 1;
-            ide.lines[0][0] = '\0';
-            ide.path[0] = '\0';
-            scopy(ide.status, sizeof(ide.status), "IDE: load failed — file not found");
-            ide.status_attr = GRID_COL_ERROR;
-        }
-    } else {
-        ide.n = 1;
-        ide.lines[0][0] = '\0';
-        ide.path[0] = '\0';
-    }
     if (g_boot_hint[0]) {
         scopy(ide.status, sizeof(ide.status), g_boot_hint);
         ide.status_attr = GRID_COL_OK;
         g_boot_hint[0] = '\0';
+    }
+    if (path && path[0]) {
+        char buf[8192];
+        size_t got = 0;
+        if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) == 0) {
+            buf[got] = '\0';
+            size_t i = 0;
+            int row = 0;
+            size_t col = 0;
+            while (buf[i] && row < IDE_MAX_LINES) {
+                char c = buf[i++];
+                if (c == '\n') {
+                    row++;
+                    col = 0;
+                    if (row < IDE_MAX_LINES) {
+                        ide.lines[row][0] = '\0';
+                    }
+                } else if (c == '\r') {
+                } else if (col + 1 < IDE_LINE_LEN) {
+                    ide.lines[row][col++] = c;
+                    ide.lines[row][col] = '\0';
+                }
+            }
+            ide.n = row + 1;
+            scopy(ide.path, sizeof(ide.path), path);
+        } else {
+            scopy(ide.status, sizeof(ide.status), "IDE: load failed — file not found");
+            ide.status_attr = GRID_COL_ERROR;
+        }
     }
 
     int running = 1;
