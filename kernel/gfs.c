@@ -949,12 +949,14 @@ int gfs_seed_defaults(void) {
              "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
              "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
              "file=/packages/flynn-net-tools/modules/grid-server.bas\n"
+             "file=/packages/flynn-net-tools/modules/irc-server.bas\n"
              "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
              "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
              "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
              "mod=grid-server:/packages/flynn-net-tools/modules/grid-server.bas:TCP line server with custom keywords:network\n"
+             "mod=irc-server:/packages/flynn-net-tools/modules/irc-server.bas:Flynn IRC server with !bot commands:network\n"
              "\n",
-             765);
+             927);
 
     seed_one("/packages/flynn-net-tools/modules/http-probe.bas",
              "10 REM Flynn net-tools: http-probe\n"
@@ -996,6 +998,18 @@ int gfs_seed_defaults(void) {
              "80 END\n"
              "\n",
              305);
+
+    seed_one("/packages/flynn-net-tools/modules/irc-server.bas",
+             "10 REM Flynn net-tools: irc-server\n"
+             "20 PRINT \"=== Flynn IRC Server ===\"\n"
+             "30 PRINT \"IDE: Esc :ircserver new — edit !commands\"\n"
+             "40 PRINT \"Shell: ircserver listen 6667\"\n"
+             "50 PRINT GRID.IRCSERVER.STATUS$\n"
+             "60 PRINT \"Connect: irc connect localhost 6667 nick\"\n"
+             "70 PRINT \"Join #grid and try !time !help !motd !ver\"\n"
+             "80 END\n"
+             "\n",
+             309);
 
     return 0;
 }

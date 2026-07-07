@@ -299,6 +299,30 @@ int tcp_accept(tcp_conn_t **out) {
     return -1;
 }
 
+int tcp_accept_port(tcp_conn_t **out, uint16_t local_port) {
+    if (!out || local_port == 0) {
+        return -1;
+    }
+    *out = 0;
+    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
+        tcp_conn_t *p = &pending_slots[i];
+        if (!pending_used[i] || !p->established || p->closed) {
+            continue;
+        }
+        if (p->local_port != local_port) {
+            continue;
+        }
+        if (accept_pending(p) != 0) {
+            tcp_close(p);
+            free_pending(p);
+            return -1;
+        }
+        *out = p;
+        return 0;
+    }
+    return -1;
+}
+
 int tcp_connect(tcp_conn_t *c, uint32_t ip, uint16_t port) {
     if (!net_present() || !c) {
         return -1;

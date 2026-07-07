@@ -11,6 +11,7 @@
 #include "ide.h"
 #include "iso.h"
 #include "irc.h"
+#include "irc_server.h"
 #include "link.h"
 #include "log.h"
 #include "net.h"
@@ -161,6 +162,8 @@ static void cmd_help(void) {
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
     console_write_line("  server listen <port>            Start TCP line server");
     console_write_line("  server status|stop [port]|help  Manage Grid TCP server");
+    console_write_line("  ircserver listen <port>         Start Flynn IRC server (port 6667)");
+    console_write_line("  ircserver status|stop [port]    Manage IRC server");
     console_write_line("  pkg [list|mods|info|install|remove|recv]  Grid package manager");
     console_write_line("  basic [ide|run|compile|samples|mod|help]  GridBASIC language + IDE");
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
@@ -1254,6 +1257,75 @@ static void cmd_server(int argc, char *argv[]) {
     console_write_line("IDE: Esc :server new      Load editable server template with custom keywords");
 }
 
+static void cmd_ircserver(int argc, char *argv[]) {
+    if (argc >= 2 && equals(argv[1], "listen")) {
+        if (argc < 3) {
+            console_write_line("Usage: ircserver listen <port>");
+            return;
+        }
+        uint16_t port = parse_port_str(argv[2]);
+        if (port == 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Bad port.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (grid_irc_server_listen(port) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC server: listen failed (no network?).");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write("IRC server: listening on port ");
+        console_write_line(argv[2]);
+        console_set_color(GRID_COL_DEFAULT);
+        console_write_line("IDE: Esc :ircserver new — load bot with !time !help !motd !ver");
+        console_write_line("Connect with: irc connect localhost <port> <nick>");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "status")) {
+        grid_irc_server_poll();
+        char st[192];
+        grid_irc_server_format_status(st, sizeof(st));
+        console_write_line(st);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "stop")) {
+        if (argc >= 3) {
+            uint16_t port = parse_port_str(argv[2]);
+            if (port == 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Bad port.");
+                console_set_color(GRID_COL_DEFAULT);
+                return;
+            }
+            grid_irc_server_unlisten(port);
+            console_write_line("IRC server: stopped listening on port.");
+            return;
+        }
+        grid_irc_server_stop_all();
+        console_write_line("IRC server: all listeners and clients stopped.");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "help")) {
+        console_write_line("IRC server commands:");
+        console_write_line("  ircserver listen <port>   Open IRC listen port (6667 typical)");
+        console_write_line("  ircserver status          Show listeners and client count");
+        console_write_line("  ircserver stop [port]     Unlisten port or stop everything");
+        console_write_line("  ircserver help            This help");
+        console_write_line("IDE: Esc :ircserver new     Load IRC bot template (!commands in #grid)");
+        return;
+    }
+
+    console_write_line("IRC server commands:");
+    console_write_line("  ircserver listen <port>   Open IRC listen port (6667 typical)");
+    console_write_line("  ircserver status          Show listeners and client count");
+    console_write_line("  ircserver stop [port]     Unlisten port or stop everything");
+    console_write_line("  ircserver help            This help");
+    console_write_line("IDE: Esc :ircserver new     Load IRC bot template (!commands in #grid)");
+}
+
 static int path_ends_with(const char *path, const char *suffix) {
     size_t plen = 0;
     size_t slen = 0;
@@ -2081,6 +2153,8 @@ void shell_dispatch_line(char *line) {
         cmd_irc(argc, argv);
     } else if (equals(argv[0], "server")) {
         cmd_server(argc, argv);
+    } else if (equals(argv[0], "ircserver")) {
+        cmd_ircserver(argc, argv);
     } else if (equals(argv[0], "pkg")) {
         cmd_pkg(argc, argv);
     } else if (equals(argv[0], "basic")) {

@@ -284,6 +284,31 @@ From another host (QEMU user net): `nc -v 127.0.0.1 7700` then type `PING` or `H
 
 ---
 
+## IRC server (`:ircserver …` or `ircserver …`)
+
+| Syntax | Description |
+|--------|-------------|
+| `:ircserver new` | Load editable IRC bot template (`!time`, `!help`, `!motd`, `!ver`) |
+| `:ircserver listen <port>` | Open IRC listen port (6667 typical) |
+| `:ircserver status` | Show listeners and connected clients |
+| `:ircserver stop [port]` | Unlisten or stop all |
+| `:ircserver help` | Command summary |
+
+Real IRC clients can connect. Channel **`!commands`** are handled by your GridBASIC bot; normal chat is relayed.
+
+**Example:**
+
+```text
+Esc :ircserver new
+Esc :run
+```
+
+In another session: `irc connect localhost 6667 flynn`, `irc join #grid`, then type `!help`.
+
+**See also:** [grid-bindings.md](grid-bindings.md) — `GRID.IRCSERVER.*`
+
+---
+
 ## Bitcoin (`btc …`)
 
 | Syntax | Description |

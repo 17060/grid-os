@@ -5,6 +5,7 @@
 #include "gfs.h"
 #include "grid.h"
 #include "irc.h"
+#include "irc_server.h"
 #include "pkg.h"
 #include "security.h"
 #include "server.h"
@@ -1272,6 +1273,114 @@ static int handle_server_ide(ide_t *e, const char *line) {
     return 1;
 }
 
+static void load_ircserver_template(ide_t *e) {
+    static const char *lines[] = {
+        "10 REM Flynn IRC server — bot commands use ! prefix in channels",
+        "20 REM Connect: irc connect localhost 6667 yournick",
+        "30 REM Then: irc join #grid   and try !time !help !motd",
+        "40 PORT = 6667",
+        "50 CHAN$ = \"#grid\"",
+        "60 R$ = GRID.IRCSERVER.LISTEN$(PORT)",
+        "70 IF R$ <> \"ok\" THEN PRINT \"listen failed: \"; R$: END",
+        "80 PRINT \"IRC server on port \"; PORT; \" channel \"; CHAN$",
+        "90 WHILE 1",
+        "100  GRID.IRCSERVER.POLL",
+        "110  E$ = GRID.IRCSERVER.EVENT$()",
+        "120  IF E$ <> \"\" AND GRID.IRCSERVER.KIND$ = \"JOIN\" AND GRID.IRCSERVER.ETARGET$ = CHAN$ THEN GRID.IRCSERVER.BOT.NOTICE CHAN$, \"Welcome \" + GRID.IRCSERVER.ENICK$ + \" try !help\"",
+        "130  IF E$ <> \"\" AND GRID.IRCSERVER.KIND$ = \"PRIVMSG\" AND LEFT$(GRID.IRCSERVER.ETEXT$, 1) = \"!\" THEN GOSUB BOT",
+        "140 WEND",
+        "170 BOT:",
+        "180 CMD$ = GRID.IRCSERVER.ETEXT$",
+        "190 IF CMD$ = \"!time\" THEN GRID.IRCSERVER.BOT.SAY CHAN$, \"ticks=\" + STR$(GRID.TIME): RETURN",
+        "200 IF CMD$ = \"!help\" THEN GRID.IRCSERVER.BOT.SAY CHAN$, \"commands: !time !motd !ver\": RETURN",
+        "210 IF CMD$ = \"!motd\" THEN GRID.IRCSERVER.BOT.SAY CHAN$, \"End of line.\": RETURN",
+        "220 IF CMD$ = \"!ver\" THEN GRID.IRCSERVER.BOT.SAY CHAN$, \"Flynn Grid IRC 7.1.2\": RETURN",
+        "230 GRID.IRCSERVER.BOT.NOTICE CHAN$, \"unknown \" + CMD$",
+        "240 RETURN",
+        0
+    };
+    e->n = 0;
+    e->row = 0;
+    e->col = 0;
+    e->top = 0;
+    for (int i = 0; lines[i]; ++i) {
+        if (i >= IDE_MAX_LINES) {
+            break;
+        }
+        scopy(e->lines[i], IDE_LINE_LEN, lines[i]);
+        e->n = i + 1;
+    }
+    if (e->n == 0) {
+        e->n = 1;
+        e->lines[0][0] = '\0';
+    }
+    e->path[0] = '\0';
+    e->dirty = 1;
+    ide_redraw(e);
+    ide_status(e, "IRC server template loaded — edit !commands, then :run", GRID_COL_OK);
+}
+
+static int handle_ircserver_ide(ide_t *e, const char *line) {
+    char buf[96];
+    scopy(buf, sizeof(buf), line);
+    if (starts_with(buf, "ircserver ")) {
+        scopy(buf, sizeof(buf), line + 10);
+    } else if (sequal(buf, "ircserver")) {
+        ide_status(e, "ircserver new|listen|status|stop|help", GRID_COL_WARN);
+        return 1;
+    }
+    char *argv[4];
+    int argc = split_words(buf, argv, 4);
+    if (argc == 0 || sequal(argv[0], "help")) {
+        ide_status(e, "ircserver new|listen <port>|status|stop [port]", GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "new")) {
+        load_ircserver_template(e);
+        return 1;
+    }
+    if (sequal(argv[0], "listen")) {
+        if (argc < 2) {
+            ide_status(e, "usage: ircserver listen <port>", GRID_COL_ERROR);
+            return 1;
+        }
+        uint16_t port = ide_parse_port(argv[1]);
+        if (port == 0 || grid_irc_server_listen(port) != 0) {
+            ide_status(e, "IRC server listen failed", GRID_COL_ERROR);
+            return 1;
+        }
+        char msg[48];
+        scopy(msg, sizeof(msg), "IRC listening on ");
+        scopy(msg + 17, sizeof(msg) - 17, argv[1]);
+        ide_status(e, msg, GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "status")) {
+        grid_irc_server_poll();
+        char st[192];
+        grid_irc_server_format_status(st, sizeof(st));
+        ide_status(e, st, GRID_COL_OK);
+        return 1;
+    }
+    if (sequal(argv[0], "stop")) {
+        if (argc >= 2) {
+            uint16_t port = ide_parse_port(argv[1]);
+            if (port == 0) {
+                ide_status(e, "usage: ircserver stop <port>", GRID_COL_ERROR);
+                return 1;
+            }
+            grid_irc_server_unlisten(port);
+            ide_status(e, "IRC server stopped listening", GRID_COL_DIM);
+            return 1;
+        }
+        grid_irc_server_stop_all();
+        ide_status(e, "IRC server stopped", GRID_COL_DIM);
+        return 1;
+    }
+    ide_status(e, "ircserver new|listen|status|stop|help", GRID_COL_WARN);
+    return 1;
+}
+
 static void cmd_help(void) {
     console_clear();
     console_set_color(GRID_COL_TITLE);
@@ -1294,6 +1403,7 @@ static void cmd_help(void) {
     console_write_line("  :mod load <name>      load module into editor");
     console_write_line("  :pkg list|mods|run|load  package manager from IDE");
     console_write_line("  :server new|listen|status|stop  TCP command server");
+    console_write_line("  :ircserver new|listen|status|stop  IRC server + !bot commands");
     console_write_line("  :find <text>          search buffer from cursor");
     console_write_line("  :goto <line>          jump to line number");
     console_write_line("  :samples              list /programs/*.bas samples");
@@ -1323,6 +1433,7 @@ static void cmd_help(void) {
     console_write_line("  GRID.SPAWN \"name\"  GRID.TIME  GRID.PING(ip$)  GRID.CAP(n)");
     console_write_line("  GRID.AI.ASK$/PRINT   GRID.IRC.*   GRID.BTC.*");
     console_write_line("  GRID.SERVER.*        TCP line server (listen/accept/reply)");
+    console_write_line("  GRID.IRCSERVER.*     IRC server (JOIN/PRIVMSG/!bot commands)");
     console_write_line("  GRID.PKG.LIST$/MODS$   GRID.PKG.INSTALL/REMOVE/MOD.RUN/RECV");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
@@ -1371,6 +1482,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (sequal(cmd, "vault") || starts_with(cmd, "vault ")) { return handle_vault_ide(e, cmd); }
     if (sequal(cmd, "irc") || starts_with(cmd, "irc ")) { return handle_irc_ide(e, cmd); }
     if (sequal(cmd, "server") || starts_with(cmd, "server ")) { return handle_server_ide(e, cmd); }
+    if (sequal(cmd, "ircserver") || starts_with(cmd, "ircserver ")) { return handle_ircserver_ide(e, cmd); }
     return 0;
 }
 
@@ -1416,6 +1528,10 @@ static void handle_command(ide_t *e) {
     }
     if (sequal(cmd, "server") || starts_with(cmd, "server ")) {
         handle_server_ide(e, cmd);
+        return;
+    }
+    if (sequal(cmd, "ircserver") || starts_with(cmd, "ircserver ")) {
+        handle_ircserver_ide(e, cmd);
         return;
     }
 

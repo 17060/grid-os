@@ -419,10 +419,12 @@ void pkg_seed_defaults(void) {
              "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
              "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
              "file=/packages/flynn-net-tools/modules/grid-server.bas\n"
+             "file=/packages/flynn-net-tools/modules/irc-server.bas\n"
              "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
              "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
              "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
              "mod=grid-server:/packages/flynn-net-tools/modules/grid-server.bas:TCP line server with custom keywords:network\n"
+             "mod=irc-server:/packages/flynn-net-tools/modules/irc-server.bas:Flynn IRC server with !bot commands:network\n"
              "\n",
              "/packages/flynn-net-tools/MANIFEST");
     /* AUTO:PKG_SEED:END */

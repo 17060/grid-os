@@ -13,6 +13,7 @@
 #include "link.h"
 #include "log.h"
 #include "irc.h"
+#include "irc_server.h"
 #include "net.h"
 #include "pkg.h"
 #include "program.h"
@@ -1145,6 +1146,51 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         int slot = (int)(to_num(&argv[0]) / BASIC_SCALE);
         return make_str(grid_server_dispatch_builtin(slot, argv[1].s) ? "1" : "0");
     }
+    if (strequal(name, "GRID.IRCSERVER.LISTEN$")) {
+        if (!(argc >= 1)) { return make_str("error: need port"); }
+        uint16_t port = (uint16_t)(to_num(&argv[0]) / BASIC_SCALE);
+        return make_str(grid_irc_server_listen(port) == 0 ? "ok" : "error: listen failed");
+    }
+    if (strequal(name, "GRID.IRCSERVER.EVENT$")) {
+        char b[GRID_IRC_SERVER_LINE_MAX + 64];
+        if (!grid_irc_server_event(b, sizeof(b))) { return make_str(""); }
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.IRCSERVER.STATUS$")) {
+        char b[192];
+        grid_irc_server_format_status(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.IRCSERVER.KIND$")) {
+        return make_str(grid_irc_server_event_kind());
+    }
+    if (strequal(name, "GRID.IRCSERVER.ENICK$")) {
+        char b[GRID_IRC_SERVER_NICK_MAX];
+        grid_irc_server_event_nick(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.IRCSERVER.ETARGET$")) {
+        char b[GRID_IRC_SERVER_CHAN_MAX];
+        grid_irc_server_event_target(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.IRCSERVER.ETEXT$")) {
+        char b[GRID_IRC_SERVER_LINE_MAX];
+        grid_irc_server_event_text(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.IRCSERVER.ESLOT")) {
+        char b[16];
+        num_to_string((num_t)grid_irc_server_event_slot() * BASIC_SCALE, b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.IRCSERVER.NICK$")) {
+        if (!(argc >= 1)) { return make_str(""); }
+        char b[GRID_IRC_SERVER_NICK_MAX];
+        int slot = (int)(to_num(&argv[0]) / BASIC_SCALE);
+        grid_irc_server_client_nick(slot, b, sizeof(b));
+        return make_str(b);
+    }
     if (strequal(name, "GRID.BTC.CALL$")) {
         if (!(argc >= 1 && argv[0].is_str)) { return make_str(""); }
         const char *params = (argc >= 2 && argv[1].is_str) ? argv[1].s : "";
@@ -1272,6 +1318,11 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.SERVER.ACCEPT$") || strequal(name, "GRID.SERVER.CMD$") ||
         strequal(name, "GRID.SERVER.STATUS$") || strequal(name, "GRID.SERVER.LISTEN$") ||
         strequal(name, "GRID.SERVER.BUILTIN$") ||
+        strequal(name, "GRID.IRCSERVER.LISTEN$") || strequal(name, "GRID.IRCSERVER.EVENT$") ||
+        strequal(name, "GRID.IRCSERVER.STATUS$") || strequal(name, "GRID.IRCSERVER.KIND$") ||
+        strequal(name, "GRID.IRCSERVER.ENICK$") || strequal(name, "GRID.IRCSERVER.ETARGET$") ||
+        strequal(name, "GRID.IRCSERVER.ETEXT$") || strequal(name, "GRID.IRCSERVER.ESLOT") ||
+        strequal(name, "GRID.IRCSERVER.NICK$") ||
         strequal(name, "GRID.BTC.CALL$") || strequal(name, "GRID.BTC.INFO$") ||
         strequal(name, "GRID.BTC.BLOCKCHAIN$") || strequal(name, "GRID.BTC.NETWORK$") ||
         strequal(name, "GRID.BTC.WALLET$") || strequal(name, "GRID.BTC.BALANCE$") ||
@@ -1920,6 +1971,78 @@ static void exec_grid_stmt(void) {
         if (cmdv.is_str) { size_t j=0; while(cmdv.s[j]&&j<sizeof(cb)-1){cb[j]=cmdv.s[j];j++;} cb[j]='\0'; }
         else { num_to_string(cmdv.n, cb, sizeof(cb)); }
         (void)grid_server_dispatch_builtin(slot, cb);
+        return;
+    }
+    if (strequal(name, "GRID.IRCSERVER.LISTEN")) {
+        value_t portv = eval_expr();
+        uint16_t port = (uint16_t)(to_num(&portv) / BASIC_SCALE);
+        if (grid_irc_server_listen(port) != 0) { set_error("GRID.IRCSERVER.LISTEN failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRCSERVER.POLL")) { grid_irc_server_poll(); return; }
+    if (strequal(name, "GRID.IRCSERVER.SAY")) {
+        value_t slotv = eval_expr();
+        if (!match_op(',')) { set_error("GRID.IRCSERVER.SAY: need slot,target,text"); return; }
+        value_t tgt = eval_expr();
+        if (!match_op(',')) { set_error("GRID.IRCSERVER.SAY: need slot,target,text"); return; }
+        value_t txt = eval_expr();
+        char tb[GRID_IRC_SERVER_CHAN_MAX], mb[GRID_IRC_SERVER_LINE_MAX];
+        int slot = (int)(to_num(&slotv) / BASIC_SCALE);
+        if (tgt.is_str) { size_t j=0; while(tgt.s[j]&&j<sizeof(tb)-1){tb[j]=tgt.s[j];j++;} tb[j]='\0'; }
+        else { num_to_string(tgt.n, tb, sizeof(tb)); }
+        if (txt.is_str) { size_t j=0; while(txt.s[j]&&j<sizeof(mb)-1){mb[j]=txt.s[j];j++;} mb[j]='\0'; }
+        else { num_to_string(txt.n, mb, sizeof(mb)); }
+        if (grid_irc_server_say(slot, tb, mb) != 0) { set_error("GRID.IRCSERVER.SAY failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRCSERVER.NOTICE")) {
+        value_t slotv = eval_expr();
+        if (!match_op(',')) { set_error("GRID.IRCSERVER.NOTICE: need slot,target,text"); return; }
+        value_t tgt = eval_expr();
+        if (!match_op(',')) { set_error("GRID.IRCSERVER.NOTICE: need slot,target,text"); return; }
+        value_t txt = eval_expr();
+        char tb[GRID_IRC_SERVER_CHAN_MAX], mb[GRID_IRC_SERVER_LINE_MAX];
+        int slot = (int)(to_num(&slotv) / BASIC_SCALE);
+        if (tgt.is_str) { size_t j=0; while(tgt.s[j]&&j<sizeof(tb)-1){tb[j]=tgt.s[j];j++;} tb[j]='\0'; }
+        else { num_to_string(tgt.n, tb, sizeof(tb)); }
+        if (txt.is_str) { size_t j=0; while(txt.s[j]&&j<sizeof(mb)-1){mb[j]=txt.s[j];j++;} mb[j]='\0'; }
+        else { num_to_string(txt.n, mb, sizeof(mb)); }
+        if (grid_irc_server_notice(slot, tb, mb) != 0) { set_error("GRID.IRCSERVER.NOTICE failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRCSERVER.BOT.SAY")) {
+        value_t tgt = eval_expr();
+        if (!match_op(',')) { set_error("GRID.IRCSERVER.BOT.SAY: need target,text"); return; }
+        value_t txt = eval_expr();
+        char tb[GRID_IRC_SERVER_CHAN_MAX], mb[GRID_IRC_SERVER_LINE_MAX];
+        if (tgt.is_str) { size_t j=0; while(tgt.s[j]&&j<sizeof(tb)-1){tb[j]=tgt.s[j];j++;} tb[j]='\0'; }
+        else { num_to_string(tgt.n, tb, sizeof(tb)); }
+        if (txt.is_str) { size_t j=0; while(txt.s[j]&&j<sizeof(mb)-1){mb[j]=txt.s[j];j++;} mb[j]='\0'; }
+        else { num_to_string(txt.n, mb, sizeof(mb)); }
+        if (grid_irc_server_bot_say(tb, mb) != 0) { set_error("GRID.IRCSERVER.BOT.SAY failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRCSERVER.BOT.NOTICE")) {
+        value_t tgt = eval_expr();
+        if (!match_op(',')) { set_error("GRID.IRCSERVER.BOT.NOTICE: need target,text"); return; }
+        value_t txt = eval_expr();
+        char tb[GRID_IRC_SERVER_CHAN_MAX], mb[GRID_IRC_SERVER_LINE_MAX];
+        if (tgt.is_str) { size_t j=0; while(tgt.s[j]&&j<sizeof(tb)-1){tb[j]=tgt.s[j];j++;} tb[j]='\0'; }
+        else { num_to_string(tgt.n, tb, sizeof(tb)); }
+        if (txt.is_str) { size_t j=0; while(txt.s[j]&&j<sizeof(mb)-1){mb[j]=txt.s[j];j++;} mb[j]='\0'; }
+        else { num_to_string(txt.n, mb, sizeof(mb)); }
+        if (grid_irc_server_bot_notice(tb, mb) != 0) { set_error("GRID.IRCSERVER.BOT.NOTICE failed"); }
+        return;
+    }
+    if (strequal(name, "GRID.IRCSERVER.STOP")) {
+        if (cur()->type == T_NEWLINE || cur()->type == T_EOF ||
+            (cur()->type == T_OP && cur()->op == ':')) {
+            grid_irc_server_stop_all();
+            return;
+        }
+        value_t portv = eval_expr();
+        uint16_t port = (uint16_t)(to_num(&portv) / BASIC_SCALE);
+        grid_irc_server_unlisten(port);
         return;
     }
     if (strequal(name, "GRID.BTC.SEND")) {
@@ -2934,7 +3057,7 @@ void basic_print_version(void) {
     console_write_line("GRID.PLOT/LINE/CIRCLE BEEP NOTE DISC.* RECOGNIZER.* PORTAL.*");
     console_write_line("GRID.DNS.* GRID.JOBS.* GRID.ISO.* GRID.WORKSHOP.SPAWN");
     console_write_line("GRID.VAULT.* GRID.GFS.* GRID.HTTP.* GRID.LOCATE GRID.INKEY$");
-    console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.SERVER.* / GRID.BTC.* bindings");
+    console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.SERVER.* / GRID.IRCSERVER.* / GRID.BTC.* bindings");
 }
 
 /* keep append_char referenced */

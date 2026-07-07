@@ -305,6 +305,49 @@ Built-in commands: **PING**, **HELP**, **STATUS**, **ECHO** *text*, **QUIT** / *
 
 ---
 
+## Flynn IRC server
+
+Real IRC protocol server for GridBASIC bots with **`!` command** hooks.
+
+| Binding | Role |
+|---------|------|
+| `GRID.IRCSERVER.LISTEN` port | Start IRC listen (stmt) |
+| `GRID.IRCSERVER.LISTEN$(port)` | Returns `"ok"` or error |
+| `GRID.IRCSERVER.POLL` | Accept clients + process IRC wire protocol |
+| `GRID.IRCSERVER.EVENT$()` | Next bot event (`PRIVMSG\|slot\|nick\|target\|text`) |
+| `GRID.IRCSERVER.KIND$` | Last event kind (`PRIVMSG`, `JOIN`, `PART`, `QUIT`) |
+| `GRID.IRCSERVER.ENICK$` / `ETARGET$` / `ETEXT$` | Last event fields |
+| `GRID.IRCSERVER.ESLOT` | Last event client slot |
+| `GRID.IRCSERVER.NICK$(slot)` | Connected client nick |
+| `GRID.IRCSERVER.SAY` slot, target$, text$ | PRIVMSG as client |
+| `GRID.IRCSERVER.NOTICE` slot, target$, text$ | NOTICE as client |
+| `GRID.IRCSERVER.BOT.SAY` target$, text$ | Bot reply as `grid.flynn` |
+| `GRID.IRCSERVER.BOT.NOTICE` target$, text$ | Bot notice |
+| `GRID.IRCSERVER.STOP` [port] | Stop IRC server |
+| `GRID.IRCSERVER.STATUS$` | Listener + client summary |
+
+Channel messages starting with **`!`** (e.g. `!time`) are **not broadcast** — they queue a `PRIVMSG` event for your GridBASIC bot loop. Normal chat is relayed to the channel.
+
+**IDE:** `Esc` `:ircserver new` — editable bot with **!time**, **!help**, **!motd**, **!ver**
+
+**Shell:** `ircserver listen 6667`
+
+**Sample:**
+
+```basic
+10 R$ = GRID.IRCSERVER.LISTEN$(6667)
+20 WHILE 1
+30   GRID.IRCSERVER.POLL
+40   E$ = GRID.IRCSERVER.EVENT$()
+50   IF E$ <> "" AND GRID.IRCSERVER.KIND$ = "PRIVMSG" THEN
+60     IF GRID.IRCSERVER.ETEXT$ = "!time" THEN GRID.IRCSERVER.BOT.SAY "#grid", STR$(GRID.TIME)
+70 WEND
+```
+
+Connect from Grid OS shell: `irc connect localhost 6667 flynn` then `irc join #grid`.
+
+---
+
 ## Grid BTC
 
 | Binding | RPC / role |

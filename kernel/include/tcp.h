@@ -34,6 +34,7 @@ void tcp_unlisten(uint16_t port);
 int tcp_listen_active(uint16_t port);
 int tcp_connect(tcp_conn_t *c, uint32_t ip, uint16_t port);
 int tcp_accept(tcp_conn_t **out);
+int tcp_accept_port(tcp_conn_t **out, uint16_t local_port);
 int tcp_send(tcp_conn_t *c, const void *data, size_t len);
 size_t tcp_peek(const tcp_conn_t *c, void *out, size_t cap);
 size_t tcp_consume(tcp_conn_t *c, size_t n);

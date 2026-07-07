@@ -10,6 +10,14 @@
 - **Shell** — `server listen|status|stop|help`
 - **`flynn-net-tools`** — new **`grid-server`** module
 
+### Flynn IRC server
+- **`kernel/irc_server.c`** — IRC protocol server (NICK/USER/JOIN/PART/PRIVMSG/PING/QUIT)
+- **`tcp_accept_port`** — port-aware accept for IRC vs generic TCP server
+- **`GRID.IRCSERVER.*`** — GridBASIC bindings; `!` channel commands queue as events for custom bot handlers
+- **IDE** — `:ircserver new|listen|status|stop|help` loads template with **!time !help !motd !ver**
+- **Shell** — `ircserver listen|status|stop|help`
+- **`flynn-net-tools`** — new **`irc-server`** module
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI

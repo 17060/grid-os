@@ -20,6 +20,7 @@
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
+#include "irc_server.h"
 #include "server.h"
 #include "storage.h"
 #include "syscall.h"
@@ -51,6 +52,7 @@ void kernel_main(void) {
     dns_init();
     tcp_init();
     grid_server_init();
+    grid_irc_server_init();
 
     log_event("Grid OS 7.1.1 boot");
 
