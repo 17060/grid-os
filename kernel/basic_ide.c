@@ -472,21 +472,6 @@ static void serialize(ide_t *e, char *out, size_t cap) {
     out[p] = '\0';
 }
 
-static void run_buffer(ide_t *e) {
-    static char src[8192];
-    serialize(e, src, sizeof(src));
-    console_clear();
-    console_set_color(GRID_COL_TITLE);
-    console_write_line("=== GridBASIC run ===");
-    console_set_color(GRID_COL_DEFAULT);
-    basic_run_source(src);
-    console_set_color(GRID_COL_DIM);
-    console_write_line("--- press any key to return to IDE ---");
-    console_set_color(GRID_COL_DEFAULT);
-    (void)console_read_key();
-    (void)e;
-}
-
 static void make_path(const char *name, char *out, size_t cap) {
     if (starts_with(name, "/")) { scopy(out, cap, name); return; }
     size_t p = 0;
@@ -494,12 +479,56 @@ static void make_path(const char *name, char *out, size_t cap) {
     while (*pre && p + 1 < cap) out[p++] = *pre++;
     const char *s = name;
     while (*s && p + 1 < cap) out[p++] = *s++;
-    /* ensure .bas suffix */
+    /* ensure .bas suffix unless .grid requested */
+    if (p >= 5 && out[p - 5] == '.' && out[p - 4] == 'g' && out[p - 3] == 'r' &&
+        out[p - 2] == 'i' && out[p - 1] == 'd') {
+        out[p] = '\0';
+        return;
+    }
     if (!(p >= 4 && out[p-4]=='.' && out[p-3]=='b' && out[p-2]=='a' && out[p-1]=='s')) {
         const char *suf = ".bas";
         while (*suf && p + 1 < cap) out[p++] = *suf++;
     }
     out[p] = '\0';
+}
+
+static int path_ends_grid(const char *path) {
+    size_t n = slen(path);
+    return n >= 5 && path[n - 5] == '.' && path[n - 4] == 'g' &&
+           path[n - 3] == 'r' && path[n - 2] == 'i' && path[n - 1] == 'd';
+}
+
+static void run_buffer(ide_t *e, const char *file_path) {
+    console_clear();
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("=== GridBASIC run ===");
+    console_set_color(GRID_COL_DEFAULT);
+    if (file_path && file_path[0]) {
+        char path[GFS_PATH_MAX];
+        if (starts_with(file_path, "/")) {
+            scopy(path, sizeof(path), file_path);
+        } else {
+            make_path(file_path, path, sizeof(path));
+        }
+        if (basic_run_file(path) != 0) {
+            ide_status(e, "run failed (file not found)", GRID_COL_ERROR);
+            return;
+        }
+    } else if (e->path[0] && path_ends_grid(e->path)) {
+        if (basic_run_file(e->path) != 0) {
+            ide_status(e, "run failed (.grid read error)", GRID_COL_ERROR);
+            return;
+        }
+    } else {
+        static char src[8192];
+        serialize(e, src, sizeof(src));
+        basic_run_source(src);
+    }
+    console_set_color(GRID_COL_DIM);
+    console_write_line("--- press any key to return to IDE ---");
+    console_set_color(GRID_COL_DEFAULT);
+    (void)console_read_key();
+    ide_redraw(e);
 }
 
 static void cmd_save(ide_t *e, const char *name) {
@@ -673,8 +702,141 @@ static void cmd_mod_load(ide_t *e, const char *name) {
     ide_status(e, msg, GRID_COL_OK);
 }
 
-static void cmd_mods_list(ide_t *e) {
-    run_shell_line(e, "pkg mods");
+static void cmd_mods_list(ide_t *e, const char *category) {
+    char line[80];
+    if (category && category[0]) {
+        scopy(line, sizeof(line), "pkg mods ");
+        scopy(line + 9, sizeof(line) - 9, category);
+    } else {
+        scopy(line, sizeof(line), "pkg mods");
+    }
+    run_shell_line(e, line);
+}
+
+static void cmd_pkg(ide_t *e, const char *args) {
+    char buf[96];
+    scopy(buf, sizeof(buf), args ? args : "");
+    if (!buf[0] || sequal(buf, "list")) {
+        run_shell_line(e, "pkg list");
+        return;
+    }
+    if (sequal(buf, "mods")) {
+        run_shell_line(e, "pkg mods");
+        return;
+    }
+    if (starts_with(buf, "mods ")) {
+        char line[80];
+        scopy(line, sizeof(line), "pkg mods ");
+        scopy(line + 9, sizeof(line) - 9, buf + 5);
+        run_shell_line(e, line);
+        return;
+    }
+    if (starts_with(buf, "run ")) {
+        cmd_mod_run(e, buf + 4);
+        return;
+    }
+    if (starts_with(buf, "load ")) {
+        cmd_mod_load(e, buf + 5);
+        return;
+    }
+    if (starts_with(buf, "info ")) {
+        char line[80];
+        scopy(line, sizeof(line), "pkg info ");
+        scopy(line + 9, sizeof(line) - 9, buf + 5);
+        run_shell_line(e, line);
+        return;
+    }
+    ide_status(e, ":pkg list|mods|run|load|info", GRID_COL_WARN);
+}
+
+static void cmd_find(ide_t *e, const char *needle) {
+    if (!needle[0]) {
+        ide_status(e, "usage: find <text>", GRID_COL_ERROR);
+        return;
+    }
+    char upper[48];
+    size_t ni = 0;
+    while (needle[ni] && ni + 1 < sizeof(upper)) {
+        char c = needle[ni];
+        upper[ni] = (c >= 'a' && c <= 'z') ? (char)(c - 32) : c;
+        ni++;
+    }
+    upper[ni] = '\0';
+    for (int row = e->row; row < e->n; ++row) {
+        char line_upper[IDE_LINE_LEN];
+        size_t li = 0;
+        const char *line = e->lines[row];
+        while (line[li] && li + 1 < sizeof(line_upper)) {
+            char c = line[li];
+            line_upper[li] = (c >= 'a' && c <= 'z') ? (char)(c - 32) : c;
+            li++;
+        }
+        line_upper[li] = '\0';
+        size_t pos = 0;
+        while (line_upper[pos]) {
+            size_t j = 0;
+            while (upper[j] && line_upper[pos + j] == upper[j]) {
+                j++;
+            }
+            if (upper[j] == '\0') {
+                e->row = row;
+                e->col = (int)pos;
+                clamp_cursor(e);
+                ensure_visible(e);
+                ide_redraw(e);
+                char msg[64];
+                scopy(msg, sizeof(msg), "found L");
+                char num[12];
+                int v = row + 1;
+                int t = 0;
+                char tmp[12];
+                if (v == 0) {
+                    tmp[t++] = '0';
+                }
+                while (v > 0) {
+                    tmp[t++] = (char)('0' + (v % 10));
+                    v /= 10;
+                }
+                while (t > 0 && slen(msg) + 1 < sizeof(msg)) {
+                    num[0] = tmp[--t];
+                    num[1] = '\0';
+                    scopy(msg + slen(msg), sizeof(msg) - slen(msg), num);
+                }
+                ide_status(e, msg, GRID_COL_OK);
+                return;
+            }
+            pos++;
+        }
+    }
+    ide_status(e, "find: no match", GRID_COL_WARN);
+}
+
+static void cmd_goto(ide_t *e, const char *num_text) {
+    if (!num_text[0]) {
+        ide_status(e, "usage: goto <line>", GRID_COL_ERROR);
+        return;
+    }
+    int line = 0;
+    for (size_t i = 0; num_text[i]; ++i) {
+        if (num_text[i] < '0' || num_text[i] > '9') {
+            ide_status(e, "usage: goto <line>", GRID_COL_ERROR);
+            return;
+        }
+        line = line * 10 + (num_text[i] - '0');
+    }
+    if (line < 1 || line > e->n) {
+        ide_status(e, "goto: line out of range", GRID_COL_ERROR);
+        return;
+    }
+    e->row = line - 1;
+    e->col = 0;
+    clamp_cursor(e);
+    ensure_visible(e);
+    ide_redraw(e);
+    char msg[32];
+    scopy(msg, sizeof(msg), "goto line ");
+    scopy(msg + 10, sizeof(msg) - 10, num_text);
+    ide_status(e, msg, GRID_COL_OK);
 }
 
 static void cmd_load(ide_t *e, const char *name) {
@@ -1015,14 +1177,17 @@ static void cmd_help(void) {
     console_write_line("  Delete                delete char / merge line down");
     console_write_line("  Esc                   open grid> command line");
     console_write_line("Commands (Esc, then type at grid>):");
-    console_write_line("  :run                  run the program in the buffer");
+    console_write_line("  :run [path]           run buffer, .grid path, or file");
     console_write_line("  :save <name>          write to /programs/<name>.bas");
-    console_write_line("  :load <name>          read /programs/<name>.bas");
+    console_write_line("  :load <name>          read /programs/<name>.bas or .grid");
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
-    console_write_line("  :mods                 list IDE modules (pkg mods)");
+    console_write_line("  :mods [category]      list IDE modules (optional filter)");
     console_write_line("  :mod run <name>       run installed IDE module");
     console_write_line("  :mod load <name>      load module into editor");
+    console_write_line("  :pkg list|mods|run|load  package manager from IDE");
+    console_write_line("  :find <text>          search buffer from cursor");
+    console_write_line("  :goto <line>          jump to line number");
     console_write_line("  :samples              list /programs/*.bas samples");
     console_write_line("  :tutorial             interactive GridBASIC walkthrough");
     console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
@@ -1057,7 +1222,8 @@ static void cmd_help(void) {
 }
 
 static int handle_ide_command(ide_t *e, const char *cmd) {
-    if (sequal(cmd, "run") || sequal(cmd, "r")) { run_buffer(e); return 1; }
+    if (sequal(cmd, "run") || sequal(cmd, "r")) { run_buffer(e, 0); return 1; }
+    if (starts_with(cmd, "run ")) { run_buffer(e, cmd + 4); return 1; }
     if (sequal(cmd, "quit") || sequal(cmd, "q")) {
         ide_status(e, "use grid> poweroff to exit", GRID_COL_WARN);
         return 1;
@@ -1068,7 +1234,16 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
         ide_status(e, "new buffer", GRID_COL_OK); return 1;
     }
     if (sequal(cmd, "list") || sequal(cmd, "l")) { cmd_list(e); return 1; }
-    if (sequal(cmd, "mods")) { cmd_mods_list(e); return 1; }
+    if (sequal(cmd, "mods")) { cmd_mods_list(e, 0); return 1; }
+    if (starts_with(cmd, "mods ")) { cmd_mods_list(e, cmd + 5); return 1; }
+    if (sequal(cmd, "pkg") || starts_with(cmd, "pkg ")) {
+        cmd_pkg(e, sequal(cmd, "pkg") ? "" : cmd + 4);
+        return 1;
+    }
+    if (starts_with(cmd, "find ")) { cmd_find(e, cmd + 5); return 1; }
+    if (starts_with(cmd, "goto ")) { cmd_goto(e, cmd + 5); return 1; }
+    if (sequal(cmd, "find")) { ide_status(e, "usage: find <text>", GRID_COL_ERROR); return 1; }
+    if (sequal(cmd, "goto")) { ide_status(e, "usage: goto <line>", GRID_COL_ERROR); return 1; }
     if (starts_with(cmd, "mod run ")) { cmd_mod_run(e, cmd + 8); return 1; }
     if (starts_with(cmd, "mod load ")) { cmd_mod_load(e, cmd + 9); return 1; }
     if (sequal(cmd, "samples")) { run_shell_line(e, "samples"); return 1; }

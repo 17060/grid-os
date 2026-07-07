@@ -14,6 +14,7 @@ gridctl — host helper for Grid OS arcade disk
   gridctl install PROG  install build/PROG.elf to /programs/PROG on disk
   gridctl portal-push PATH FILE  send FILE to Grid OS portal recv over COM1
   gridctl portal-pkg-push MANIFEST  send package bundle over GridLink PKG
+  gridctl portal-pkg-publish MANIFEST  write .gridpkg frame to dist/
   gridctl run           boot Grid OS (q35 + virtio-blk, GUI window)
   gridctl run-4k        boot with 4K HDMI window (scaled VGA text)
   gridctl run-hd        boot with HD HDMI window (1920x1080)
@@ -61,6 +62,25 @@ portal_push() {
   echo "$size"
   cat "$host_file"
   echo '#GRIDLINK/END'
+}
+
+portal_pkg_publish() {
+  local manifest="$1"
+  if [[ ! -f "$manifest" ]]; then
+    echo "Missing manifest: $manifest" >&2
+    exit 1
+  fi
+  local name
+  name=$(grep '^name=' "$manifest" | head -1 | cut -d= -f2-)
+  if [[ -z "$name" ]]; then
+    echo "MANIFEST missing name=" >&2
+    exit 1
+  fi
+  mkdir -p "$ROOT/dist"
+  local out="$ROOT/dist/${name}.gridpkg"
+  python3 "$ROOT/tools/gridpkg_build.py" --output "$out" "$manifest"
+  echo "Published $out"
+  echo "Install: gridctl portal-pkg-push $manifest | ...   guest: portal pkg"
 }
 
 portal_pkg_push() {
@@ -126,6 +146,13 @@ case "$cmd" in
       exit 1
     fi
     portal_pkg_push "$2"
+    ;;
+  portal-pkg-publish)
+    if [[ $# -lt 2 ]]; then
+      echo "Usage: gridctl portal-pkg-publish <MANIFEST>" >&2
+      exit 1
+    fi
+    portal_pkg_publish "$2"
     ;;
   run)
     make -C "$ROOT" run

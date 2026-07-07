@@ -30,7 +30,7 @@ WELCOME_GRID = (
 
 HELLO_BAS = (
     b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 7.0 online\"\n"
+    b"20 PRINT \"GridBASIC 7.1.1 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
@@ -144,40 +144,56 @@ GRID2D_BAS = (
     b"90 END\n"
 )
 
-PKG_ROOT = Path(__file__).resolve().parent.parent / "packages" / "flynn-ide-tools"
-PKG_MANIFEST = PKG_ROOT / "MANIFEST"
+DEMO_BAS = (
+    b"10 REM Bytecode demo -- compile with :compile demo\n"
+    b"20 PRINT \"GridBASIC bytecode demo\"\n"
+    b"30 PRINT \"Run: Esc :run demo.grid\"\n"
+    b"40 END\n"
+)
+
+PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
-    """Return (vfs_path, payload) pairs from flynn-ide-tools MANIFEST."""
-    if not PKG_MANIFEST.is_file():
-        return []
-    text = PKG_MANIFEST.read_text(encoding="utf-8")
-    paths: list[str] = []
-    seen: set[str] = set()
-    for raw in text.splitlines():
-        line = raw.strip()
-        if line.startswith("file="):
-            path = line[5:].strip()
-        elif line.startswith("mod="):
-            parts = line[4:].split(":", 2)
-            path = parts[1].strip() if len(parts) >= 2 else ""
-        else:
-            continue
-        if not path or path in seen:
-            continue
-        seen.add(path)
-        paths.append(path)
+    """Return (vfs_path, payload) pairs from all packages/*/MANIFEST."""
     out: list[tuple[str, bytes]] = []
-    for vfs in paths:
-        if vfs.endswith("/MANIFEST"):
-            host = PKG_MANIFEST
-        else:
-            rel = vfs.split("/packages/flynn-ide-tools/", 1)[-1]
-            host = PKG_ROOT / rel
-        if not host.is_file():
-            raise SystemExit(f"missing package file for {vfs}: {host}")
-        out.append((vfs, host.read_bytes()))
+    seen: set[str] = set()
+
+    manifests = sorted(PACKAGES_ROOT.glob("*/MANIFEST"))
+    if not manifests:
+        return out
+
+    for manifest in manifests:
+        pkg_name = manifest.parent.name
+        text = manifest.read_text(encoding="utf-8")
+        paths: list[str] = []
+        for raw in text.splitlines():
+            line = raw.strip()
+            if line.startswith("file="):
+                path = line[5:].strip()
+            elif line.startswith("mod="):
+                parts = line[4:].split(":", 2)
+                path = parts[1].strip() if len(parts) >= 2 else ""
+            else:
+                continue
+            if not path or path in seen:
+                continue
+            seen.add(path)
+            paths.append(path)
+
+        for vfs in paths:
+            if vfs.endswith("/MANIFEST"):
+                host = manifest
+            else:
+                prefix = f"/packages/{pkg_name}/"
+                if not vfs.startswith(prefix):
+                    raise SystemExit(f"unexpected vfs path in {manifest}: {vfs}")
+                rel = vfs[len(prefix) :]
+                host = manifest.parent / rel
+            if not host.is_file():
+                raise SystemExit(f"missing package file for {vfs}: {host}")
+            out.append((vfs, host.read_bytes()))
+
     return out
 
 
@@ -228,9 +244,10 @@ def main() -> int:
         (17, "/programs/tutorial.bas", TUTORIAL_BAS),
         (18, "/programs/subdemo.bas", SUBDEMO_BAS),
         (19, "/programs/grid2d.bas", GRID2D_BAS),
+        (20, "/programs/demo.bas", DEMO_BAS),
     ]
 
-    slot = 20
+    slot = 21
     for path, payload in package_seed_files():
         files.append((slot, path, payload))
         slot += 1

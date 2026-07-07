@@ -642,8 +642,8 @@ int gfs_seed_defaults(void) {
 
     seed_one("/packages/flynn-ide-tools/MANIFEST",
              "name=flynn-ide-tools\n"
-             "version=2.0\n"
-             "desc=25 GridBASIC IDE tools for Flynn's Grid\n"
+             "version=2.1\n"
+             "desc=25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)\n"
              "file=/packages/flynn-ide-tools/MANIFEST\n"
              "file=/packages/flynn-ide-tools/modules/disc-status.bas\n"
              "file=/packages/flynn-ide-tools/modules/grid-ping.bas\n"
@@ -670,33 +670,33 @@ int gfs_seed_defaults(void) {
              "file=/packages/flynn-ide-tools/modules/irc-check.bas\n"
              "file=/packages/flynn-ide-tools/modules/hosts-table.bas\n"
              "file=/packages/flynn-ide-tools/modules/spawn-catalog.bas\n"
-             "mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel\n"
-             "mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts\n"
-             "mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol\n"
-             "mod=patrol-stand-down:/packages/flynn-ide-tools/modules/patrol-stand-down.bas:Stop recognizer patrol\n"
-             "mod=whoami-panel:/packages/flynn-ide-tools/modules/whoami-panel.bas:Entity type and identity\n"
-             "mod=caps-panel:/packages/flynn-ide-tools/modules/caps-panel.bas:Granted capability mask\n"
-             "mod=net-status:/packages/flynn-ide-tools/modules/net-status.bas:Virtio-net link status\n"
-             "mod=dns-lookup:/packages/flynn-ide-tools/modules/dns-lookup.bas:Resolve Flynn host names\n"
-             "mod=vault-nodes:/packages/flynn-ide-tools/modules/vault-nodes.bas:List vault key nodes\n"
-             "mod=gfs-programs:/packages/flynn-ide-tools/modules/gfs-programs.bas:List Flynn /programs archive\n"
-             "mod=jobs-monitor:/packages/flynn-ide-tools/modules/jobs-monitor.bas:Background sandbox jobs\n"
-             "mod=iso-roster:/packages/flynn-ide-tools/modules/iso-roster.bas:ISO research zone entities\n"
-             "mod=audit-tail:/packages/flynn-ide-tools/modules/audit-tail.bas:Recent audit log entries\n"
-             "mod=grid-clock:/packages/flynn-ide-tools/modules/grid-clock.bas:Grid cycle timer ticks\n"
-             "mod=grid-clear:/packages/flynn-ide-tools/modules/grid-clear.bas:Clear screen with Flynn banner\n"
-             "mod=pkg-index:/packages/flynn-ide-tools/modules/pkg-index.bas:Installed packages and modules\n"
-             "mod=sample-menu:/packages/flynn-ide-tools/modules/sample-menu.bas:GridBASIC sample program guide\n"
-             "mod=ide-cheatsheet:/packages/flynn-ide-tools/modules/ide-cheatsheet.bas:IDE colon-command reference\n"
-             "mod=beep-scale:/packages/flynn-ide-tools/modules/beep-scale.bas:PC speaker note demo\n"
-             "mod=plot-grid:/packages/flynn-ide-tools/modules/plot-grid.bas:VGA plot pattern demo\n"
-             "mod=ai-ask:/packages/flynn-ide-tools/modules/ai-ask.bas:Quick AI bridge question\n"
-             "mod=btc-snapshot:/packages/flynn-ide-tools/modules/btc-snapshot.bas:Bitcoin bridge status\n"
-             "mod=irc-check:/packages/flynn-ide-tools/modules/irc-check.bas:IRC session status\n"
-             "mod=hosts-table:/packages/flynn-ide-tools/modules/hosts-table.bas:Show /etc/hosts from Flynn disk\n"
-             "mod=spawn-catalog:/packages/flynn-ide-tools/modules/spawn-catalog.bas:Ring-3 program spawn hints\n"
+             "mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel:disc\n"
+             "mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts:network\n"
+             "mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol:patrol\n"
+             "mod=patrol-stand-down:/packages/flynn-ide-tools/modules/patrol-stand-down.bas:Stop recognizer patrol:patrol\n"
+             "mod=whoami-panel:/packages/flynn-ide-tools/modules/whoami-panel.bas:Entity type and identity:disc\n"
+             "mod=caps-panel:/packages/flynn-ide-tools/modules/caps-panel.bas:Granted capability mask:system\n"
+             "mod=net-status:/packages/flynn-ide-tools/modules/net-status.bas:Virtio-net link status:network\n"
+             "mod=dns-lookup:/packages/flynn-ide-tools/modules/dns-lookup.bas:Resolve Flynn host names:network\n"
+             "mod=vault-nodes:/packages/flynn-ide-tools/modules/vault-nodes.bas:List vault key nodes:storage\n"
+             "mod=gfs-programs:/packages/flynn-ide-tools/modules/gfs-programs.bas:List Flynn /programs archive:storage\n"
+             "mod=jobs-monitor:/packages/flynn-ide-tools/modules/jobs-monitor.bas:Background sandbox jobs:system\n"
+             "mod=iso-roster:/packages/flynn-ide-tools/modules/iso-roster.bas:ISO research zone entities:system\n"
+             "mod=audit-tail:/packages/flynn-ide-tools/modules/audit-tail.bas:Recent audit log entries:system\n"
+             "mod=grid-clock:/packages/flynn-ide-tools/modules/grid-clock.bas:Grid cycle timer ticks:grid\n"
+             "mod=grid-clear:/packages/flynn-ide-tools/modules/grid-clear.bas:Clear screen with Flynn banner:grid\n"
+             "mod=pkg-index:/packages/flynn-ide-tools/modules/pkg-index.bas:Installed packages and modules:storage\n"
+             "mod=sample-menu:/packages/flynn-ide-tools/modules/sample-menu.bas:GridBASIC sample program guide:dev\n"
+             "mod=ide-cheatsheet:/packages/flynn-ide-tools/modules/ide-cheatsheet.bas:IDE colon-command reference:dev\n"
+             "mod=beep-scale:/packages/flynn-ide-tools/modules/beep-scale.bas:PC speaker note demo:grid\n"
+             "mod=plot-grid:/packages/flynn-ide-tools/modules/plot-grid.bas:VGA plot pattern demo:grid\n"
+             "mod=ai-ask:/packages/flynn-ide-tools/modules/ai-ask.bas:Quick AI bridge question:bridge\n"
+             "mod=btc-snapshot:/packages/flynn-ide-tools/modules/btc-snapshot.bas:Bitcoin bridge status:bridge\n"
+             "mod=irc-check:/packages/flynn-ide-tools/modules/irc-check.bas:IRC session status:network\n"
+             "mod=hosts-table:/packages/flynn-ide-tools/modules/hosts-table.bas:Show /etc/hosts from Flynn disk:network\n"
+             "mod=spawn-catalog:/packages/flynn-ide-tools/modules/spawn-catalog.bas:Ring-3 program spawn hints:system\n"
              "\n",
-             3759);
+             3943);
 
     seed_one("/packages/flynn-ide-tools/modules/disc-status.bas",
              "10 REM IDE module: disc-status\n"
@@ -853,22 +853,22 @@ int gfs_seed_defaults(void) {
              "10 REM IDE module: sample-menu\n"
              "20 PRINT \"=== GridBASIC Samples ===\"\n"
              "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
-             "40 PRINT \"Try: tutorial, hello, subdemo, grid2d\"\n"
-             "50 PRINT \"IDE: Esc :load tutorial\"\n"
+             "40 PRINT \"Try: tutorial, hello, subdemo, grid2d, demo\"\n"
+             "50 PRINT \"IDE: Esc :load tutorial   :run demo.grid\"\n"
              "60 END\n"
              "\n",
-             196);
+             219);
 
     seed_one("/packages/flynn-ide-tools/modules/ide-cheatsheet.bas",
              "10 REM IDE module: ide-cheatsheet\n"
              "20 PRINT \"=== IDE Cheatsheet ===\"\n"
-             "30 PRINT \":run :save :load :new :list\"\n"
-             "40 PRINT \":mods :mod run <n> :mod load <n>\"\n"
+             "30 PRINT \":run :save :load :new :list :find :goto\"\n"
+             "40 PRINT \":mods [cat] :mod run <n> :pkg list|mods\"\n"
              "50 PRINT \":tutorial :compile :samples :help\"\n"
-             "60 PRINT \"grid> pkg mods   basic mod run <n>\"\n"
+             "60 PRINT \"grid> pkg mods network   basic mod run <n>\"\n"
              "70 END\n"
              "\n",
-             249);
+             276);
 
     seed_one("/packages/flynn-ide-tools/modules/beep-scale.bas",
              "10 REM IDE module: beep-scale\n"
@@ -939,6 +939,49 @@ int gfs_seed_defaults(void) {
              "60 END\n"
              "\n",
              209);
+
+    seed_one("/packages/flynn-net-tools/MANIFEST",
+             "name=flynn-net-tools\n"
+             "version=1.0\n"
+             "desc=Flynn network bridge helpers for GridBASIC IDE\n"
+             "file=/packages/flynn-net-tools/MANIFEST\n"
+             "file=/packages/flynn-net-tools/modules/http-probe.bas\n"
+             "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
+             "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
+             "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
+             "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
+             "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
+             "\n",
+             599);
+
+    seed_one("/packages/flynn-net-tools/modules/http-probe.bas",
+             "10 REM Flynn net-tools: http-probe\n"
+             "20 PRINT \"=== HTTP Probe ===\"\n"
+             "30 R$ = GRID.HTTP.GET$(\"gateway\", 80, \"/\")\n"
+             "40 IF LEN(R$) > 0 THEN PRINT \"HTTP ok (\"; LEN(R$); \" B)\" ELSE PRINT \"HTTP skip (no bridge)\"\n"
+             "50 END\n"
+             "\n",
+             207);
+
+    seed_one("/packages/flynn-net-tools/modules/irc-connect.bas",
+             "10 REM Flynn net-tools: irc-connect\n"
+             "20 PRINT \"=== IRC Connect ===\"\n"
+             "30 PRINT GRID.IRC.STATUS$\n"
+             "40 PRINT \"Try: irc connect gateway 6667 griduser\"\n"
+             "50 PRINT \"Then: irc join #grid   irc say #grid hello\"\n"
+             "60 END\n"
+             "\n",
+             204);
+
+    seed_one("/packages/flynn-net-tools/modules/https-bridge.bas",
+             "10 REM Flynn net-tools: https-bridge (host: make https-bridge)\n"
+             "20 PRINT \"=== HTTPS Bridge ===\"\n"
+             "30 PRINT \"Host: make https-bridge\"\n"
+             "40 PRINT \"Guest HTTP via GRID.HTTP.* on port 80\"\n"
+             "50 PRINT GRID.NET.STATUS$\n"
+             "60 END\n"
+             "\n",
+             212);
 
     return 0;
 }

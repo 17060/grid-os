@@ -1,6 +1,6 @@
 # Grid OS on Linux
 
-Run **Grid OS 7.1** on Linux with QEMU.
+Run **Grid OS 7.1.1** on Linux with QEMU.
 
 ## Quick start
 

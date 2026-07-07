@@ -3,8 +3,10 @@
 Complete reference for **Grid OS GridBASIC IDE** — colon commands, shell access from the editor, language keywords, built-ins, `GRID.*` bindings, preprocessor directives, and package modules.
 
 <!-- AUTO:META:BEGIN -->
-- **Grid OS version:** Grid OS 7.1
-- **Package:** `flynn-ide-tools` von=2.0 — 25 IDE modules
+- **Grid OS version:** Grid OS 7.1.1
+- **Packages:** 2 seeded (28 IDE modules total)
+- **`flynn-ide-tools`** von=2.1 — 25 modules — 25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)
+- **`flynn-net-tools`** von=1.0 — 3 modules — Flynn network bridge helpers for GridBASIC IDE
 - **Last synced by:** `python3 tools/sync_basic_wiki.py`
 <!-- AUTO:META:END -->
 
@@ -43,7 +45,8 @@ Each page lists entries in encyclopedia form:
 | [Built-ins & operators](builtins.md) | `ABS`, `INSTR$`, `AND`, `MOD`, … |
 | [Preprocessor](preprocessor.md) | `#IF`, `#INCLUDE`, `#ELSE`, `#ENDIF` |
 | [GRID bindings](grid-bindings.md) | All `GRID.*` statements and functions |
-| [Package modules](package-modules.md) | 25 `flynn-ide-tools` IDE modules |
+| [Package modules](package-modules.md) | Seeded IDE modules (both packages) |
+| [Cookbook](cookbook.md) | Recipes — modules, packages, bytecode, duels |
 
 ## Keeping this wiki current
 

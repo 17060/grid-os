@@ -1,6 +1,7 @@
 #include "console.h"
 #include "dns.h"
 #include "disc.h"
+#include "disk.h"
 #include "grid.h"
 #include "gfs.h"
 #include "gdt.h"
@@ -27,7 +28,7 @@ void shell_run(void);
 
 void kernel_main(void) {
     serial_init();
-    serial_write("Grid OS 7.1 boot\n");
+    serial_write("Grid OS 7.1.1 boot\n");
     console_init();
     gdt_init();
     memory_init();
@@ -43,17 +44,19 @@ void kernel_main(void) {
     mouse_init();
     storage_init();
     disc_init();
-    gfs_init();
-    pkg_init();
     speaker_init();
     recognizer_init();
     net_init();
     dns_init();
     tcp_init();
 
-    log_event("Grid OS 7.1 boot");
+    log_event("Grid OS 7.1.1 boot");
 
     __asm__ volatile("sti");
+
+    disk_init();
+    gfs_init();
+    pkg_init();
 
     shell_run();
 }

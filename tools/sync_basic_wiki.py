@@ -13,15 +13,15 @@ import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MANIFEST = ROOT / "packages" / "flynn-ide-tools" / "MANIFEST"
+PACKAGES = ROOT / "packages"
 WIKI_README = ROOT / "docs" / "wiki" / "README.md"
 WIKI_MODULES = ROOT / "docs" / "wiki" / "package-modules.md"
 BASIC_C = ROOT / "kernel" / "basic.c"
 
 
-def parse_manifest(path: Path) -> tuple[str, str, list[tuple[str, str, str]]]:
+def parse_manifest(path: Path) -> tuple[str, str, str, list[tuple[str, str, str, str]]]:
     name = version = desc = ""
-    mods: list[tuple[str, str, str]] = []
+    mods: list[tuple[str, str, str, str]] = []
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if line.startswith("name="):
@@ -31,16 +31,17 @@ def parse_manifest(path: Path) -> tuple[str, str, list[tuple[str, str, str]]]:
         elif line.startswith("desc="):
             desc = line[5:]
         elif line.startswith("mod="):
-            parts = line[4:].split(":", 2)
+            parts = line[4:].split(":")
             if len(parts) >= 3:
-                mods.append((parts[0], parts[1], parts[2]))
-    return name, version, mods
+                category = parts[3] if len(parts) >= 4 else "general"
+                mods.append((parts[0], parts[1], parts[2], category))
+    return name, version, desc, mods
 
 
 def read_grid_status_version() -> str:
     text = BASIC_C.read_text(encoding="utf-8")
     m = re.search(r'GRID\.STATUS\$"\)\s*\{\s*return make_str\("([^"]+)"\)', text)
-    return m.group(1) if m else "Grid OS 7.1"
+    return m.group(1) if m else "Grid OS 7.1.1"
 
 
 def replace_block(path: Path, tag: str, content: str) -> None:
@@ -58,26 +59,39 @@ def replace_block(path: Path, tag: str, content: str) -> None:
 
 
 def main() -> int:
-    if not MANIFEST.is_file():
-        print("skip: no MANIFEST")
+    manifests = sorted(PACKAGES.glob("*/MANIFEST"))
+    if not manifests:
+        print("skip: no MANIFESTs")
         return 0
 
-    pkg_name, pkg_ver, mods = parse_manifest(MANIFEST)
     version = read_grid_status_version()
+    pkg_lines: list[str] = []
+    rows = [
+        "| Package | Module | Category | Path | Description |",
+        "|---------|--------|----------|------|-------------|",
+    ]
+    total_mods = 0
+
+    for manifest in manifests:
+        pkg_name, pkg_ver, pkg_desc, mods = parse_manifest(manifest)
+        pkg_lines.append(f"- **`{pkg_name}`** v{pkg_ver} — {len(mods)} modules — {pkg_desc}")
+        total_mods += len(mods)
+        for name, path, desc, category in mods:
+            rows.append(
+                f"| `{pkg_name}` | `{name}` | `{category}` | `{path}` | {desc} |"
+            )
 
     meta = (
         f"- **Grid OS version:** {version}\n"
-        f"- **Package:** `{pkg_name}` v{pkg_ver} — {len(mods)} IDE modules\n"
+        f"- **Packages:** {len(manifests)} seeded ({total_mods} IDE modules total)\n"
+        + "\n".join(pkg_lines)
+        + "\n"
         f"- **Last synced by:** `python3 tools/sync_basic_wiki.py`"
     )
     replace_block(WIKI_README, "META", meta)
-
-    rows = ["| Module | Path | Description |", "|--------|------|-------------|"]
-    for name, path, desc in mods:
-        rows.append(f"| `{name}` | `{path}` | {desc} |")
     replace_block(WIKI_MODULES, "MODULE_TABLE", "\n".join(rows))
 
-    print(f"synced wiki: {len(mods)} modules, {version}")
+    print(f"synced wiki: {total_mods} modules in {len(manifests)} packages, {version}")
     return 0
 
 

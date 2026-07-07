@@ -2,6 +2,7 @@
 #include "gfs.h"
 #include "link.h"
 #include "log.h"
+#include "disc.h"
 #include "pkg.h"
 #include "security.h"
 #include "serial.h"
@@ -214,5 +215,6 @@ int gridlink_duel_ping(void) {
     serial_write(GRIDLINK_END);
     serial_write("\n");
     log_event("GridLink duel ping sent");
+    disc_on_duel();
     return 0;
 }

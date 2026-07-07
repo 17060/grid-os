@@ -16,33 +16,36 @@ The **`flynn-ide-tools`** package (v2.0) ships **25 GridBASIC IDE modules** — 
 ## Module index
 
 <!-- AUTO:MODULE_TABLE:BEGIN -->
-| Module | Path | Description |
-|--------|------|-------------|
-| `disc-status` | `/packages/flynn-ide-tools/modules/disc-status.bas` | Identity disc status panel |
-| `grid-ping` | `/packages/flynn-ide-tools/modules/grid-ping.bas` | Ping gateway and grid hosts |
-| `patrol-arm` | `/packages/flynn-ide-tools/modules/patrol-arm.bas` | Start recognizer patrol |
-| `patrol-stand-down` | `/packages/flynn-ide-tools/modules/patrol-stand-down.bas` | Stop recognizer patrol |
-| `whoami-panel` | `/packages/flynn-ide-tools/modules/whoami-panel.bas` | Entity type and identity |
-| `caps-panel` | `/packages/flynn-ide-tools/modules/caps-panel.bas` | Granted capability mask |
-| `net-status` | `/packages/flynn-ide-tools/modules/net-status.bas` | Virtio-net link status |
-| `dns-lookup` | `/packages/flynn-ide-tools/modules/dns-lookup.bas` | Resolve Flynn host names |
-| `vault-nodes` | `/packages/flynn-ide-tools/modules/vault-nodes.bas` | List vault key nodes |
-| `gfs-programs` | `/packages/flynn-ide-tools/modules/gfs-programs.bas` | List Flynn /programs archive |
-| `jobs-monitor` | `/packages/flynn-ide-tools/modules/jobs-monitor.bas` | Background sandbox jobs |
-| `iso-roster` | `/packages/flynn-ide-tools/modules/iso-roster.bas` | ISO research zone entities |
-| `audit-tail` | `/packages/flynn-ide-tools/modules/audit-tail.bas` | Recent audit log entries |
-| `grid-clock` | `/packages/flynn-ide-tools/modules/grid-clock.bas` | Grid cycle timer ticks |
-| `grid-clear` | `/packages/flynn-ide-tools/modules/grid-clear.bas` | Clear screen with Flynn banner |
-| `pkg-index` | `/packages/flynn-ide-tools/modules/pkg-index.bas` | Installed packages and modules |
-| `sample-menu` | `/packages/flynn-ide-tools/modules/sample-menu.bas` | GridBASIC sample program guide |
-| `ide-cheatsheet` | `/packages/flynn-ide-tools/modules/ide-cheatsheet.bas` | IDE colon-command reference |
-| `beep-scale` | `/packages/flynn-ide-tools/modules/beep-scale.bas` | PC speaker note demo |
-| `plot-grid` | `/packages/flynn-ide-tools/modules/plot-grid.bas` | VGA plot pattern demo |
-| `ai-ask` | `/packages/flynn-ide-tools/modules/ai-ask.bas` | Quick AI bridge question |
-| `btc-snapshot` | `/packages/flynn-ide-tools/modules/btc-snapshot.bas` | Bitcoin bridge status |
-| `irc-check` | `/packages/flynn-ide-tools/modules/irc-check.bas` | IRC session status |
-| `hosts-table` | `/packages/flynn-ide-tools/modules/hosts-table.bas` | Show /etc/hosts from Flynn disk |
-| `spawn-catalog` | `/packages/flynn-ide-tools/modules/spawn-catalog.bas` | Ring-3 program spawn hints |
+| Package | Module | Category | Path | Description |
+|---------|--------|----------|------|-------------|
+| `flynn-ide-tools` | `disc-status` | `disc` | `/packages/flynn-ide-tools/modules/disc-status.bas` | Identity disc status panel |
+| `flynn-ide-tools` | `grid-ping` | `network` | `/packages/flynn-ide-tools/modules/grid-ping.bas` | Ping gateway and grid hosts |
+| `flynn-ide-tools` | `patrol-arm` | `patrol` | `/packages/flynn-ide-tools/modules/patrol-arm.bas` | Start recognizer patrol |
+| `flynn-ide-tools` | `patrol-stand-down` | `patrol` | `/packages/flynn-ide-tools/modules/patrol-stand-down.bas` | Stop recognizer patrol |
+| `flynn-ide-tools` | `whoami-panel` | `disc` | `/packages/flynn-ide-tools/modules/whoami-panel.bas` | Entity type and identity |
+| `flynn-ide-tools` | `caps-panel` | `system` | `/packages/flynn-ide-tools/modules/caps-panel.bas` | Granted capability mask |
+| `flynn-ide-tools` | `net-status` | `network` | `/packages/flynn-ide-tools/modules/net-status.bas` | Virtio-net link status |
+| `flynn-ide-tools` | `dns-lookup` | `network` | `/packages/flynn-ide-tools/modules/dns-lookup.bas` | Resolve Flynn host names |
+| `flynn-ide-tools` | `vault-nodes` | `storage` | `/packages/flynn-ide-tools/modules/vault-nodes.bas` | List vault key nodes |
+| `flynn-ide-tools` | `gfs-programs` | `storage` | `/packages/flynn-ide-tools/modules/gfs-programs.bas` | List Flynn /programs archive |
+| `flynn-ide-tools` | `jobs-monitor` | `system` | `/packages/flynn-ide-tools/modules/jobs-monitor.bas` | Background sandbox jobs |
+| `flynn-ide-tools` | `iso-roster` | `system` | `/packages/flynn-ide-tools/modules/iso-roster.bas` | ISO research zone entities |
+| `flynn-ide-tools` | `audit-tail` | `system` | `/packages/flynn-ide-tools/modules/audit-tail.bas` | Recent audit log entries |
+| `flynn-ide-tools` | `grid-clock` | `grid` | `/packages/flynn-ide-tools/modules/grid-clock.bas` | Grid cycle timer ticks |
+| `flynn-ide-tools` | `grid-clear` | `grid` | `/packages/flynn-ide-tools/modules/grid-clear.bas` | Clear screen with Flynn banner |
+| `flynn-ide-tools` | `pkg-index` | `storage` | `/packages/flynn-ide-tools/modules/pkg-index.bas` | Installed packages and modules |
+| `flynn-ide-tools` | `sample-menu` | `dev` | `/packages/flynn-ide-tools/modules/sample-menu.bas` | GridBASIC sample program guide |
+| `flynn-ide-tools` | `ide-cheatsheet` | `dev` | `/packages/flynn-ide-tools/modules/ide-cheatsheet.bas` | IDE colon-command reference |
+| `flynn-ide-tools` | `beep-scale` | `grid` | `/packages/flynn-ide-tools/modules/beep-scale.bas` | PC speaker note demo |
+| `flynn-ide-tools` | `plot-grid` | `grid` | `/packages/flynn-ide-tools/modules/plot-grid.bas` | VGA plot pattern demo |
+| `flynn-ide-tools` | `ai-ask` | `bridge` | `/packages/flynn-ide-tools/modules/ai-ask.bas` | Quick AI bridge question |
+| `flynn-ide-tools` | `btc-snapshot` | `bridge` | `/packages/flynn-ide-tools/modules/btc-snapshot.bas` | Bitcoin bridge status |
+| `flynn-ide-tools` | `irc-check` | `network` | `/packages/flynn-ide-tools/modules/irc-check.bas` | IRC session status |
+| `flynn-ide-tools` | `hosts-table` | `network` | `/packages/flynn-ide-tools/modules/hosts-table.bas` | Show /etc/hosts from Flynn disk |
+| `flynn-ide-tools` | `spawn-catalog` | `system` | `/packages/flynn-ide-tools/modules/spawn-catalog.bas` | Ring-3 program spawn hints |
+| `flynn-net-tools` | `http-probe` | `network` | `/packages/flynn-net-tools/modules/http-probe.bas` | HTTP GET probe via GRID.HTTP |
+| `flynn-net-tools` | `irc-connect` | `network` | `/packages/flynn-net-tools/modules/irc-connect.bas` | IRC quick-connect helper |
+| `flynn-net-tools` | `https-bridge` | `bridge` | `/packages/flynn-net-tools/modules/https-bridge.bas` | HTTPS bridge status (host bridge) |
 <!-- AUTO:MODULE_TABLE:END -->
 
 ---

@@ -5,6 +5,7 @@
 
 void pkg_init(void);
 void pkg_rescan(void);
+void pkg_seed_defaults(void);
 
 int pkg_install_manifest(const char *manifest_path);
 int pkg_remove(const char *name);
@@ -12,6 +13,7 @@ int pkg_recv_gridlink(void);
 
 void pkg_list_packages(void);
 void pkg_list_modules(void);
+void pkg_list_modules_filtered(const char *category);
 int pkg_info(const char *name);
 
 int pkg_find_module(const char *name, char *path_out, size_t path_cap,
@@ -21,5 +23,7 @@ int pkg_load_module_path(const char *path);
 
 void pkg_format_package_list(char *out, size_t cap);
 void pkg_format_module_list(char *out, size_t cap);
+void pkg_format_module_list_filtered(char *out, size_t cap, const char *category);
+int pkg_module_category(const char *name, char *cat_out, size_t cat_cap);
 
 #endif

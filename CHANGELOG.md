@@ -1,5 +1,32 @@
 # Grid OS — Changelog
 
+## 7.1.1 — IDE polish, module categories, second package
+
+### Release & CI
+- Version bump across kernel, GridBASIC, shell, and host tests
+- **`make sync-basic-wiki`** in CI; e2e checks **`pkg mods`** lists seeded modules
+
+### Package manager
+- **Module categories** — `mod=name:path:desc:category` in MANIFEST; filter with **`pkg mods <category>`**
+- **Second package** — **`flynn-net-tools` v1.0** (`http-probe`, `irc-connect`, `https-bridge`)
+- **`tools/gen_packages.py`** — generates all packages + `kernel/gfs.c` seeds
+- **`gfs_seed.py`** — seeds every `packages/*/MANIFEST` on Flynn disk
+- **`gridctl portal-pkg-publish`** — writes `.gridpkg` frames to `dist/`
+
+### GridBASIC IDE
+- **`:pkg list|mods|run|load|info`** — package manager from the IDE command bar
+- **`:mods [category]`** — module browser with category filter
+- **`:find <text>`**, **`:goto <line>`** — buffer navigation
+- **`:run [path]`** — run buffer, current `.grid` path, or explicit file
+
+### Identity disc XP
+- **`disc_on_module_run()`** — +2 XP when running IDE modules
+- **`disc_on_duel()`** — +10 XP on GridLink lightcycle duel ping
+
+### Docs
+- **`docs/wiki/cookbook.md`** — recipes for modules, packages, bytecode, duels
+- Wiki sync covers both seeded packages and module categories
+
 ## 7.1 — Grid package manager + IDE modules
 
 ### Package manager (`pkg`)

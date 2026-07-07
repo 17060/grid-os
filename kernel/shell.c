@@ -100,8 +100,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 7.1 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 7.1.1 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1.1  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -1271,7 +1271,7 @@ static void cmd_pkg(int argc, char *argv[]) {
     if (argc == 1 || equals(argv[1], "help") || equals(argv[1], "?")) {
         console_write_line("Grid package manager:");
         console_write_line("  pkg list              installed packages");
-        console_write_line("  pkg mods              GridBASIC IDE modules");
+        console_write_line("  pkg mods [category]   GridBASIC IDE modules (filter by category)");
         console_write_line("  pkg info <name>       package details");
         console_write_line("  pkg install <path>    register a MANIFEST on Flynn disk");
         console_write_line("  pkg remove <name>     uninstall package + files");
@@ -1284,7 +1284,11 @@ static void cmd_pkg(int argc, char *argv[]) {
         return;
     }
     if (equals(argv[1], "mods")) {
-        pkg_list_modules();
+        if (argc >= 3) {
+            pkg_list_modules_filtered(argv[2]);
+        } else {
+            pkg_list_modules();
+        }
         return;
     }
     if (equals(argv[1], "info")) {
@@ -1672,7 +1676,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 7.1 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 7.1.1 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
