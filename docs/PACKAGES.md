@@ -8,9 +8,9 @@ At the `grid>` prompt:
 
 ```text
 pkg list                 # installed packages
-pkg mods                 # IDE modules (disc-status, grid-ping, patrol-arm)
+pkg mods                 # all 25 IDE modules
 basic mod run disc-status
-basic mod load grid-ping   # opens GridBASIC IDE with module source
+basic mod load ide-cheatsheet   # opens GridBASIC IDE with module source
 ```
 
 In the GridBASIC IDE, press **Esc** and type:
@@ -18,18 +18,44 @@ In the GridBASIC IDE, press **Esc** and type:
 ```text
 :mods
 :mod run patrol-arm
-:mod load disc-status
+:mod load pkg-index
 ```
 
-## Seeded package: flynn-ide-tools
+## Seeded package: flynn-ide-tools (v2.0)
+
+25 modules for the GridBASIC IDE and Flynn shell environment:
 
 | Module | Purpose |
 |--------|---------|
 | `disc-status` | Identity disc status panel |
-| `grid-ping` | Ping `gateway` and `grid` hosts |
+| `grid-ping` | Ping gateway, grid, and bridge |
 | `patrol-arm` | Start recognizer patrol |
+| `patrol-stand-down` | Stop recognizer patrol |
+| `whoami-panel` | Entity type and identity |
+| `caps-panel` | Granted capability mask |
+| `net-status` | Virtio-net link status |
+| `dns-lookup` | Resolve Flynn host names |
+| `vault-nodes` | List vault key nodes |
+| `gfs-programs` | List Flynn `/programs` archive |
+| `jobs-monitor` | Background sandbox jobs |
+| `iso-roster` | ISO research zone entities |
+| `audit-tail` | Recent audit log entries |
+| `grid-clock` | Grid cycle timer ticks |
+| `grid-clear` | Clear screen with Flynn banner |
+| `pkg-index` | Installed packages and modules |
+| `sample-menu` | GridBASIC sample program guide |
+| `ide-cheatsheet` | IDE colon-command reference |
+| `beep-scale` | PC speaker note demo |
+| `plot-grid` | VGA plot pattern demo |
+| `ai-ask` | Quick AI bridge question |
+| `btc-snapshot` | Bitcoin bridge status |
+| `irc-check` | IRC session status |
+| `hosts-table` | Show `/etc/hosts` from Flynn disk |
+| `spawn-catalog` | Ring-3 program spawn hints |
 
 Files live under `/packages/flynn-ide-tools/` on the Flynn arcade disk.
+
+Regenerate from source: `python3 tools/gen_flynn_ide_modules.py`
 
 ## MANIFEST format
 
@@ -37,11 +63,11 @@ Each package has a `MANIFEST` file:
 
 ```text
 name=flynn-ide-tools
-version=1.0
-desc=GridBASIC IDE tools for Flynn's Grid
+version=2.0
+desc=25 GridBASIC IDE tools for Flynn's Grid
 file=/packages/flynn-ide-tools/MANIFEST
+file=/packages/flynn-ide-tools/modules/disc-status.bas
 mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel
-mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts
 ```
 
 - **`name`**, **`version`**, **`desc`** — package metadata
@@ -91,21 +117,11 @@ portal pkg
 pkg recv
 ```
 
-Frame format:
+## Authoring modules
 
-```text
-#GRIDLINK/1.0/PKG
-/packages/flynn-ide-tools/MANIFEST 386
-...bytes...
-/packages/flynn-ide-tools/modules/disc-status.bas 215
-...bytes...
-#GRIDLINK/END
-```
-
-## Authoring a package
-
-1. Create `packages/my-pack/MANIFEST` and module `.bas` files under `packages/my-pack/`.
-2. Push with `gridctl portal-pkg-push` while Grid OS runs `portal pkg`, **or** copy files to Flynn disk and run `pkg install /packages/my-pack/MANIFEST`.
-3. List modules with `pkg mods` and run with `basic mod run <name>`.
+1. Add `packages/flynn-ide-tools/modules/my-mod.bas` (GridBASIC source).
+2. Add entries to `tools/gen_flynn_ide_modules.py` or edit `MANIFEST` manually.
+3. Run `python3 tools/gen_flynn_ide_modules.py` to sync MANIFEST + `kernel/gfs.c` seeds.
+4. `make seed-disk` — push with `gridctl portal-pkg-push` or `pkg install`.
 
 Source template: [packages/flynn-ide-tools/](../packages/flynn-ide-tools/).

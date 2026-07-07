@@ -18,7 +18,7 @@
 
 ## What's new in 7.1
 
-Grid package manager — `pkg list|mods|install|remove|recv`, seeded **flynn-ide-tools** IDE modules (`disc-status`, `grid-ping`, `patrol-arm`), shell `basic mod run|load`, IDE `:mods`/`:mod run|load`, `GRID.PKG.*` bindings, host `tools/gridpkg_build.py`. See [docs/PACKAGES.md](docs/PACKAGES.md) and [CHANGELOG.md](CHANGELOG.md).
+Grid package manager — `pkg list|mods|install|remove|recv`, seeded **flynn-ide-tools** with **25 IDE modules**, shell `basic mod run|load`, IDE `:mods`/`:mod run|load`, `GRID.PKG.*` bindings, host `tools/gridpkg_build.py`. See [docs/PACKAGES.md](docs/PACKAGES.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 7.0
 

@@ -1,0 +1,8 @@
+10 REM IDE module: beep-scale
+20 PRINT "=== Grid Beep ==="
+30 GRID.NOTE 60, 120
+40 GRID.NOTE 64, 120
+50 GRID.NOTE 67, 120
+60 GRID.BEEP 880, 200
+70 PRINT "End of line."
+80 END

@@ -79,7 +79,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `portal recv` | Install `/programs/*` over GridLink |
 | `portal pkg` | Install `.gridpkg` bundle over GridLink |
 | `pkg list` | Installed Grid packages |
-| `pkg mods` | GridBASIC IDE modules |
+| `pkg mods` | GridBASIC IDE modules (25 in flynn-ide-tools) |
 | `pkg info <name>` | Package details + module list |
 | `pkg install <manifest>` | Register MANIFEST on Flynn disk |
 | `pkg remove <name>` | Uninstall package and files |

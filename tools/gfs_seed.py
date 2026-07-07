@@ -144,10 +144,42 @@ GRID2D_BAS = (
     b"90 END\n"
 )
 
-PKG_MANIFEST = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/MANIFEST"
-PKG_DISC_STATUS = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/modules/disc-status.bas"
-PKG_GRID_PING = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/modules/grid-ping.bas"
-PKG_PATROL_ARM = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/modules/patrol-arm.bas"
+PKG_ROOT = Path(__file__).resolve().parent.parent / "packages" / "flynn-ide-tools"
+PKG_MANIFEST = PKG_ROOT / "MANIFEST"
+
+
+def package_seed_files() -> list[tuple[str, bytes]]:
+    """Return (vfs_path, payload) pairs from flynn-ide-tools MANIFEST."""
+    if not PKG_MANIFEST.is_file():
+        return []
+    text = PKG_MANIFEST.read_text(encoding="utf-8")
+    paths: list[str] = []
+    seen: set[str] = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("file="):
+            path = line[5:].strip()
+        elif line.startswith("mod="):
+            parts = line[4:].split(":", 2)
+            path = parts[1].strip() if len(parts) >= 2 else ""
+        else:
+            continue
+        if not path or path in seen:
+            continue
+        seen.add(path)
+        paths.append(path)
+    out: list[tuple[str, bytes]] = []
+    for vfs in paths:
+        if vfs.endswith("/MANIFEST"):
+            host = PKG_MANIFEST
+        else:
+            rel = vfs.split("/packages/flynn-ide-tools/", 1)[-1]
+            host = PKG_ROOT / rel
+        if not host.is_file():
+            raise SystemExit(f"missing package file for {vfs}: {host}")
+        out.append((vfs, host.read_bytes()))
+    return out
+
 
 ETC_HOSTS = (
     b"# Grid OS static hosts (also: built-in gateway/grid/ai/btc + UDP DNS)\n"
@@ -196,11 +228,12 @@ def main() -> int:
         (17, "/programs/tutorial.bas", TUTORIAL_BAS),
         (18, "/programs/subdemo.bas", SUBDEMO_BAS),
         (19, "/programs/grid2d.bas", GRID2D_BAS),
-        (20, "/packages/flynn-ide-tools/MANIFEST", PKG_MANIFEST.read_bytes()),
-        (21, "/packages/flynn-ide-tools/modules/disc-status.bas", PKG_DISC_STATUS.read_bytes()),
-        (22, "/packages/flynn-ide-tools/modules/grid-ping.bas", PKG_GRID_PING.read_bytes()),
-        (23, "/packages/flynn-ide-tools/modules/patrol-arm.bas", PKG_PATROL_ARM.read_bytes()),
     ]
+
+    slot = 20
+    for path, payload in package_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
 
     for slot, path, payload in files:
         if isinstance(payload, Path):

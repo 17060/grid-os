@@ -12,8 +12,8 @@
 #include <stdint.h>
 
 #define PKG_MAX       8
-#define PKG_MOD_MAX   16
-#define PKG_FILE_MAX  12
+#define PKG_MOD_MAX   32
+#define PKG_FILE_MAX  48
 #define PKG_NAME_MAX  24
 #define PKG_PATH_MAX  GFS_PATH_MAX
 #define GRIDLINK_HDR  "GRIDLINK/1.0"

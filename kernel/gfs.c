@@ -642,13 +642,61 @@ int gfs_seed_defaults(void) {
 
     seed_one("/packages/flynn-ide-tools/MANIFEST",
              "name=flynn-ide-tools\n"
-             "version=1.0\n"
-             "desc=GridBASIC IDE tools for Flynn's Grid\n"
+             "version=2.0\n"
+             "desc=25 GridBASIC IDE tools for Flynn's Grid\n"
              "file=/packages/flynn-ide-tools/MANIFEST\n"
+             "file=/packages/flynn-ide-tools/modules/disc-status.bas\n"
+             "file=/packages/flynn-ide-tools/modules/grid-ping.bas\n"
+             "file=/packages/flynn-ide-tools/modules/patrol-arm.bas\n"
+             "file=/packages/flynn-ide-tools/modules/patrol-stand-down.bas\n"
+             "file=/packages/flynn-ide-tools/modules/whoami-panel.bas\n"
+             "file=/packages/flynn-ide-tools/modules/caps-panel.bas\n"
+             "file=/packages/flynn-ide-tools/modules/net-status.bas\n"
+             "file=/packages/flynn-ide-tools/modules/dns-lookup.bas\n"
+             "file=/packages/flynn-ide-tools/modules/vault-nodes.bas\n"
+             "file=/packages/flynn-ide-tools/modules/gfs-programs.bas\n"
+             "file=/packages/flynn-ide-tools/modules/jobs-monitor.bas\n"
+             "file=/packages/flynn-ide-tools/modules/iso-roster.bas\n"
+             "file=/packages/flynn-ide-tools/modules/audit-tail.bas\n"
+             "file=/packages/flynn-ide-tools/modules/grid-clock.bas\n"
+             "file=/packages/flynn-ide-tools/modules/grid-clear.bas\n"
+             "file=/packages/flynn-ide-tools/modules/pkg-index.bas\n"
+             "file=/packages/flynn-ide-tools/modules/sample-menu.bas\n"
+             "file=/packages/flynn-ide-tools/modules/ide-cheatsheet.bas\n"
+             "file=/packages/flynn-ide-tools/modules/beep-scale.bas\n"
+             "file=/packages/flynn-ide-tools/modules/plot-grid.bas\n"
+             "file=/packages/flynn-ide-tools/modules/ai-ask.bas\n"
+             "file=/packages/flynn-ide-tools/modules/btc-snapshot.bas\n"
+             "file=/packages/flynn-ide-tools/modules/irc-check.bas\n"
+             "file=/packages/flynn-ide-tools/modules/hosts-table.bas\n"
+             "file=/packages/flynn-ide-tools/modules/spawn-catalog.bas\n"
              "mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel\n"
              "mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts\n"
-             "mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol\n",
-             386);
+             "mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol\n"
+             "mod=patrol-stand-down:/packages/flynn-ide-tools/modules/patrol-stand-down.bas:Stop recognizer patrol\n"
+             "mod=whoami-panel:/packages/flynn-ide-tools/modules/whoami-panel.bas:Entity type and identity\n"
+             "mod=caps-panel:/packages/flynn-ide-tools/modules/caps-panel.bas:Granted capability mask\n"
+             "mod=net-status:/packages/flynn-ide-tools/modules/net-status.bas:Virtio-net link status\n"
+             "mod=dns-lookup:/packages/flynn-ide-tools/modules/dns-lookup.bas:Resolve Flynn host names\n"
+             "mod=vault-nodes:/packages/flynn-ide-tools/modules/vault-nodes.bas:List vault key nodes\n"
+             "mod=gfs-programs:/packages/flynn-ide-tools/modules/gfs-programs.bas:List Flynn /programs archive\n"
+             "mod=jobs-monitor:/packages/flynn-ide-tools/modules/jobs-monitor.bas:Background sandbox jobs\n"
+             "mod=iso-roster:/packages/flynn-ide-tools/modules/iso-roster.bas:ISO research zone entities\n"
+             "mod=audit-tail:/packages/flynn-ide-tools/modules/audit-tail.bas:Recent audit log entries\n"
+             "mod=grid-clock:/packages/flynn-ide-tools/modules/grid-clock.bas:Grid cycle timer ticks\n"
+             "mod=grid-clear:/packages/flynn-ide-tools/modules/grid-clear.bas:Clear screen with Flynn banner\n"
+             "mod=pkg-index:/packages/flynn-ide-tools/modules/pkg-index.bas:Installed packages and modules\n"
+             "mod=sample-menu:/packages/flynn-ide-tools/modules/sample-menu.bas:GridBASIC sample program guide\n"
+             "mod=ide-cheatsheet:/packages/flynn-ide-tools/modules/ide-cheatsheet.bas:IDE colon-command reference\n"
+             "mod=beep-scale:/packages/flynn-ide-tools/modules/beep-scale.bas:PC speaker note demo\n"
+             "mod=plot-grid:/packages/flynn-ide-tools/modules/plot-grid.bas:VGA plot pattern demo\n"
+             "mod=ai-ask:/packages/flynn-ide-tools/modules/ai-ask.bas:Quick AI bridge question\n"
+             "mod=btc-snapshot:/packages/flynn-ide-tools/modules/btc-snapshot.bas:Bitcoin bridge status\n"
+             "mod=irc-check:/packages/flynn-ide-tools/modules/irc-check.bas:IRC session status\n"
+             "mod=hosts-table:/packages/flynn-ide-tools/modules/hosts-table.bas:Show /etc/hosts from Flynn disk\n"
+             "mod=spawn-catalog:/packages/flynn-ide-tools/modules/spawn-catalog.bas:Ring-3 program spawn hints\n"
+             "\n",
+             3759);
 
     seed_one("/packages/flynn-ide-tools/modules/disc-status.bas",
              "10 REM IDE module: disc-status\n"
@@ -658,7 +706,8 @@ int gfs_seed_defaults(void) {
              "50 PRINT \"Entity: \"; GRID.DISC.ENTITY$\n"
              "60 PRINT \"Level: \"; GRID.DISC.LEVEL\n"
              "70 PRINT \"XP: \"; GRID.DISC.XP\n"
-             "80 END\n",
+             "80 END\n"
+             "\n",
              215);
 
     seed_one("/packages/flynn-ide-tools/modules/grid-ping.bas",
@@ -666,15 +715,230 @@ int gfs_seed_defaults(void) {
              "20 PRINT \"=== Grid Ping ===\"\n"
              "30 PRINT \"gateway: \"; GRID.PING(\"gateway\")\n"
              "40 PRINT \"grid: \"; GRID.PING(\"grid\")\n"
-             "50 END\n",
-             145);
+             "50 PRINT \"bridge: \"; GRID.PING(\"bridge\")\n"
+             "60 END\n"
+             "\n",
+             186);
 
     seed_one("/packages/flynn-ide-tools/modules/patrol-arm.bas",
              "10 REM IDE module: patrol-arm\n"
              "20 GRID.RECOGNIZER.START\n"
              "30 PRINT GRID.RECOGNIZER.STATUS$\n"
-             "40 END\n",
+             "40 END\n"
+             "\n",
              95);
+
+    seed_one("/packages/flynn-ide-tools/modules/patrol-stand-down.bas",
+             "10 REM IDE module: patrol-stand-down\n"
+             "20 GRID.RECOGNIZER.STOP\n"
+             "30 PRINT GRID.RECOGNIZER.STATUS$\n"
+             "40 END\n"
+             "\n",
+             101);
+
+    seed_one("/packages/flynn-ide-tools/modules/whoami-panel.bas",
+             "10 REM IDE module: whoami-panel\n"
+             "20 PRINT \"=== Who Am I ===\"\n"
+             "30 PRINT \"Entity: \"; GRID.WHOAMI$\n"
+             "40 PRINT \"Disc: \"; GRID.DISC.ENTITY$\n"
+             "50 PRINT GRID.STATUS$\n"
+             "60 END\n"
+             "\n",
+             160);
+
+    seed_one("/packages/flynn-ide-tools/modules/caps-panel.bas",
+             "10 REM IDE module: caps-panel\n"
+             "20 PRINT \"=== Capabilities ===\"\n"
+             "30 PRINT \"CAP mask: \"; GRID.CAPS$\n"
+             "40 PRINT \"Use 'caps' in shell for decoded list\"\n"
+             "50 END\n"
+             "\n",
+             151);
+
+    seed_one("/packages/flynn-ide-tools/modules/net-status.bas",
+             "10 REM IDE module: net-status\n"
+             "20 PRINT \"=== Grid Network ===\"\n"
+             "30 PRINT GRID.NET.STATUS$\n"
+             "40 END\n"
+             "\n",
+             95);
+
+    seed_one("/packages/flynn-ide-tools/modules/dns-lookup.bas",
+             "10 REM IDE module: dns-lookup\n"
+             "20 PRINT \"=== DNS Resolve ===\"\n"
+             "30 PRINT \"gateway -> \"; GRID.DNS.RESOLVE$(\"gateway\")\n"
+             "40 PRINT \"grid -> \"; GRID.DNS.RESOLVE$(\"grid\")\n"
+             "50 PRINT \"bridge -> \"; GRID.DNS.RESOLVE$(\"bridge\")\n"
+             "60 END\n"
+             "\n",
+             219);
+
+    seed_one("/packages/flynn-ide-tools/modules/vault-nodes.bas",
+             "10 REM IDE module: vault-nodes\n"
+             "20 PRINT \"=== Vault Nodes ===\"\n"
+             "30 PRINT GRID.VAULT.LIST$\n"
+             "40 PRINT \"Put: GRID.VAULT.PUT key$, val$  Sync: GRID.VAULT.SYNC\"\n"
+             "50 END\n"
+             "\n",
+             160);
+
+    seed_one("/packages/flynn-ide-tools/modules/gfs-programs.bas",
+             "10 REM IDE module: gfs-programs\n"
+             "20 PRINT \"=== Flynn /programs ===\"\n"
+             "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
+             "40 PRINT \"Run: basic run /programs/hello.bas\"\n"
+             "50 END\n"
+             "\n",
+             157);
+
+    seed_one("/packages/flynn-ide-tools/modules/jobs-monitor.bas",
+             "10 REM IDE module: jobs-monitor\n"
+             "20 PRINT \"=== Background Jobs ===\"\n"
+             "30 PRINT GRID.JOBS.LIST$\n"
+             "40 PRINT \"Shell: jobs   kill <#>   wait\"\n"
+             "50 END\n"
+             "\n",
+             140);
+
+    seed_one("/packages/flynn-ide-tools/modules/iso-roster.bas",
+             "10 REM IDE module: iso-roster\n"
+             "20 PRINT \"=== ISO Zone ===\"\n"
+             "30 PRINT GRID.ISO.LIST$\n"
+             "40 PRINT \"Shell: iso list   iso spawn\"\n"
+             "50 END\n"
+             "\n",
+             128);
+
+    seed_one("/packages/flynn-ide-tools/modules/audit-tail.bas",
+             "10 REM IDE module: audit-tail\n"
+             "20 PRINT \"=== Audit Tail ===\"\n"
+             "30 PRINT GRID.LOG.TAIL$(8)\n"
+             "40 END\n"
+             "\n",
+             94);
+
+    seed_one("/packages/flynn-ide-tools/modules/grid-clock.bas",
+             "10 REM IDE module: grid-clock\n"
+             "20 PRINT \"=== Grid Clock ===\"\n"
+             "30 PRINT \"Ticks: \"; GRID.TIME\n"
+             "40 FOR I = 1 TO 3\n"
+             "50   PRINT \"  beat \"; I; \" @ \"; GRID.TIME\n"
+             "60   GRID.WAIT 5\n"
+             "70 NEXT I\n"
+             "80 END\n"
+             "\n",
+             184);
+
+    seed_one("/packages/flynn-ide-tools/modules/grid-clear.bas",
+             "10 REM IDE module: grid-clear\n"
+             "20 GRID.CLS\n"
+             "30 PRINT \"=== Flynn GridBASIC IDE ===\"\n"
+             "40 PRINT GRID.STATUS$\n"
+             "50 PRINT \"Esc :help   :mods   :run\"\n"
+             "60 END\n"
+             "\n",
+             146);
+
+    seed_one("/packages/flynn-ide-tools/modules/pkg-index.bas",
+             "10 REM IDE module: pkg-index\n"
+             "20 PRINT \"=== Grid Packages ===\"\n"
+             "30 PRINT \"Packages: \"; GRID.PKG.LIST$\n"
+             "40 PRINT \"Modules: \"; GRID.PKG.MODS$\n"
+             "50 PRINT \"Shell: pkg mods   basic mod run <name>\"\n"
+             "60 END\n"
+             "\n",
+             194);
+
+    seed_one("/packages/flynn-ide-tools/modules/sample-menu.bas",
+             "10 REM IDE module: sample-menu\n"
+             "20 PRINT \"=== GridBASIC Samples ===\"\n"
+             "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
+             "40 PRINT \"Try: tutorial, hello, subdemo, grid2d\"\n"
+             "50 PRINT \"IDE: Esc :load tutorial\"\n"
+             "60 END\n"
+             "\n",
+             196);
+
+    seed_one("/packages/flynn-ide-tools/modules/ide-cheatsheet.bas",
+             "10 REM IDE module: ide-cheatsheet\n"
+             "20 PRINT \"=== IDE Cheatsheet ===\"\n"
+             "30 PRINT \":run :save :load :new :list\"\n"
+             "40 PRINT \":mods :mod run <n> :mod load <n>\"\n"
+             "50 PRINT \":tutorial :compile :samples :help\"\n"
+             "60 PRINT \"grid> pkg mods   basic mod run <n>\"\n"
+             "70 END\n"
+             "\n",
+             249);
+
+    seed_one("/packages/flynn-ide-tools/modules/beep-scale.bas",
+             "10 REM IDE module: beep-scale\n"
+             "20 PRINT \"=== Grid Beep ===\"\n"
+             "30 GRID.NOTE 60, 120\n"
+             "40 GRID.NOTE 64, 120\n"
+             "50 GRID.NOTE 67, 120\n"
+             "60 GRID.BEEP 880, 200\n"
+             "70 PRINT \"End of line.\"\n"
+             "80 END\n"
+             "\n",
+             175);
+
+    seed_one("/packages/flynn-ide-tools/modules/plot-grid.bas",
+             "10 REM IDE module: plot-grid\n"
+             "20 GRID.CLS\n"
+             "30 FOR X = 0 TO 40\n"
+             "40   GRID.PLOT X, X, 2\n"
+             "50   GRID.PLOT 80 - X, X, 3\n"
+             "60 NEXT X\n"
+             "70 PRINT \"Plot demo complete.\"\n"
+             "80 END\n"
+             "\n",
+             159);
+
+    seed_one("/packages/flynn-ide-tools/modules/ai-ask.bas",
+             "10 REM IDE module: ai-ask (host: make ai-bridge)\n"
+             "20 PRINT \"=== Grid AI ===\"\n"
+             "30 PRINT GRID.AI.MODELS$\n"
+             "40 PRINT GRID.AI.ASK$(\"What is PRINT in GridBASIC?\", \"EXPLAIN\")\n"
+             "50 END\n"
+             "\n",
+             172);
+
+    seed_one("/packages/flynn-ide-tools/modules/btc-snapshot.bas",
+             "10 REM IDE module: btc-snapshot (host: make btc-bridge)\n"
+             "20 PRINT \"=== Grid BTC ===\"\n"
+             "30 PRINT GRID.BTC.STATUS$\n"
+             "40 PRINT GRID.BTC.HELP$\n"
+             "50 END\n"
+             "\n",
+             141);
+
+    seed_one("/packages/flynn-ide-tools/modules/irc-check.bas",
+             "10 REM IDE module: irc-check\n"
+             "20 PRINT \"=== Grid IRC ===\"\n"
+             "30 PRINT GRID.IRC.STATUS$\n"
+             "40 PRINT \"Connect: irc connect gateway 6667 griduser\"\n"
+             "50 END\n"
+             "\n",
+             144);
+
+    seed_one("/packages/flynn-ide-tools/modules/hosts-table.bas",
+             "10 REM IDE module: hosts-table\n"
+             "20 PRINT \"=== /etc/hosts ===\"\n"
+             "30 H$ = GRID.GFS.READ$(\"/etc/hosts\")\n"
+             "40 IF LEN(H$) > 0 THEN PRINT H$ ELSE PRINT \"(missing — gfs seed)\"\n"
+             "50 END\n"
+             "\n",
+             173);
+
+    seed_one("/packages/flynn-ide-tools/modules/spawn-catalog.bas",
+             "10 REM IDE module: spawn-catalog\n"
+             "20 PRINT \"=== Spawn Catalog ===\"\n"
+             "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
+             "40 PRINT \"Shell: spawn gridsh   spawn lightcycle\"\n"
+             "50 PRINT \"GRID.SPAWN.BG runs jobs in background\"\n"
+             "60 END\n"
+             "\n",
+             209);
 
     return 0;
 }

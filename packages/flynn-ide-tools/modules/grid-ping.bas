@@ -2,4 +2,5 @@
 20 PRINT "=== Grid Ping ==="
 30 PRINT "gateway: "; GRID.PING("gateway")
 40 PRINT "grid: "; GRID.PING("grid")
-50 END
+50 PRINT "bridge: "; GRID.PING("bridge")
+60 END

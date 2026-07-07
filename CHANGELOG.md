@@ -8,7 +8,7 @@
 - **Host tool** — `tools/gridpkg_build.py`, `gridctl portal-pkg-push`
 
 ### IDE modules
-- Seeded **`flynn-ide-tools`** package with modules: `disc-status`, `grid-ping`, `patrol-arm`
+- Seeded **`flynn-ide-tools` v2.0** — **25 IDE modules** for disc, network, vault, GFS, jobs, ISO, audit, graphics, AI/BTC/IRC bridges, and IDE cheatsheets
 - **Shell** — `basic mod run|load <name>`
 - **IDE** — `:mods`, `:mod run <name>`, `:mod load <name>`
 - **GridBASIC** — `GRID.PKG.LIST$`, `GRID.PKG.MODS$`, `GRID.PKG.INSTALL`, `GRID.PKG.REMOVE`, `GRID.PKG.MOD.RUN`
