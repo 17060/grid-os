@@ -18,6 +18,14 @@
 - **Shell** — `ircserver listen|status|stop|help`
 - **`flynn-net-tools`** — new **`irc-server`** module
 
+### Audit fixes (7.1.2)
+- **`tcp.c`** — copy accepted connections into `active_conns[]` pool (fixes pending-slot reuse corruption)
+- **`grid_server_accept()`** — port-aware `tcp_accept_port()`; dead clients call `tcp_close()` in poll
+- **`grid_server` CRLF** — skip `\r` before `\n` line termination
+- **IDE `:server new` template** — poll all slots each loop (not just new accepts)
+- **`GRID.IRCSERVER.ESLOT`** — returns numeric value (not string)
+- **IRC server** — registration gate for JOIN/PART/PRIVMSG; QUIT broadcast to channels; listen-table-full error
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI

@@ -10,6 +10,8 @@
 static tcp_conn_t *conn_slots[TCP_MAX_CONNECTIONS];
 static tcp_conn_t pending_slots[TCP_MAX_PENDING];
 static int pending_used[TCP_MAX_PENDING];
+static tcp_conn_t active_conns[TCP_MAX_CONNECTIONS];
+static int active_used[TCP_MAX_CONNECTIONS];
 static uint16_t listen_ports[TCP_MAX_LISTENERS];
 static int listen_count = 0;
 static uint16_t next_local_port = 0xC000u;
@@ -158,18 +160,40 @@ static void free_pending(tcp_conn_t *c) {
     }
 }
 
-static int accept_pending(tcp_conn_t *p) {
-    if (!p || !p->established || p->closed) {
-        return -1;
-    }
-    if (register_conn(p) != 0) {
-        return -1;
-    }
-    for (int i = 0; i < TCP_MAX_PENDING; ++i) {
-        if (&pending_slots[i] == p) {
-            pending_used[i] = 0;
-            return 0;
+static void release_active_conn(tcp_conn_t *c) {
+    for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
+        if (active_used[i] && &active_conns[i] == c) {
+            active_used[i] = 0;
+            return;
         }
+    }
+}
+
+static int promote_pending(tcp_conn_t *p, tcp_conn_t **out) {
+    if (!p || !p->established || p->closed || !out) {
+        return -1;
+    }
+    for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
+        if (active_used[i]) {
+            continue;
+        }
+        active_conns[i] = *p;
+        active_used[i] = 1;
+        free_pending(p);
+        if (register_conn(&active_conns[i]) != 0) {
+            active_used[i] = 0;
+            return -1;
+        }
+        *out = &active_conns[i];
+        return 0;
+    }
+    return -1;
+}
+
+static int accept_pending(tcp_conn_t *p) {
+    tcp_conn_t *promoted = 0;
+    if (promote_pending(p, &promoted) != 0) {
+        return -1;
     }
     return 0;
 }
@@ -239,6 +263,7 @@ static uint16_t alloc_local_port(void) {
 void tcp_init(void) {
     for (int i = 0; i < TCP_MAX_CONNECTIONS; ++i) {
         conn_slots[i] = 0;
+        active_used[i] = 0;
     }
     for (int i = 0; i < TCP_MAX_PENDING; ++i) {
         pending_used[i] = 0;
@@ -441,6 +466,7 @@ void tcp_close(tcp_conn_t *c) {
         }
     }
     unregister_conn(c);
+    release_active_conn(c);
 }
 
 void tcp_input(uint32_t src_ip, const uint8_t *pkt, size_t len) {

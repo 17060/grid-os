@@ -359,6 +359,16 @@ static int is_bot_command(const char *text) {
     return 0;
 }
 
+static int require_registered(irc_server_client_t *c) {
+    if (c && c->registered) {
+        return 1;
+    }
+    if (c) {
+        send_numeric(c, 451, ":You have not registered");
+    }
+    return 0;
+}
+
 static void handle_privmsg(irc_server_client_t *c, const char *target, const char *text) {
     char line[GRID_IRC_SERVER_LINE_MAX];
     char prefix[80];
@@ -445,6 +455,9 @@ static void handle_line(irc_server_client_t *c, const char *line) {
         return;
     }
     if (streq(cmd, "JOIN")) {
+        if (!require_registered(c)) {
+            return;
+        }
         rest_param(&p, arg1, sizeof(arg1));
         if (!arg1[0]) {
             return;
@@ -461,6 +474,9 @@ static void handle_line(irc_server_client_t *c, const char *line) {
         return;
     }
     if (streq(cmd, "PART")) {
+        if (!require_registered(c)) {
+            return;
+        }
         next_token(&p, arg1, sizeof(arg1));
         rest_param(&p, arg2, sizeof(arg2));
         if (!arg1[0]) {
@@ -481,6 +497,9 @@ static void handle_line(irc_server_client_t *c, const char *line) {
         return;
     }
     if (streq(cmd, "PRIVMSG")) {
+        if (!require_registered(c)) {
+            return;
+        }
         next_token(&p, arg1, sizeof(arg1));
         rest_param(&p, arg2, sizeof(arg2));
         handle_privmsg(c, arg1, arg2);
@@ -488,6 +507,17 @@ static void handle_line(irc_server_client_t *c, const char *line) {
     }
     if (streq(cmd, "QUIT")) {
         rest_param(&p, arg1, sizeof(arg1));
+        client_prefix(c, prefix_line, sizeof(prefix_line));
+        copy_str(part_msg, sizeof(part_msg), ":");
+        append_str(part_msg, sizeof(part_msg), prefix_line);
+        append_str(part_msg, sizeof(part_msg), " QUIT");
+        if (arg1[0]) {
+            append_str(part_msg, sizeof(part_msg), " :");
+            append_str(part_msg, sizeof(part_msg), arg1);
+        }
+        for (int ci = 0; ci < c->n_channels; ++ci) {
+            broadcast_channel(c->channels[ci], part_msg, 0);
+        }
         enqueue_event("QUIT", slot, c->nick, "", arg1);
         close_client(c);
         return;
@@ -553,12 +583,13 @@ int grid_irc_server_listen(uint16_t port) {
     if (grid_irc_server_listening(port)) {
         return 0;
     }
+    if (g_listen_count >= GRID_IRC_SERVER_LISTEN_MAX) {
+        return -1;
+    }
     if (tcp_listen(port) != 0) {
         return -1;
     }
-    if (g_listen_count < GRID_IRC_SERVER_LISTEN_MAX) {
-        g_listen_ports[g_listen_count++] = port;
-    }
+    g_listen_ports[g_listen_count++] = port;
     return 0;
 }
 
@@ -595,7 +626,7 @@ int grid_irc_server_listening(uint16_t port) {
             return 1;
         }
     }
-    return tcp_listen_active(port);
+    return 0;
 }
 
 void grid_irc_server_poll(void) {

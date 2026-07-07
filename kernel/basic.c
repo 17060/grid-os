@@ -1180,9 +1180,7 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         return make_str(b);
     }
     if (strequal(name, "GRID.IRCSERVER.ESLOT")) {
-        char b[16];
-        num_to_string((num_t)grid_irc_server_event_slot() * BASIC_SCALE, b, sizeof(b));
-        return make_str(b);
+        return make_num((num_t)grid_irc_server_event_slot() * BASIC_SCALE);
     }
     if (strequal(name, "GRID.IRCSERVER.NICK$")) {
         if (!(argc >= 1)) { return make_str(""); }

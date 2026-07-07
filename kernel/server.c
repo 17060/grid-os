@@ -95,6 +95,15 @@ static grid_server_slot_t *alloc_slot(tcp_conn_t *conn) {
     return 0;
 }
 
+static int port_tracked(uint16_t port) {
+    for (int i = 0; i < g_listen_count; ++i) {
+        if (g_listen_ports[i] == port) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static void drain_lines(grid_server_slot_t *s) {
     uint8_t tmp[128];
     if (!s || !s->conn) {
@@ -109,7 +118,10 @@ static void drain_lines(grid_server_slot_t *s) {
         for (size_t i = 0; i < got; ++i) {
             char c = (char)tmp[i];
             consumed = i + 1;
-            if (c == '\n' || c == '\r') {
+            if (c == '\r') {
+                continue;
+            }
+            if (c == '\n') {
                 if (s->line_len < GRID_SERVER_LINE_MAX) {
                     s->line_buf[s->line_len] = '\0';
                 }
@@ -135,15 +147,19 @@ void grid_server_init(void) {
 }
 
 int grid_server_listen(uint16_t port) {
-    if (!net_present()) {
+    if (!net_present() || port == 0) {
+        return -1;
+    }
+    if (port_tracked(port)) {
+        return 0;
+    }
+    if (g_listen_count >= GRID_SERVER_LISTEN_MAX) {
         return -1;
     }
     if (tcp_listen(port) != 0) {
         return -1;
     }
-    if (g_listen_count < GRID_SERVER_LISTEN_MAX) {
-        g_listen_ports[g_listen_count++] = port;
-    }
+    g_listen_ports[g_listen_count++] = port;
     return 0;
 }
 
@@ -175,7 +191,7 @@ void grid_server_stop_all(void) {
 }
 
 int grid_server_listening(uint16_t port) {
-    return tcp_listen_active(port);
+    return port_tracked(port);
 }
 
 void grid_server_poll(void) {
@@ -185,8 +201,11 @@ void grid_server_poll(void) {
             continue;
         }
         if (g_slots[i].conn->closed || g_slots[i].conn->error) {
+            tcp_close(g_slots[i].conn);
             g_slots[i].used = 0;
             g_slots[i].conn = 0;
+            g_slots[i].line_len = 0;
+            g_slots[i].line_buf[0] = '\0';
             continue;
         }
         drain_lines(&g_slots[i]);
@@ -194,18 +213,21 @@ void grid_server_poll(void) {
 }
 
 int grid_server_accept(void) {
-    tcp_conn_t *conn = 0;
-    if (tcp_accept(&conn) != 0 || !conn) {
-        return 0;
+    for (int li = 0; li < g_listen_count; ++li) {
+        tcp_conn_t *conn = 0;
+        if (tcp_accept_port(&conn, g_listen_ports[li]) != 0 || !conn) {
+            continue;
+        }
+        grid_server_slot_t *slot = alloc_slot(conn);
+        if (!slot) {
+            tcp_close(conn);
+            return 0;
+        }
+        grid_server_reply(slot_index(slot), "220 Flynn Grid server ready");
+        grid_server_reply(slot_index(slot), "220 Type HELP for commands");
+        return slot_index(slot);
     }
-    grid_server_slot_t *slot = alloc_slot(conn);
-    if (!slot) {
-        tcp_close(conn);
-        return 0;
-    }
-    grid_server_reply(slot_index(slot), "220 Flynn Grid server ready");
-    grid_server_reply(slot_index(slot), "220 Type HELP for commands");
-    return slot_index(slot);
+    return 0;
 }
 
 int grid_server_read_line(int slot, char *line, size_t cap) {
