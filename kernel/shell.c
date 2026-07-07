@@ -15,6 +15,7 @@
 #include "log.h"
 #include "net.h"
 #include "program.h"
+#include "recognizer.h"
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
@@ -98,8 +99,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 6.9 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 6.9  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 7.0 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.0  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -148,7 +149,7 @@ static void cmd_help(void) {
     console_write_line("  theme [flynn|clu] Prompt color theme");
     console_write_line("  ide [file.grid]   Grid Workbench (GEM + AmigaDOS)");
     console_write_line("  log [tail]        Audit trail");
-    console_write_line("  portal [export|import|recv]  GridLink serial portal");
+    console_write_line("  portal [export|import|recv|pkg|duel]  GridLink serial portal");
     console_write_line("  net [status|ping <ip|host>]  Grid network (virtio-net)");
     console_write_line("  http get <host|ip> [port] <path>        HTTP/1.1 GET (keep-alive)");
     console_write_line("  http post <host|ip> [port] <path> <body>  HTTP/1.1 POST");
@@ -156,7 +157,8 @@ static void cmd_help(void) {
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
-    console_write_line("  basic [ide|run <f>|samples|help]  GridBASIC language + IDE");
+    console_write_line("  basic [ide|run|compile|samples|help]  GridBASIC language + IDE");
+    console_write_line("  recognizer [start|stop|status]  Patrol background service");
     console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
@@ -519,7 +521,27 @@ static void cmd_gfs(int argc, char *argv[]) {
     gfs_print_status();
 }
 
-static void cmd_recognizer(void) {
+static void cmd_recognizer(int argc, char *argv[]) {
+    if (argc >= 2 && equals(argv[1], "start")) {
+        recognizer_start_patrol();
+        console_set_color(GRID_COL_OK);
+        console_write_line("Recognizer patrol armed.");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "stop")) {
+        recognizer_stop_patrol();
+        console_set_color(GRID_COL_DIM);
+        console_write_line("Recognizer patrol stopped.");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "status")) {
+        char st[64];
+        recognizer_status(st, sizeof(st));
+        console_write_line(st);
+        return;
+    }
     console_set_color(GRID_COL_OK);
     console_write_line("        /\\");
     console_write_line("       /  \\___");
@@ -1265,6 +1287,24 @@ static void cmd_basic(int argc, char *argv[]) {
         basic_run_file(argv[2]);
         return;
     }
+    if (equals(argv[1], "compile")) {
+        if (argc < 4) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Usage: basic compile <src.bas> <out.grid>");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (basic_compile_file(argv[2], argv[3]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Compile failed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write_line("Compiled to bytecode (.grid).");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
     if (equals(argv[1], "samples")) {
         cmd_samples();
         return;
@@ -1274,7 +1314,7 @@ static void cmd_basic(int argc, char *argv[]) {
         return;
     }
     console_set_color(GRID_COL_ERROR);
-    console_write_line("Usage: basic [ide [file] | run <file> | samples | help]");
+    console_write_line("Usage: basic [ide [file] | run <file> | compile <in> <out.grid> | samples | help]");
     console_set_color(GRID_COL_DEFAULT);
 }
 
@@ -1510,12 +1550,29 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 6.9 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 7.0 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
 
 static void cmd_portal(int argc, char *argv[]) {
+    if (argc >= 2 && equals(argv[1], "pkg")) {
+        if (!security_require_capability(CAP_STORAGE, "portal pkg")) {
+            return;
+        }
+        (void)gridlink_recv_package();
+        return;
+    }
+
+    if (argc >= 2 && equals(argv[1], "duel")) {
+        if (!security_require_capability(CAP_COMMUNICATE, "portal duel")) {
+            return;
+        }
+        gridlink_duel_ping();
+        program_spawn_named("lightcycle");
+        return;
+    }
+
     if (argc >= 2 && equals(argv[1], "export")) {
         if (!security_require_capability(CAP_COMMUNICATE, "portal export")) {
             return;
@@ -1550,6 +1607,8 @@ static void cmd_portal(int argc, char *argv[]) {
     console_write("GFS:    ");
     console_write_line(gfs_present() ? "GFS2FLYN mounted" : "not mounted");
     console_set_color(GRID_COL_DIM);
+    console_write_line("  portal pkg        install .gridpkg bundle over GridLink");
+    console_write_line("  portal duel       GridLink lightcycle duel ping + spawn");
     console_write_line("  portal export     GridLink vault frame on COM1");
     console_write_line("  portal import     receive vault from host");
     console_write_line("  portal recv       install /programs/* over GridLink");
@@ -1862,7 +1921,7 @@ void shell_dispatch_line(char *line) {
     } else if (equals(argv[0], "gfs")) {
         cmd_gfs(argc, argv);
     } else if (equals(argv[0], "recognizer")) {
-        cmd_recognizer();
+        cmd_recognizer(argc, argv);
     } else if (equals(argv[0], "theme")) {
         cmd_theme(argc, argv);
     } else if (equals(argv[0], "ide") || equals(argv[0], "workshop")) {

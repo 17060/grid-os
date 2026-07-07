@@ -1,8 +1,10 @@
-# Grid OS 6.9
+# Grid OS 7.0
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
 **New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
+
+**Linux?** See [docs/LINUX.md](docs/LINUX.md) — `make release-linux` for distributable tarballs.
 
 **Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.
 
@@ -11,6 +13,10 @@
 **Android (Termux)?** See [docs/ANDROID_TERMUX.md](docs/ANDROID_TERMUX.md) — download `GridOS-*-Android-Termux.sh` or `make release-termux`.
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+## What's new in 7.0
+
+Elite GridBASIC — SHARED, `#IF`/`#INCLUDE`, bytecode `.grid` compiler, nested SELECT, `GRID.PLOT`/`BEEP`/`DISC.*`/`RECOGNIZER.*`/`PORTAL.*`, Linux release bundle, WebSocket bridge, IDE `:tutorial`/`:compile`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 6.9
 

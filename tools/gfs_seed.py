@@ -30,7 +30,7 @@ WELCOME_GRID = (
 
 HELLO_BAS = (
     b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 6.9 online\"\n"
+    b"20 PRINT \"GridBASIC 7.0 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
