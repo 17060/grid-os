@@ -512,6 +512,74 @@ static void cmd_save(ide_t *e, const char *name) {
     ide_status(e, msg, GRID_COL_OK);
 }
 
+static void cmd_compile(ide_t *e, const char *name) {
+    if (!name[0]) {
+        ide_status(e, "usage: compile <name>", GRID_COL_ERROR);
+        return;
+    }
+    char path[80];
+    if (starts_with(name, "/")) {
+        scopy(path, sizeof(path), name);
+    } else {
+        size_t p = 0;
+        const char *pre = "/programs/";
+        while (*pre && p + 1 < sizeof(path)) {
+            path[p++] = *pre++;
+        }
+        const char *s = name;
+        while (*s && p + 1 < sizeof(path)) {
+            path[p++] = *s++;
+        }
+        if (!(p >= 6 && path[p - 6] == '.' && path[p - 5] == 'g' &&
+              path[p - 4] == 'r' && path[p - 3] == 'i' && path[p - 2] == 'd')) {
+            const char *suf = ".grid";
+            while (*suf && p + 1 < sizeof(path)) {
+                path[p++] = *suf++;
+            }
+        }
+        path[p] = '\0';
+    }
+    static char src[8192];
+    static char bc[16384];
+    size_t blen = 0;
+    serialize(e, src, sizeof(src));
+    if (basic_compile_source(src, bc, sizeof(bc), &blen) != 0) {
+        ide_status(e, "compile failed", GRID_COL_ERROR);
+        return;
+    }
+    if (gfs_write_file(path, bc, blen) != 0) {
+        ide_status(e, "compile write failed", GRID_COL_ERROR);
+        return;
+    }
+    char msg[80];
+    scopy(msg, sizeof(msg), "compiled ");
+    scopy(msg + 9, sizeof(msg) - 9, path);
+    ide_status(e, msg, GRID_COL_OK);
+}
+
+static void cmd_tutorial_steps(ide_t *e) {
+    static const char *hints[] = {
+        "=== GridBASIC interactive tutorial ===",
+        "Step 1: PRINT shows text — try :run on a PRINT line",
+        "Step 2: Esc grid> tutorial runs /programs/tutorial.bas",
+        "Step 3: :load subdemo — SUB/FUNCTION/CALL demo",
+        "Step 4: :compile hello — writes bytecode .grid on Flynn disk",
+        "Step 5: GRID.PLOT/LINE/CIRCLE draw on the VGA grid",
+        "End of line — type :samples for more programs"
+    };
+    for (int i = 0; i < 7; ++i) {
+        console_clear();
+        console_set_color(GRID_COL_TITLE);
+        console_write_line(hints[i]);
+        console_set_color(GRID_COL_DIM);
+        console_write_line("--- press any key ---");
+        console_set_color(GRID_COL_DEFAULT);
+        (void)console_read_key();
+    }
+    ide_redraw(e);
+    ide_status(e, "Tutorial complete — :load tutorial", GRID_COL_OK);
+}
+
 static void cmd_load(ide_t *e, const char *name) {
     if (!name[0]) { ide_status(e, "usage: load <name>", GRID_COL_ERROR); return; }
     char path[80]; make_path(name, path, sizeof(path));
@@ -856,6 +924,8 @@ static void cmd_help(void) {
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
     console_write_line("  :samples              list /programs/*.bas samples");
+    console_write_line("  :tutorial             interactive GridBASIC walkthrough");
+    console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
     console_write_line("  :help                 this IDE help");
     console_write_line("  :ai ask <prompt>      AI help (host bridge or offline)");
     console_write_line("  :ai explain           explain current line");
@@ -898,6 +968,9 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     }
     if (sequal(cmd, "list") || sequal(cmd, "l")) { cmd_list(e); return 1; }
     if (sequal(cmd, "samples")) { run_shell_line(e, "samples"); return 1; }
+    if (sequal(cmd, "tutorial") || sequal(cmd, "t")) { cmd_tutorial_steps(e); return 1; }
+    if (starts_with(cmd, "compile ")) { cmd_compile(e, cmd + 8); return 1; }
+    if (starts_with(cmd, "compile")) { cmd_compile(e, cmd + 7); return 1; }
     if (sequal(cmd, "help") || sequal(cmd, "h") || sequal(cmd, "?")) { cmd_help(); return 1; }
     if (starts_with(cmd, "save ")) { cmd_save(e, cmd + 5); return 1; }
     if (starts_with(cmd, "load ")) { cmd_load(e, cmd + 5); return 1; }

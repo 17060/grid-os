@@ -162,6 +162,30 @@ int btc_block(const char *hash_or_height, char *out, size_t cap) {
 int btc_help(char *out, size_t cap) { return btc_call("HELP", "", out, cap); }
 int btc_stop(char *out, size_t cap) { return btc_call("stop", "", out, cap); }
 
+void disc_on_basic_run(void) {}
+void disc_on_program_run(const char *n) { (void)n; }
+int disc_level(void) { return 1; }
+int disc_xp(void) { return 0; }
+void disc_format_status(char *o, size_t c) { if (c && o) snprintf(o, c, "Disc L1 XP 0 User"); }
+const char *disc_entity(void) { return "User"; }
+
+void recognizer_start_patrol(void) {}
+void recognizer_stop_patrol(void) {}
+void recognizer_status(char *o, size_t c) { if (c && o) snprintf(o, c, "idle"); }
+
+void speaker_beep(uint32_t f, uint32_t ms) { (void)f; (void)ms; }
+void speaker_note(int n, uint32_t ms) { (void)n; (void)ms; }
+
+void grid_plot(int x, int y, uint8_t c) { (void)x; (void)y; (void)c; }
+void grid_line(int x0, int y0, int x1, int y1, uint8_t c) { (void)x0; (void)y0; (void)x1; (void)y1; (void)c; }
+void grid_circle(int cx, int cy, int r, uint8_t c) { (void)cx; (void)cy; (void)r; (void)c; }
+
+int gridlink_recv_file(void) { return -1; }
+int gridlink_recv_package(void) { return -1; }
+int gridlink_duel_ping(void) { return 0; }
+
+int iso_evolve(int id) { (void)id; return 0; }
+
 int main(void) {
     static char buf[65536];
     size_t n = fread(buf, 1, sizeof(buf) - 1, stdin);

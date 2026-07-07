@@ -41,7 +41,9 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/virtio_blk.o build/storage.o build/log.o build/gridfs.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
                build/timer.o build/link.o build/net.o build/dns.o build/tcp.o build/irc.o build/http.o \
-               build/basic.o build/basic_ide.o build/ai.o build/btc.o build/shell.o $(USER_EMBED)
+               build/basic.o build/basic_pp.o build/basic_ide.o build/speaker.o \
+               build/graphics.o build/recognizer.o build/disc.o \
+               build/ai.o build/btc.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
 
 QEMU_MACHINE  = q35,acpi=off
@@ -69,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge https-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -162,11 +164,11 @@ run-legacy: $(TARGET) $(DISK_IMAGE)
 		$(QEMU_SERIAL) -no-reboot -no-shutdown
 
 test-host-basic:
-	@cc -std=c11 -Ikernel/include -O2 -o build/basic_host tools/basic_host_test.c kernel/basic.c
+	@cc -std=c11 -Ikernel/include -O2 -o build/basic_host tools/basic_host_test.c kernel/basic.c kernel/basic_pp.c
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '6.9'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.0'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'
@@ -288,6 +290,22 @@ release-termux: $(TARGET) $(DISK_IMAGE)
 	GRID_OS_VERSION=v6.8 ./tools/save_termux.sh
 	GRID_OS_VERSION=6.8 ./tools/build_standalone_termux.sh
 	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v6.8 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
+
+save-linux-x64: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/save_linux_x64.sh
+	./tools/save_linux_x64.sh
+
+standalone-linux: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/standalone_linux_stub.sh
+	@echo "Run ./GridOS-Linux.sh from release bundle"
+
+release-linux: $(TARGET) $(DISK_IMAGE)
+	chmod +x tools/save_linux_x64.sh
+	GRID_OS_VERSION=v7.0 ./tools/save_linux_x64.sh
+	@echo "Upload dist/grid-os-linux-x64-* to GitHub release v7.0"
+
+ws-bridge:
+	python3 tools/gridws_bridge.py
 
 clean:
 	rm -rf build

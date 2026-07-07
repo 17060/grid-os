@@ -20,6 +20,10 @@ int basic_run_source(const char *source);
 /* Run a GridBASIC program stored in GFS at `path`. */
 int basic_run_file(const char *path);
 
+/* Compile source to GRIDBC bytecode buffer. */
+int basic_compile_source(const char *source, void *out, size_t cap, size_t *out_len);
+int basic_compile_file(const char *path, const char *out_path);
+
 /* Edit a program in the fullscreen GridBASIC IDE. The optional `path`
  * loads an existing program; pass NULL for a fresh buffer. */
 int basic_ide(const char *path);

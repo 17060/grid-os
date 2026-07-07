@@ -1,4 +1,5 @@
 #include "console.h"
+#include "disc.h"
 #include "elf.h"
 #include "gfs.h"
 #include "gdt.h"
@@ -497,37 +498,34 @@ int program_spawn_from_disk(const char *name) {
 }
 
 int program_spawn_named(const char *name) {
-    int id;
+    int id = -1;
 
     if (!name) {
         return -1;
     }
 
     id = program_spawn_from_disk(name);
+    if (id < 0) {
+        if (names_equal(name, "gridprog")) {
+            id = program_spawn_gridprog(name);
+        } else if (names_equal(name, "discinfo")) {
+            size_t size = (size_t)(discinfo_bin_end - discinfo_bin);
+            id = program_spawn(name, discinfo_bin, size, 0);
+        } else if (names_equal(name, "gridsh")) {
+            size_t size = (size_t)(gridsh_bin_end - gridsh_bin);
+            id = program_spawn(name, gridsh_bin, size, 0);
+        } else if (names_equal(name, "lightcycle")) {
+            size_t size = (size_t)(lightcycle_bin_end - lightcycle_bin);
+            id = program_spawn(name, lightcycle_bin, size, 0);
+        } else if (names_equal(name, "gridloop")) {
+            size_t size = (size_t)(gridloop_bin_end - gridloop_bin);
+            id = program_spawn(name, gridloop_bin, size, 0);
+        }
+    }
     if (id >= 0) {
-        return id;
+        disc_on_program_run(name);
     }
-
-    if (names_equal(name, "gridprog")) {
-        return program_spawn_gridprog(name);
-    }
-    if (names_equal(name, "discinfo")) {
-        size_t size = (size_t)(discinfo_bin_end - discinfo_bin);
-        return program_spawn(name, discinfo_bin, size, 0);
-    }
-    if (names_equal(name, "gridsh")) {
-        size_t size = (size_t)(gridsh_bin_end - gridsh_bin);
-        return program_spawn(name, gridsh_bin, size, 0);
-    }
-    if (names_equal(name, "lightcycle")) {
-        size_t size = (size_t)(lightcycle_bin_end - lightcycle_bin);
-        return program_spawn(name, lightcycle_bin, size, 0);
-    }
-    if (names_equal(name, "gridloop")) {
-        size_t size = (size_t)(gridloop_bin_end - gridloop_bin);
-        return program_spawn(name, gridloop_bin, size, 0);
-    }
-    return -1;
+    return id;
 }
 
 void program_print_catalog(void) {

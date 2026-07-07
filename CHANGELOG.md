@@ -1,5 +1,28 @@
 # Grid OS — Changelog
 
+## 7.0 — Elite GridBASIC + platform expansion
+
+### GridBASIC language
+- **SHARED** — module-level variables in SUB/FUNCTION (declare in main first)
+- **Preprocessor** — `#IF` / `#ELSE` / `#ENDIF`, `#INCLUDE "path"` from GFS
+- **Nested SELECT CASE** — inner SELECT blocks supported
+- **Bytecode compiler** — `basic compile`, IDE `:compile`, `.grid` files (GRIDBC format)
+
+### GRID.* elite bindings
+- **Graphics** — `GRID.PLOT`, `GRID.LINE`, `GRID.CIRCLE`
+- **Sound** — `GRID.BEEP`, `GRID.NOTE` (PC speaker)
+- **Identity disc** — `GRID.DISC.STATUS$`, `LEVEL`, `XP`, `ENTITY$` (vault-backed progression)
+- **Recognizer** — `GRID.RECOGNIZER.START/STOP`, `STATUS$`; shell `recognizer start|stop|status`
+- **Portal** — `GRID.PORTAL.PKG`, `GRID.PORTAL.DUEL`, `portal pkg|duel`
+- **ISO** — `GRID.ISO.EVOLVE`
+- **Workshop** — `GRID.WORKSHOP.SPAWN`
+
+### Platform
+- **Linux release bundle** — `make release-linux`, `docs/LINUX.md`
+- **WebSocket bridge** — `make ws-bridge` (TCP :8769)
+- **Interactive IDE tutorial** — `:tutorial`
+- Runtime banners updated to **7.0**
+
 ## 6.9 — Flynn Boot Experience
 
 - **`/programs/autoexec.bas`** — welcome script runs once after boot banner (skip with `vault put autoexec off`)

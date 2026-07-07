@@ -1,19 +1,25 @@
 #include "basic.h"
+#include "basic_pp.h"
 
 #include "ai.h"
 #include "btc.h"
 #include "console.h"
+#include "disc.h"
 #include "dns.h"
 #include "gfs.h"
+#include "graphics.h"
 #include "http.h"
 #include "iso.h"
+#include "link.h"
 #include "log.h"
 #include "irc.h"
 #include "net.h"
 #include "program.h"
+#include "recognizer.h"
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
+#include "speaker.h"
 #include "storage.h"
 #include "timer.h"
 
@@ -84,6 +90,7 @@ typedef struct {
     int is_str;        /* variable's value type */
     int is_array;
     int is_const;
+    int is_local;
     int dim;           /* primary upper bound (inclusive), 0 if scalar */
     int dim2;          /* second dimension upper bound, -1 if 1D */
     value_t *cells;    /* (dim+1)*(dim2+1) cells if 2D, else dim+1 */
@@ -546,6 +553,7 @@ static var_t *get_var(const char *name, int want_str) {
     v->is_str = want_str;
     v->is_array = 0;
     v->is_const = 0;
+    v->is_local = 0;
     v->dim = 0;
     v->dim2 = -1;
     v->cells = 0;
@@ -1007,7 +1015,7 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) == 0 ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 6.9 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 7.0 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     {
         if (argc > 0) {
             uint32_t cap = (uint32_t)(to_num(&argv[0]) / BASIC_SCALE);
@@ -1173,6 +1181,25 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         iso_format_list(b, sizeof(b));
         return make_str(b);
     }
+    if (strequal(name, "GRID.DISC.STATUS$")) {
+        char b[64];
+        disc_format_status(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.DISC.ENTITY$")) {
+        return make_str(disc_entity());
+    }
+    if (strequal(name, "GRID.DISC.LEVEL")) {
+        return make_num((num_t)disc_level() * BASIC_SCALE);
+    }
+    if (strequal(name, "GRID.DISC.XP")) {
+        return make_num((num_t)disc_xp() * BASIC_SCALE);
+    }
+    if (strequal(name, "GRID.RECOGNIZER.STATUS$")) {
+        char b[64];
+        recognizer_status(b, sizeof(b));
+        return make_str(b);
+    }
     set_error("FUNC: unknown function");
     return make_num(0);
 }
@@ -1209,7 +1236,10 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.DNS.RESOLVE$") || strequal(name, "GRID.NET.STATUS$") ||
         strequal(name, "GRID.LOG.TAIL$") || strequal(name, "GRID.WHOAMI$") ||
         strequal(name, "GRID.CAPS$") || strequal(name, "GRID.JOBS.LIST$") ||
-        strequal(name, "GRID.ISO.LIST$")) {
+        strequal(name, "GRID.ISO.LIST$") ||
+        strequal(name, "GRID.DISC.STATUS$") || strequal(name, "GRID.DISC.ENTITY$") ||
+        strequal(name, "GRID.DISC.LEVEL") || strequal(name, "GRID.DISC.XP") ||
+        strequal(name, "GRID.RECOGNIZER.STATUS$")) {
         return 1;
     }
     return 0;
@@ -1838,6 +1868,90 @@ static void exec_grid_stmt(void) {
         console_print_long(b);
         return;
     }
+    if (strequal(name, "GRID.PLOT")) {
+        value_t x = eval_expr(); match_op(',');
+        value_t y = eval_expr(); match_op(',');
+        value_t c = eval_expr();
+        grid_plot((int)(to_num(&x) / BASIC_SCALE), (int)(to_num(&y) / BASIC_SCALE),
+                  (uint8_t)(to_num(&c) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.LINE")) {
+        value_t x0 = eval_expr(); match_op(',');
+        value_t y0 = eval_expr(); match_op(',');
+        value_t x1 = eval_expr(); match_op(',');
+        value_t y1 = eval_expr(); match_op(',');
+        value_t c = eval_expr();
+        grid_line((int)(to_num(&x0) / BASIC_SCALE), (int)(to_num(&y0) / BASIC_SCALE),
+                  (int)(to_num(&x1) / BASIC_SCALE), (int)(to_num(&y1) / BASIC_SCALE),
+                  (uint8_t)(to_num(&c) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.CIRCLE")) {
+        value_t cx = eval_expr(); match_op(',');
+        value_t cy = eval_expr(); match_op(',');
+        value_t r = eval_expr(); match_op(',');
+        value_t c = eval_expr();
+        grid_circle((int)(to_num(&cx) / BASIC_SCALE), (int)(to_num(&cy) / BASIC_SCALE),
+                    (int)(to_num(&r) / BASIC_SCALE), (uint8_t)(to_num(&c) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.BEEP")) {
+        value_t f = eval_expr(); match_op(',');
+        value_t ms = eval_expr();
+        speaker_beep((uint32_t)(to_num(&f) / BASIC_SCALE), (uint32_t)(to_num(&ms) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.NOTE")) {
+        value_t n = eval_expr(); match_op(',');
+        value_t ms = eval_expr();
+        speaker_note((int)(to_num(&n) / BASIC_SCALE), (uint32_t)(to_num(&ms) / BASIC_SCALE));
+        return;
+    }
+    if (strequal(name, "GRID.RECOGNIZER.START")) {
+        recognizer_start_patrol();
+        return;
+    }
+    if (strequal(name, "GRID.RECOGNIZER.STOP")) {
+        recognizer_stop_patrol();
+        return;
+    }
+    if (strequal(name, "GRID.ISO.EVOLVE")) {
+        value_t idv = eval_expr();
+        int id = (int)(to_num(&idv) / BASIC_SCALE);
+        iso_evolve(id);
+        return;
+    }
+    if (strequal(name, "GRID.PORTAL.RECV")) {
+        gridlink_recv_file();
+        return;
+    }
+    if (strequal(name, "GRID.PORTAL.PKG")) {
+        gridlink_recv_package();
+        return;
+    }
+    if (strequal(name, "GRID.PORTAL.DUEL")) {
+        gridlink_duel_ping();
+        program_spawn_named("lightcycle");
+        return;
+    }
+    if (strequal(name, "GRID.WORKSHOP.SPAWN")) {
+        value_t v = eval_expr();
+        char n[40];
+        if (v.is_str) {
+            size_t j = 0;
+            while (v.s[j] && j < sizeof(n) - 1) {
+                n[j] = v.s[j];
+                j++;
+            }
+            n[j] = '\0';
+        } else {
+            num_to_string(v.n, n, sizeof(n));
+        }
+        program_spawn_named(n);
+        disc_on_program_run(n);
+        return;
+    }
     set_error("GRID: unknown statement");
 }
 
@@ -2052,7 +2166,36 @@ static void exec_local(void) {
         size_t k = 0;
         while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
         name[k] = '\0';
-        get_var(name, name_is_str(name));
+        var_t *v = get_var(name, name_is_str(name));
+        if (v) {
+            v->is_local = 1;
+        }
+        if (!match_op(',')) break;
+    }
+}
+
+static void exec_shared(void) {
+    int module_end = g_nvars;
+    if (g_sub_sp > 0) {
+        module_end = g_sub_stack[g_sub_sp - 1].saved_nvars;
+    }
+    while (cur()->type == T_ID) {
+        char name[64];
+        size_t k = 0;
+        while (cur()->text[k] && k < sizeof(name) - 1) { name[k] = cur()->text[k]; k++; }
+        name[k] = '\0';
+        var_t *v = 0;
+        for (int i = 0; i < module_end; ++i) {
+            if (strequal(g_vars[i].name, name)) {
+                v = &g_vars[i];
+                break;
+            }
+        }
+        if (!v) {
+            basic_error("SHARED: declare variable in main program first");
+            return;
+        }
+        v->is_local = 0;
         if (!match_op(',')) break;
     }
 }
@@ -2081,6 +2224,33 @@ static int match_end_select(void) {
     return 0;
 }
 
+static void skip_select_block(void) {
+    int depth = 1;
+    while (cur()->type != T_EOF && depth > 0) {
+        while (cur()->type == T_NEWLINE) {
+            advance();
+        }
+        if (cur()->type == T_EOF) {
+            return;
+        }
+        if (cur()->type == T_KW && cur()->kw == KW_SELECT) {
+            advance();
+            skip_to_newline();
+            depth++;
+            continue;
+        }
+        if (match_end_select()) {
+            depth--;
+            continue;
+        }
+        if (cur()->type == T_KW && cur()->kw == KW_CASE) {
+            skip_to_newline();
+            continue;
+        }
+        skip_to_newline();
+    }
+}
+
 static void skip_to_next_case_or_end(void) {
     while (cur()->type != T_EOF) {
         while (cur()->type == T_NEWLINE) {
@@ -2096,7 +2266,9 @@ static void skip_to_next_case_or_end(void) {
             return;
         }
         if (cur()->type == T_KW && cur()->kw == KW_SELECT) {
-            set_error("SELECT: nested not supported");
+            advance();
+            skip_to_newline();
+            skip_select_block();
             return;
         }
         exec_statement();
@@ -2316,7 +2488,7 @@ static void exec_statement(void) {
         case KW_RESUME: advance(); exec_resume(); return;
         case KW_CALL: advance(); exec_call(); return;
         case KW_LOCAL: advance(); exec_local(); return;
-        case KW_SHARED: skip_to_newline(); return;
+        case KW_SHARED: advance(); exec_shared(); return;
         case KW_SUB:
         case KW_FUNCTION: advance(); skip_sub_or_function_body(); return;
         case KW_REM:   skip_to_newline(); return;
@@ -2435,8 +2607,12 @@ static void join_source(const char *src, char *out, size_t cap) {
 
 int basic_run_source(const char *source) {
     static char src_buf[8192];
+    static char pp_buf[8192];
     join_source(source, src_buf, sizeof(src_buf));
-    if (tokenize(src_buf) != 0) {
+    if (basic_preprocess(src_buf, pp_buf, sizeof(pp_buf)) != 0) {
+        return -1;
+    }
+    if (tokenize(pp_buf) != 0) {
         console_set_color(GRID_COL_ERROR);
         console_write_line("GridBASIC: token limit exceeded (program too large)");
         console_set_color(GRID_COL_DEFAULT);
@@ -2445,6 +2621,7 @@ int basic_run_source(const char *source) {
     reset_state();
     collect_data();
     collect_subs();
+    disc_on_basic_run();
     run_loop();
     if (g_error) {
         console_set_color(GRID_COL_ERROR);
@@ -2458,6 +2635,97 @@ int basic_run_source(const char *source) {
         return -1;
     }
     return 0;
+}
+
+static int bc_match(const void *data, size_t len) {
+    static const char magic[8] = { 'G','R','I','D','B','C',1,0 };
+    if (!data || len < 8) {
+        return 0;
+    }
+    for (int i = 0; i < 8; ++i) {
+        if (((const char *)data)[i] != magic[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int basic_run_bytecode(const void *data, size_t len) {
+    if (len < 12) {
+        return -1;
+    }
+    const char *p = (const char *)data;
+    uint32_t ntok = (uint32_t)(uint8_t)p[8] |
+                    ((uint32_t)(uint8_t)p[9] << 8) |
+                    ((uint32_t)(uint8_t)p[10] << 16) |
+                    ((uint32_t)(uint8_t)p[11] << 24);
+    size_t need = 12 + (size_t)ntok * sizeof(token_t);
+    if (need > len || ntok > MAX_TOKENS) {
+        return -1;
+    }
+    g_ntok = (int)ntok;
+    for (uint32_t i = 0; i < ntok; ++i) {
+        g_tokens[i] = *(const token_t *)(p + 12 + (size_t)i * sizeof(token_t));
+    }
+    reset_state();
+    collect_data();
+    collect_subs();
+    disc_on_basic_run();
+    run_loop();
+    if (g_error) {
+        console_set_color(GRID_COL_ERROR);
+        console_write("GridBASIC error: ");
+        console_write_line(g_errmsg);
+        console_set_color(GRID_COL_DEFAULT);
+        return -1;
+    }
+    return 0;
+}
+
+int basic_compile_source(const char *source, void *out, size_t cap, size_t *out_len) {
+    static char src_buf[8192];
+    static char pp_buf[8192];
+    if (!source || !out || !out_len) {
+        return -1;
+    }
+    join_source(source, src_buf, sizeof(src_buf));
+    if (basic_preprocess(src_buf, pp_buf, sizeof(pp_buf)) != 0) {
+        return -1;
+    }
+    if (tokenize(pp_buf) != 0) {
+        return -1;
+    }
+    size_t need = 12 + (size_t)g_ntok * sizeof(token_t);
+    if (need > cap) {
+        return -1;
+    }
+    char *p = (char *)out;
+    p[0] = 'G'; p[1] = 'R'; p[2] = 'I'; p[3] = 'D';
+    p[4] = 'B'; p[5] = 'C'; p[6] = 1; p[7] = 0;
+    p[8] = (char)(g_ntok & 0xFF);
+    p[9] = (char)((g_ntok >> 8) & 0xFF);
+    p[10] = (char)((g_ntok >> 16) & 0xFF);
+    p[11] = (char)((g_ntok >> 24) & 0xFF);
+    for (int i = 0; i < g_ntok; ++i) {
+        *(token_t *)(p + 12 + (size_t)i * sizeof(token_t)) = g_tokens[i];
+    }
+    *out_len = need;
+    return 0;
+}
+
+int basic_compile_file(const char *path, const char *out_path) {
+    static char buf[8192];
+    static char bc[16384];
+    size_t got = 0;
+    size_t blen = 0;
+    if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
+        return -1;
+    }
+    buf[got] = '\0';
+    if (basic_compile_source(buf, bc, sizeof(bc), &blen) != 0) {
+        return -1;
+    }
+    return gfs_write_file(out_path, bc, blen);
 }
 
 int basic_run_file(const char *path) {
@@ -2488,18 +2756,23 @@ int basic_run_file(const char *path) {
         return -1;
     }
     buf[got] = '\0';
+    if (bc_match(buf, got)) {
+        return basic_run_bytecode(buf, got);
+    }
     return basic_run_source(buf);
 }
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 6.9 — Advanced BASIC for the Grid");
+    console_write_line("GridBASIC 7.0 — Elite BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
+    console_write_line("SHARED #IF/#INCLUDE bytecode .grid compile SHARED SUB/FUNCTION");
     console_write_line("DEF FN SUB/FUNCTION LOCAL CALL ELSEIF ON ERROR GOTO");
     console_write_line("ON GOTO/GOSUB OPTION BASE CONTINUE MIN MAX TRIM$ 2D DIM");
     console_write_line("PRINT LET CONST DIM DATA/READ RESTORE RANDOMIZE INSTR$");
     console_write_line("IF/THEN/ELSE SELECT CASE EXIT/CONTINUE FOR/WHILE LINE INPUT");
-    console_write_line("GRID.DNS.* GRID.JOBS.* GRID.ISO.* GRID.VAULT.EXPORT GRID.SPAWN.BG");
+    console_write_line("GRID.PLOT/LINE/CIRCLE BEEP NOTE DISC.* RECOGNIZER.* PORTAL.*");
+    console_write_line("GRID.DNS.* GRID.JOBS.* GRID.ISO.* GRID.WORKSHOP.SPAWN");
     console_write_line("GRID.VAULT.* GRID.GFS.* GRID.HTTP.* GRID.LOCATE GRID.INKEY$");
     console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
 }

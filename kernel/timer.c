@@ -1,4 +1,5 @@
 #include "iso.h"
+#include "recognizer.h"
 #include "sched.h"
 #include "security.h"
 #include "timer.h"
@@ -69,5 +70,9 @@ void timer_on_irq(void) {
 
     if (autopilot && (ticks % 100u) == 0u) {
         iso_autopilot_step();
+    }
+
+    if ((ticks % 50u) == 0u) {
+        recognizer_tick();
     }
 }

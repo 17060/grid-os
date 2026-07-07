@@ -571,7 +571,7 @@ int gfs_seed_defaults(void) {
 
     seed_one("/programs/hello.bas",
              "10 REM GridBASIC demo — the Grid counts\n"
-             "20 PRINT \"GridBASIC 6.9 online\"\n"
+             "20 PRINT \"GridBASIC 7.0 online\"\n"
              "30 FOR I = 1 TO 5\n"
              "40   PRINT \"grid line \"; I\n"
              "50 NEXT I\n"
