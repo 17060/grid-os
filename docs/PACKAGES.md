@@ -1,8 +1,8 @@
-# Grid OS 7.1 — Packages & IDE modules
+# Grid OS 7.1.1 — Packages & IDE modules
 
 Grid OS includes a lightweight package manager for Flynn disk (`GFS2FLYN`). Packages bundle GridBASIC **IDE modules** — special-purpose scripts you can run from the shell, IDE, or GridBASIC.
 
-**Encyclopedia:** [wiki/README.md](wiki/README.md) · [Package modules](wiki/package-modules.md)
+**Encyclopedia:** [wiki/README.md](wiki/README.md) · [Package modules](wiki/package-modules.md) · [Cookbook](wiki/cookbook.md)
 
 ## Quick start
 
@@ -10,7 +10,8 @@ At the `grid>` prompt:
 
 ```text
 pkg list                 # installed packages
-pkg mods                 # all 25 IDE modules
+pkg mods                 # all IDE modules (28 seeded)
+pkg mods network         # filter by category
 basic mod run disc-status
 basic mod load ide-cheatsheet   # opens GridBASIC IDE with module source
 ```
@@ -18,46 +19,57 @@ basic mod load ide-cheatsheet   # opens GridBASIC IDE with module source
 In the GridBASIC IDE, press **Esc** and type:
 
 ```text
-:mods
+:mods network
 :mod run patrol-arm
-:mod load pkg-index
+:pkg run http-probe
+:pkg list
 ```
 
-## Seeded package: flynn-ide-tools (v2.0)
+## Seeded packages
 
-25 modules for the GridBASIC IDE and Flynn shell environment:
+### flynn-ide-tools (v2.1)
 
-| Module | Purpose |
-|--------|---------|
-| `disc-status` | Identity disc status panel |
-| `grid-ping` | Ping gateway, grid, and bridge |
-| `patrol-arm` | Start recognizer patrol |
-| `patrol-stand-down` | Stop recognizer patrol |
-| `whoami-panel` | Entity type and identity |
-| `caps-panel` | Granted capability mask |
-| `net-status` | Virtio-net link status |
-| `dns-lookup` | Resolve Flynn host names |
-| `vault-nodes` | List vault key nodes |
-| `gfs-programs` | List Flynn `/programs` archive |
-| `jobs-monitor` | Background sandbox jobs |
-| `iso-roster` | ISO research zone entities |
-| `audit-tail` | Recent audit log entries |
-| `grid-clock` | Grid cycle timer ticks |
-| `grid-clear` | Clear screen with Flynn banner |
-| `pkg-index` | Installed packages and modules |
-| `sample-menu` | GridBASIC sample program guide |
-| `ide-cheatsheet` | IDE colon-command reference |
-| `beep-scale` | PC speaker note demo |
-| `plot-grid` | VGA plot pattern demo |
-| `ai-ask` | Quick AI bridge question |
-| `btc-snapshot` | Bitcoin bridge status |
-| `irc-check` | IRC session status |
-| `hosts-table` | Show `/etc/hosts` from Flynn disk |
-| `spawn-catalog` | Ring-3 program spawn hints |
+25 modules for the GridBASIC IDE and Flynn shell environment. Categories: `disc`, `network`, `grid`, `system`, `storage`, `patrol`, `bridge`, `dev`.
 
-Files live under `/packages/flynn-ide-tools/` on the Flynn arcade disk.
+| Module | Category | Purpose |
+|--------|----------|---------|
+| `disc-status` | disc | Identity disc status panel |
+| `grid-ping` | network | Ping gateway, grid, and bridge |
+| `patrol-arm` | patrol | Start recognizer patrol |
+| `patrol-stand-down` | patrol | Stop recognizer patrol |
+| `whoami-panel` | disc | Entity type and identity |
+| `caps-panel` | system | Granted capability mask |
+| `net-status` | network | Virtio-net link status |
+| `dns-lookup` | network | Resolve Flynn host names |
+| `vault-nodes` | storage | List vault key nodes |
+| `gfs-programs` | storage | List Flynn `/programs` archive |
+| `jobs-monitor` | system | Background sandbox jobs |
+| `iso-roster` | system | ISO research zone entities |
+| `audit-tail` | system | Recent audit log entries |
+| `grid-clock` | grid | Grid cycle timer ticks |
+| `grid-clear` | grid | Clear screen with Flynn banner |
+| `pkg-index` | storage | Installed packages and modules |
+| `sample-menu` | dev | GridBASIC sample program guide |
+| `ide-cheatsheet` | dev | IDE colon-command reference |
+| `beep-scale` | grid | PC speaker note demo |
+| `plot-grid` | grid | VGA plot pattern demo |
+| `ai-ask` | bridge | Quick AI bridge question |
+| `btc-snapshot` | bridge | Bitcoin bridge status |
+| `irc-check` | network | IRC session status |
+| `hosts-table` | network | Show `/etc/hosts` from Flynn disk |
+| `spawn-catalog` | system | Ring-3 program spawn hints |
 
-Regenerate from source: `python3 tools/gen_flynn_ide_modules.py`
+### flynn-net-tools (v1.0)
+
+| Module | Category | Purpose |
+|--------|----------|---------|
+| `http-probe` | network | HTTP GET probe via `GRID.HTTP` |
+| `irc-connect` | network | IRC quick-connect helper |
+| `https-bridge` | bridge | HTTPS bridge status (host bridge) |
+
+Files live under `/packages/<name>/` on the Flynn arcade disk.
+
+Regenerate from source: `python3 tools/gen_packages.py`
 
 ## MANIFEST format
 
@@ -69,12 +81,12 @@ version=2.0
 desc=25 GridBASIC IDE tools for Flynn's Grid
 file=/packages/flynn-ide-tools/MANIFEST
 file=/packages/flynn-ide-tools/modules/disc-status.bas
-mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel
+mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel:disc
 ```
 
 - **`name`**, **`version`**, **`desc`** — package metadata
 - **`file=`** — files owned by the package (removed on `pkg remove`)
-- **`mod=name:path:description`** — registers a GridBASIC IDE module
+- **`mod=name:path:description:category`** — registers a GridBASIC IDE module (category optional, defaults to `general`)
 
 Install from an on-disk manifest:
 

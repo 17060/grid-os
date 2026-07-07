@@ -2,6 +2,7 @@
 
 #include "basic.h"
 #include "console.h"
+#include "disc.h"
 #include "gfs.h"
 #include "log.h"
 #include "security.h"
@@ -35,6 +36,7 @@ typedef struct {
     char name[PKG_NAME_MAX];
     char path[PKG_PATH_MAX];
     char desc[48];
+    char category[16];
     char pkg[PKG_NAME_MAX];
 } pkg_mod_t;
 
@@ -134,11 +136,14 @@ static void pkg_clear_mods_for(const char *pkg_name) {
     }
 }
 
-static int pkg_add_mod(pkg_entry_t *pe, const char *name, const char *path, const char *desc) {
+static int pkg_add_mod(pkg_entry_t *pe, const char *name, const char *path,
+                       const char *desc, const char *category) {
+    const char *cat = (category && category[0]) ? category : "general";
     for (int i = 0; i < PKG_MOD_MAX; ++i) {
         if (g_mods[i].used && pkg_streq(g_mods[i].name, name)) {
             pkg_copy(g_mods[i].path, sizeof(g_mods[i].path), path);
             pkg_copy(g_mods[i].desc, sizeof(g_mods[i].desc), desc ? desc : "");
+            pkg_copy(g_mods[i].category, sizeof(g_mods[i].category), cat);
             pkg_copy(g_mods[i].pkg, sizeof(g_mods[i].pkg), pe->name);
             return 0;
         }
@@ -149,6 +154,7 @@ static int pkg_add_mod(pkg_entry_t *pe, const char *name, const char *path, cons
             pkg_copy(g_mods[i].name, sizeof(g_mods[i].name), name);
             pkg_copy(g_mods[i].path, sizeof(g_mods[i].path), path);
             pkg_copy(g_mods[i].desc, sizeof(g_mods[i].desc), desc ? desc : "");
+            pkg_copy(g_mods[i].category, sizeof(g_mods[i].category), cat);
             pkg_copy(g_mods[i].pkg, sizeof(g_mods[i].pkg), pe->name);
             return 0;
         }
@@ -193,30 +199,39 @@ static int pkg_parse_mod_line(pkg_entry_t *pe, const char *line) {
     char name[PKG_NAME_MAX];
     char path[PKG_PATH_MAX];
     char desc[48];
+    char category[16];
     size_t i = 0;
     size_t k = 0;
-    while (line[i] && line[i] != ':' && k + 1 < sizeof(name)) {
-        name[k++] = line[i++];
-    }
-    name[k] = '\0';
-    if (line[i] != ':') {
-        return -1;
-    }
-    i++;
-    k = 0;
-    while (line[i] && line[i] != ':' && k + 1 < sizeof(path)) {
-        path[k++] = line[i++];
-    }
-    path[k] = '\0';
-    desc[0] = '\0';
-    if (line[i] == ':') {
-        i++;
-        pkg_copy(desc, sizeof(desc), line + i);
+    int field = 0;
+    name[0] = path[0] = desc[0] = category[0] = '\0';
+
+    while (line[i] && field < 4) {
+        k = 0;
+        char *out = name;
+        size_t cap = sizeof(name);
+        if (field == 1) {
+            out = path;
+            cap = sizeof(path);
+        } else if (field == 2) {
+            out = desc;
+            cap = sizeof(desc);
+        } else if (field == 3) {
+            out = category;
+            cap = sizeof(category);
+        }
+        while (line[i] && line[i] != ':' && k + 1 < cap) {
+            out[k++] = line[i++];
+        }
+        out[k] = '\0';
+        if (line[i] == ':') {
+            i++;
+        }
+        field++;
     }
     if (name[0] == '\0' || path[0] == '\0') {
         return -1;
     }
-    return pkg_add_mod(pe, name, path, desc);
+    return pkg_add_mod(pe, name, path, desc, category);
 }
 
 static int pkg_parse_manifest_text(const char *text, const char *manifest_path) {
@@ -297,7 +312,7 @@ int pkg_install_manifest(const char *manifest_path) {
 }
 
 void pkg_rescan(void) {
-    char paths[32][PKG_PATH_MAX];
+    char paths[64][PKG_PATH_MAX];
     int n;
     int i;
 
@@ -312,7 +327,7 @@ void pkg_rescan(void) {
         return;
     }
 
-    n = gfs_list_paths("/packages/", paths, 32);
+    n = gfs_list_paths("/packages/", paths, 64);
     for (i = 0; i < n; ++i) {
         if (pkg_ends_manifest(paths[i])) {
             (void)pkg_install_manifest(paths[i]);
@@ -322,6 +337,93 @@ void pkg_rescan(void) {
 
 void pkg_init(void) {
     pkg_rescan();
+    pkg_seed_defaults();
+}
+
+void pkg_seed_defaults(void) {
+    int any = 0;
+    for (int i = 0; i < PKG_MOD_MAX; ++i) {
+        if (g_mods[i].used) {
+            any = 1;
+            break;
+        }
+    }
+    if (any) {
+        return;
+    }
+    /* Embedded fallback when Flynn disk / GFS is unavailable (e.g. CI QEMU). */
+    /* AUTO:PKG_SEED:BEGIN */
+    (void)pkg_parse_manifest_text(
+             "name=flynn-ide-tools\n"
+             "version=2.1\n"
+             "desc=25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)\n"
+             "file=/packages/flynn-ide-tools/MANIFEST\n"
+             "file=/packages/flynn-ide-tools/modules/disc-status.bas\n"
+             "file=/packages/flynn-ide-tools/modules/grid-ping.bas\n"
+             "file=/packages/flynn-ide-tools/modules/patrol-arm.bas\n"
+             "file=/packages/flynn-ide-tools/modules/patrol-stand-down.bas\n"
+             "file=/packages/flynn-ide-tools/modules/whoami-panel.bas\n"
+             "file=/packages/flynn-ide-tools/modules/caps-panel.bas\n"
+             "file=/packages/flynn-ide-tools/modules/net-status.bas\n"
+             "file=/packages/flynn-ide-tools/modules/dns-lookup.bas\n"
+             "file=/packages/flynn-ide-tools/modules/vault-nodes.bas\n"
+             "file=/packages/flynn-ide-tools/modules/gfs-programs.bas\n"
+             "file=/packages/flynn-ide-tools/modules/jobs-monitor.bas\n"
+             "file=/packages/flynn-ide-tools/modules/iso-roster.bas\n"
+             "file=/packages/flynn-ide-tools/modules/audit-tail.bas\n"
+             "file=/packages/flynn-ide-tools/modules/grid-clock.bas\n"
+             "file=/packages/flynn-ide-tools/modules/grid-clear.bas\n"
+             "file=/packages/flynn-ide-tools/modules/pkg-index.bas\n"
+             "file=/packages/flynn-ide-tools/modules/sample-menu.bas\n"
+             "file=/packages/flynn-ide-tools/modules/ide-cheatsheet.bas\n"
+             "file=/packages/flynn-ide-tools/modules/beep-scale.bas\n"
+             "file=/packages/flynn-ide-tools/modules/plot-grid.bas\n"
+             "file=/packages/flynn-ide-tools/modules/ai-ask.bas\n"
+             "file=/packages/flynn-ide-tools/modules/btc-snapshot.bas\n"
+             "file=/packages/flynn-ide-tools/modules/irc-check.bas\n"
+             "file=/packages/flynn-ide-tools/modules/hosts-table.bas\n"
+             "file=/packages/flynn-ide-tools/modules/spawn-catalog.bas\n"
+             "mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel:disc\n"
+             "mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts:network\n"
+             "mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol:patrol\n"
+             "mod=patrol-stand-down:/packages/flynn-ide-tools/modules/patrol-stand-down.bas:Stop recognizer patrol:patrol\n"
+             "mod=whoami-panel:/packages/flynn-ide-tools/modules/whoami-panel.bas:Entity type and identity:disc\n"
+             "mod=caps-panel:/packages/flynn-ide-tools/modules/caps-panel.bas:Granted capability mask:system\n"
+             "mod=net-status:/packages/flynn-ide-tools/modules/net-status.bas:Virtio-net link status:network\n"
+             "mod=dns-lookup:/packages/flynn-ide-tools/modules/dns-lookup.bas:Resolve Flynn host names:network\n"
+             "mod=vault-nodes:/packages/flynn-ide-tools/modules/vault-nodes.bas:List vault key nodes:storage\n"
+             "mod=gfs-programs:/packages/flynn-ide-tools/modules/gfs-programs.bas:List Flynn /programs archive:storage\n"
+             "mod=jobs-monitor:/packages/flynn-ide-tools/modules/jobs-monitor.bas:Background sandbox jobs:system\n"
+             "mod=iso-roster:/packages/flynn-ide-tools/modules/iso-roster.bas:ISO research zone entities:system\n"
+             "mod=audit-tail:/packages/flynn-ide-tools/modules/audit-tail.bas:Recent audit log entries:system\n"
+             "mod=grid-clock:/packages/flynn-ide-tools/modules/grid-clock.bas:Grid cycle timer ticks:grid\n"
+             "mod=grid-clear:/packages/flynn-ide-tools/modules/grid-clear.bas:Clear screen with Flynn banner:grid\n"
+             "mod=pkg-index:/packages/flynn-ide-tools/modules/pkg-index.bas:Installed packages and modules:storage\n"
+             "mod=sample-menu:/packages/flynn-ide-tools/modules/sample-menu.bas:GridBASIC sample program guide:dev\n"
+             "mod=ide-cheatsheet:/packages/flynn-ide-tools/modules/ide-cheatsheet.bas:IDE colon-command reference:dev\n"
+             "mod=beep-scale:/packages/flynn-ide-tools/modules/beep-scale.bas:PC speaker note demo:grid\n"
+             "mod=plot-grid:/packages/flynn-ide-tools/modules/plot-grid.bas:VGA plot pattern demo:grid\n"
+             "mod=ai-ask:/packages/flynn-ide-tools/modules/ai-ask.bas:Quick AI bridge question:bridge\n"
+             "mod=btc-snapshot:/packages/flynn-ide-tools/modules/btc-snapshot.bas:Bitcoin bridge status:bridge\n"
+             "mod=irc-check:/packages/flynn-ide-tools/modules/irc-check.bas:IRC session status:network\n"
+             "mod=hosts-table:/packages/flynn-ide-tools/modules/hosts-table.bas:Show /etc/hosts from Flynn disk:network\n"
+             "mod=spawn-catalog:/packages/flynn-ide-tools/modules/spawn-catalog.bas:Ring-3 program spawn hints:system\n"
+             "\n",
+             "/packages/flynn-ide-tools/MANIFEST");
+    (void)pkg_parse_manifest_text(
+             "name=flynn-net-tools\n"
+             "version=1.0\n"
+             "desc=Flynn network bridge helpers for GridBASIC IDE\n"
+             "file=/packages/flynn-net-tools/MANIFEST\n"
+             "file=/packages/flynn-net-tools/modules/http-probe.bas\n"
+             "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
+             "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
+             "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
+             "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
+             "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
+             "\n",
+             "/packages/flynn-net-tools/MANIFEST");
+    /* AUTO:PKG_SEED:END */
 }
 
 int pkg_remove(const char *name) {
@@ -475,12 +577,25 @@ void pkg_list_packages(void) {
 }
 
 void pkg_list_modules(void) {
+    pkg_list_modules_filtered(0);
+}
+
+void pkg_list_modules_filtered(const char *category) {
     int any = 0;
     console_set_color(GRID_COL_TITLE);
-    console_write_line("=== GridBASIC IDE modules ===");
+    if (category && category[0]) {
+        console_write("=== GridBASIC IDE modules [");
+        console_write(category);
+        console_write_line("] ===");
+    } else {
+        console_write_line("=== GridBASIC IDE modules ===");
+    }
     console_set_color(GRID_COL_DEFAULT);
     for (int i = 0; i < PKG_MOD_MAX; ++i) {
         if (!g_mods[i].used) {
+            continue;
+        }
+        if (category && category[0] && !pkg_streq(g_mods[i].category, category)) {
             continue;
         }
         any = 1;
@@ -488,7 +603,9 @@ void pkg_list_modules(void) {
         console_write(g_mods[i].name);
         console_write("  [");
         console_write(g_mods[i].pkg);
-        console_write("]  ");
+        console_write("]  (");
+        console_write(g_mods[i].category[0] ? g_mods[i].category : "general");
+        console_write(")  ");
         console_write_line(g_mods[i].path);
         if (g_mods[i].desc[0]) {
             console_write("    ");
@@ -497,12 +614,17 @@ void pkg_list_modules(void) {
     }
     if (!any) {
         console_set_color(GRID_COL_DIM);
-        console_write_line("  (none — install a package with mod= entries)");
+        if (category && category[0]) {
+            console_write_line("  (none in this category — try: pkg mods)");
+        } else {
+            console_write_line("  (none — install a package with mod= entries)");
+        }
         console_set_color(GRID_COL_DEFAULT);
     }
     console_write_line("");
     console_write_line("Run: basic mod run <name>   IDE: Esc :mod run <name>");
     console_write_line("Load: basic mod load <name>  IDE: Esc :mod load <name>");
+    console_write_line("Filter: pkg mods <category>   IDE: Esc :mods <category>");
 }
 
 int pkg_info(const char *name) {
@@ -555,7 +677,24 @@ int pkg_run_module(const char *name) {
     if (pkg_find_module(name, path, sizeof(path), 0, 0) != 0) {
         return -1;
     }
-    return basic_run_file(path);
+    int rc = basic_run_file(path);
+    if (rc == 0) {
+        disc_on_module_run(name);
+    }
+    return rc;
+}
+
+int pkg_module_category(const char *name, char *cat_out, size_t cat_cap) {
+    for (int i = 0; i < PKG_MOD_MAX; ++i) {
+        if (g_mods[i].used && pkg_streq(g_mods[i].name, name)) {
+            if (cat_out && cat_cap) {
+                pkg_copy(cat_out, cat_cap,
+                         g_mods[i].category[0] ? g_mods[i].category : "general");
+            }
+            return 0;
+        }
+    }
+    return -1;
 }
 
 int pkg_load_module_path(const char *path) {
@@ -583,12 +722,19 @@ void pkg_format_package_list(char *out, size_t cap) {
 }
 
 void pkg_format_module_list(char *out, size_t cap) {
+    pkg_format_module_list_filtered(out, cap, 0);
+}
+
+void pkg_format_module_list_filtered(char *out, size_t cap, const char *category) {
     size_t pos = 0;
     if (!out || cap == 0) {
         return;
     }
     for (int i = 0; i < PKG_MOD_MAX && pos + 1 < cap; ++i) {
         if (!g_mods[i].used) {
+            continue;
+        }
+        if (category && category[0] && !pkg_streq(g_mods[i].category, category)) {
             continue;
         }
         if (pos > 0 && pos + 1 < cap) {

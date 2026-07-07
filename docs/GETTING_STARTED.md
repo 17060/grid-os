@@ -1,4 +1,4 @@
-# Getting Started with Grid OS 6.5
+# Getting Started with Grid OS 7.1.1
 
 Flynn's Grid — a bootable x86_64 hobby OS with GridBASIC IDE, ring-3 sandboxes, multi-session TCP networking, and host bridges for AI and Bitcoin.
 
@@ -208,3 +208,7 @@ CI runs the same on every push to `main` via GitHub Actions.
 - Real DNS (static hostname table only)
 
 See `docs/COMMANDS.md` for the complete command reference.
+
+**GridBASIC encyclopedia:** [docs/wiki/README.md](wiki/README.md) — colon commands, keywords, `GRID.*`, and all seeded modules.
+
+**Cookbook:** [docs/wiki/cookbook.md](wiki/cookbook.md) — run modules, install packages, compile bytecode, earn disc XP.

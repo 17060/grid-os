@@ -29,7 +29,7 @@ def build_superblock() -> bytes:
     struct.pack_into("<I", sb, 12, GFS_INODE_MAX)
     struct.pack_into("<I", sb, 16, GFS_DATA_BASE_LBA)
     struct.pack_into("<I", sb, 20, GFS_SECTORS_PER_FILE)
-    checksum = crc32(bytes(sb[: struct.calcsize("<8s5I")]))
+    checksum = crc32(bytes(sb[:24]))
     struct.pack_into("<I", sb, 24, checksum)
     return bytes(sb)
 

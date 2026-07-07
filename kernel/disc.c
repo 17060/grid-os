@@ -110,6 +110,15 @@ void disc_on_basic_run(void) {
     disc_add_xp(1);
 }
 
+void disc_on_module_run(const char *name) {
+    (void)name;
+    disc_add_xp(2);
+}
+
+void disc_on_duel(void) {
+    disc_add_xp(10);
+}
+
 int disc_level(void) {
     return disc_level_val;
 }

@@ -3,6 +3,7 @@
 
 Usage:
   python3 tools/gridpkg_build.py packages/flynn-ide-tools/MANIFEST
+  python3 tools/gridpkg_build.py --output dist/flynn-ide-tools.gridpkg MANIFEST
   ./tools/gridctl portal-pkg-push packages/flynn-ide-tools/MANIFEST | ...
 
 Guest: portal pkg  or  pkg recv  or  GRID.PORTAL.PKG / GRID.PKG.RECV
@@ -10,6 +11,7 @@ Guest: portal pkg  or  pkg recv  or  GRID.PORTAL.PKG / GRID.PKG.RECV
 
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -74,14 +76,29 @@ def build_frame(manifest: Path) -> bytes:
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        print("Usage: gridpkg_build.py <MANIFEST>", file=sys.stderr)
-        return 1
-    manifest = Path(sys.argv[1]).resolve()
+    parser = argparse.ArgumentParser(description="Build GridLink PKG frame from MANIFEST")
+    parser.add_argument("manifest", type=Path, help="Path to package MANIFEST")
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=Path,
+        help="Write .gridpkg frame to file instead of stdout",
+    )
+    args = parser.parse_args()
+
+    manifest = args.manifest.resolve()
     if not manifest.is_file():
         print(f"Missing manifest: {manifest}", file=sys.stderr)
         return 1
-    sys.stdout.buffer.write(build_frame(manifest))
+
+    frame = build_frame(manifest)
+    if args.output:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_bytes(frame)
+        print(f"Wrote {args.output} ({len(frame)} B)", file=sys.stderr)
+        return 0
+
+    sys.stdout.buffer.write(frame)
     return 0
 
 

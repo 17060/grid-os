@@ -171,7 +171,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.1'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.1.1'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'
@@ -224,6 +224,7 @@ test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	@(sleep 5; printf '\033'; sleep 1; printf 'basictest\n'; sleep 3; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'net ping gateway\n'; sleep 4; printf '\n'; \
+	  sleep 1; printf '\033'; sleep 1; printf 'pkg mods\n'; sleep 3; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'spawn gridsh\n'; sleep 2; \
 	  printf 'disc\n'; sleep 1; printf 'exit\n'; sleep 2; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'poweroff\n'; sleep 5) | \
@@ -235,6 +236,8 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
 	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
 	grep -q 'Reply received' build/test-e2e.log || { echo "net ping output missing"; exit 1; }; \
+	grep -q 'disc-status' build/test-e2e.log || { echo "pkg mods output missing"; exit 1; }; \
+	grep -q 'http-probe' build/test-e2e.log || { echo "flynn-net-tools module missing"; exit 1; }; \
 	grep -q 'Disc:' build/test-e2e.log || { echo "gridsh disc output missing"; exit 1; }; \
 	grep -q 'End of line' build/test-e2e.log || { echo "gridsh clean exit missing"; exit 1; }; \
 	if grep -q 'Program fault' build/test-e2e.log; then echo "unexpected program fault"; exit 1; fi; \
@@ -262,9 +265,9 @@ standalone-macos: $(TARGET) $(DISK_IMAGE)
 
 release-mac: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh tools/build_standalone_mac.sh
-	GRID_OS_VERSION=v6.7 ./tools/save_mac_silicon.sh
-	GRID_OS_VERSION=6.7 ./tools/build_standalone_mac.sh
-	@echo "Upload dist/* to GitHub release v6.7 with: gh release upload v6.7 dist/*"
+	GRID_OS_VERSION=v7.1.1 ./tools/save_mac_silicon.sh
+	GRID_OS_VERSION=7.1.1 ./tools/build_standalone_mac.sh
+	@echo "Upload dist/* to GitHub release v7.1.1 with: gh release upload v7.1.1 dist/*"
 
 save-windows-x64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_windows_x64.sh
@@ -276,9 +279,9 @@ standalone-windows: $(TARGET) $(DISK_IMAGE)
 
 release-windows: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_windows_x64.sh tools/build_standalone_windows.sh
-	GRID_OS_VERSION=v6.7 ./tools/save_windows_x64.sh
-	GRID_OS_VERSION=6.7 ./tools/build_standalone_windows.sh
-	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v6.7 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
+	GRID_OS_VERSION=v7.1.1 ./tools/save_windows_x64.sh
+	GRID_OS_VERSION=7.1.1 ./tools/build_standalone_windows.sh
+	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v7.1.1 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
 
 save-termux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_termux.sh
@@ -290,9 +293,9 @@ standalone-termux: $(TARGET) $(DISK_IMAGE)
 
 release-termux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_termux.sh tools/build_standalone_termux.sh
-	GRID_OS_VERSION=v6.8 ./tools/save_termux.sh
-	GRID_OS_VERSION=6.8 ./tools/build_standalone_termux.sh
-	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v6.8 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
+	GRID_OS_VERSION=v7.1.1 ./tools/save_termux.sh
+	GRID_OS_VERSION=7.1.1 ./tools/build_standalone_termux.sh
+	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v7.1.1 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
 
 save-linux-x64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_linux_x64.sh
@@ -304,8 +307,8 @@ standalone-linux: $(TARGET) $(DISK_IMAGE)
 
 release-linux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_linux_x64.sh
-	GRID_OS_VERSION=v7.0 ./tools/save_linux_x64.sh
-	@echo "Upload dist/grid-os-linux-x64-* to GitHub release v7.0"
+	GRID_OS_VERSION=v7.1.1 ./tools/save_linux_x64.sh
+	@echo "Upload dist/grid-os-linux-x64-* to GitHub release v7.1.1"
 
 ws-bridge:
 	python3 tools/gridws_bridge.py

@@ -1,0 +1,10 @@
+name=flynn-net-tools
+version=1.0
+desc=Flynn network bridge helpers for GridBASIC IDE
+file=/packages/flynn-net-tools/MANIFEST
+file=/packages/flynn-net-tools/modules/http-probe.bas
+file=/packages/flynn-net-tools/modules/irc-connect.bas
+file=/packages/flynn-net-tools/modules/https-bridge.bas
+mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network
+mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network
+mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge

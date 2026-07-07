@@ -1,4 +1,4 @@
-# Grid OS 7.1
+# Grid OS 7.1.1
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -17,6 +17,12 @@
 **Packages & IDE modules?** See [docs/PACKAGES.md](docs/PACKAGES.md) — `pkg`, GridLink `.gridpkg`, `:mod run`.
 
 **GridBASIC IDE encyclopedia?** See [docs/wiki/README.md](docs/wiki/README.md) — full command/keyword reference with examples.
+
+**Cookbook?** See [docs/wiki/cookbook.md](docs/wiki/cookbook.md) — modules, packages, bytecode, duels.
+
+## What's new in 7.1.1
+
+Module **categories** (`pkg mods network`), second package **`flynn-net-tools`**, IDE **`:pkg`**, **`:find`/`:goto`**, **`:run` .grid** paths, identity disc XP for modules and duels, **`gridctl portal-pkg-publish`**, CI wiki sync + e2e pkg test. See [CHANGELOG.md](CHANGELOG.md) and [docs/wiki/cookbook.md](docs/wiki/cookbook.md).
 
 ## What's new in 7.1
 

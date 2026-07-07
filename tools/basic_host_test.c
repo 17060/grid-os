@@ -163,6 +163,8 @@ int btc_help(char *out, size_t cap) { return btc_call("HELP", "", out, cap); }
 int btc_stop(char *out, size_t cap) { return btc_call("stop", "", out, cap); }
 
 void disc_on_basic_run(void) {}
+void disc_on_module_run(const char *n) { (void)n; }
+void disc_on_duel(void) {}
 void disc_on_program_run(const char *n) { (void)n; }
 int disc_level(void) { return 1; }
 int disc_xp(void) { return 0; }
