@@ -11,6 +11,7 @@
 #include "ide.h"
 #include "iso.h"
 #include "irc.h"
+#include "irc_server.h"
 #include "link.h"
 #include "log.h"
 #include "net.h"
@@ -20,6 +21,7 @@
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
+#include "server.h"
 #include "storage.h"
 #include "timer.h"
 
@@ -101,10 +103,10 @@ static int parse_args(char *line, char *argv[], int max_args) {
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("=\\========== GRID OS 7.1.1 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1.1  |  CODE THE GRID");
-    console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
+    console_write_line(" FLYNN'S GRID  |  OS + IDE as one workshop  |  END OF LINE");
+    console_write_line("=/======= use the machine · shape the machine =====\\=");
     console_set_color(GRID_COL_DIM);
-    console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
+    console_write_line(" Esc :help  :tutorial  :mods  —  Help us build the Grid.");
     console_set_color(GRID_COL_DEFAULT);
     if (gfs_present()) {
         console_set_color(GRID_COL_OK);
@@ -124,6 +126,12 @@ static void print_banner(void) {
 }
 
 static void cmd_help(void) {
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("=== Flynn Grid shell ===");
+    console_set_color(GRID_COL_DEFAULT);
+    console_write_line("The grid> prompt — Flynn shell behind the IDE.");
+    console_write_line("Programs, disk, network, packages. Shape the frontier.");
+    console_write_line("");
     console_write_line("Commands:");
     console_write_line("  help              Show this help");
     console_write_line("  disc              Display your identity disc");
@@ -158,6 +166,10 @@ static void cmd_help(void) {
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
+    console_write_line("  server listen <port>            Start TCP line server");
+    console_write_line("  server status|stop [port]|help  Manage Grid TCP server");
+    console_write_line("  ircserver listen <port>         Start Flynn IRC server (port 6667)");
+    console_write_line("  ircserver status|stop [port]    Manage IRC server");
     console_write_line("  pkg [list|mods|info|install|remove|recv]  Grid package manager");
     console_write_line("  basic [ide|run|compile|samples|mod|help]  GridBASIC language + IDE");
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
@@ -169,6 +181,10 @@ static void cmd_help(void) {
     console_write_line("  vault             Persistent grid storage");
     console_write_line("  serial            COM1 serial I/O");
     console_write_line("  about             About Grid OS");
+    console_write_line("");
+    console_set_color(GRID_COL_DIM);
+    console_write_line("Help us build the Grid — github.com/17060/grid-os");
+    console_set_color(GRID_COL_DEFAULT);
 }
 
 static void cmd_serial(int argc, char *argv[]) {
@@ -1183,6 +1199,143 @@ static void cmd_irc(int argc, char *argv[]) {
     console_write_line("  irc <ip> <port> <nick> <#ch>    Legacy one-shot listen");
 }
 
+static void cmd_server(int argc, char *argv[]) {
+    if (argc >= 2 && equals(argv[1], "listen")) {
+        if (argc < 3) {
+            console_write_line("Usage: server listen <port>");
+            return;
+        }
+        uint16_t port = parse_port_str(argv[2]);
+        if (port == 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Bad port.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (grid_server_listen(port) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Server: listen failed (no network?).");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write("Server: listening on port ");
+        console_write_line(argv[2]);
+        console_set_color(GRID_COL_DEFAULT);
+        console_write_line("Run a GridBASIC server loop (:server new in IDE) or poll with GRID.SERVER.*");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "status")) {
+        grid_server_poll();
+        char st[192];
+        grid_server_format_status(st, sizeof(st));
+        console_write_line(st);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "stop")) {
+        if (argc >= 3) {
+            uint16_t port = parse_port_str(argv[2]);
+            if (port == 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Bad port.");
+                console_set_color(GRID_COL_DEFAULT);
+                return;
+            }
+            grid_server_unlisten(port);
+            console_write_line("Server: stopped listening on port.");
+            return;
+        }
+        grid_server_stop_all();
+        console_write_line("Server: all listeners and clients stopped.");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "help")) {
+        console_write_line("Server commands:");
+        console_write_line("  server listen <port>   Open TCP listen port for GridBASIC server");
+        console_write_line("  server status          Show listeners and client count");
+        console_write_line("  server stop [port]     Unlisten port or stop everything");
+        console_write_line("  server help            This help");
+        console_write_line("IDE: Esc :server new      Load editable server template with custom keywords");
+        return;
+    }
+
+    console_write_line("Server commands:");
+    console_write_line("  server listen <port>   Open TCP listen port for GridBASIC server");
+    console_write_line("  server status          Show listeners and client count");
+    console_write_line("  server stop [port]     Unlisten port or stop everything");
+    console_write_line("  server help            This help");
+    console_write_line("IDE: Esc :server new      Load editable server template with custom keywords");
+}
+
+static void cmd_ircserver(int argc, char *argv[]) {
+    if (argc >= 2 && equals(argv[1], "listen")) {
+        if (argc < 3) {
+            console_write_line("Usage: ircserver listen <port>");
+            return;
+        }
+        uint16_t port = parse_port_str(argv[2]);
+        if (port == 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Bad port.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (grid_irc_server_listen(port) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("IRC server: listen failed (no network?).");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write("IRC server: listening on port ");
+        console_write_line(argv[2]);
+        console_set_color(GRID_COL_DEFAULT);
+        console_write_line("IDE: Esc :ircserver new — load bot with !time !help !motd !ver");
+        console_write_line("Connect with: irc connect localhost <port> <nick>");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "status")) {
+        grid_irc_server_poll();
+        char st[192];
+        grid_irc_server_format_status(st, sizeof(st));
+        console_write_line(st);
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "stop")) {
+        if (argc >= 3) {
+            uint16_t port = parse_port_str(argv[2]);
+            if (port == 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Bad port.");
+                console_set_color(GRID_COL_DEFAULT);
+                return;
+            }
+            grid_irc_server_unlisten(port);
+            console_write_line("IRC server: stopped listening on port.");
+            return;
+        }
+        grid_irc_server_stop_all();
+        console_write_line("IRC server: all listeners and clients stopped.");
+        return;
+    }
+    if (argc >= 2 && equals(argv[1], "help")) {
+        console_write_line("IRC server commands:");
+        console_write_line("  ircserver listen <port>   Open IRC listen port (6667 typical)");
+        console_write_line("  ircserver status          Show listeners and client count");
+        console_write_line("  ircserver stop [port]     Unlisten port or stop everything");
+        console_write_line("  ircserver help            This help");
+        console_write_line("IDE: Esc :ircserver new     Load IRC bot template (!commands in #grid)");
+        return;
+    }
+
+    console_write_line("IRC server commands:");
+    console_write_line("  ircserver listen <port>   Open IRC listen port (6667 typical)");
+    console_write_line("  ircserver status          Show listeners and client count");
+    console_write_line("  ircserver stop [port]     Unlisten port or stop everything");
+    console_write_line("  ircserver help            This help");
+    console_write_line("IDE: Esc :ircserver new     Load IRC bot template (!commands in #grid)");
+}
+
 static int path_ends_with(const char *path, const char *suffix) {
     size_t plen = 0;
     size_t slen = 0;
@@ -1412,9 +1565,14 @@ static void cmd_basic(int argc, char *argv[]) {
             return;
         }
         if (equals(argv[2], "run")) {
-            if (pkg_run_module(argv[3]) != 0) {
+            int rc = pkg_run_module(argv[3]);
+            if (rc == -1) {
                 console_set_color(GRID_COL_ERROR);
                 console_write_line("Module not found — try: pkg mods");
+                console_set_color(GRID_COL_DEFAULT);
+            } else if (rc != 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Module read failed — attach Flynn disk or: gfs seed");
                 console_set_color(GRID_COL_DEFAULT);
             }
             return;
@@ -1676,9 +1834,11 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 7.1.1 — Flynn's real digital frontier.");
-    console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
-    console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
+    console_write_line("Grid OS 7.1.1 — Flynn's digital frontier.");
+    console_write_line("A bootable OS and GridBASIC IDE mixed into one workshop.");
+    console_write_line("Not CLU's perfect system — open, creative, user-first.");
+    console_write_line("We are not a daily driver yet. We are a call for builders.");
+    console_write_line("Help us build the Grid. End of line is optional.");
 }
 
 static void cmd_portal(int argc, char *argv[]) {
@@ -2008,6 +2168,10 @@ void shell_dispatch_line(char *line) {
         cmd_http(argc, argv);
     } else if (equals(argv[0], "irc")) {
         cmd_irc(argc, argv);
+    } else if (equals(argv[0], "server")) {
+        cmd_server(argc, argv);
+    } else if (equals(argv[0], "ircserver")) {
+        cmd_ircserver(argc, argv);
     } else if (equals(argv[0], "pkg")) {
         cmd_pkg(argc, argv);
     } else if (equals(argv[0], "basic")) {
@@ -2067,7 +2231,7 @@ void shell_run(void) {
     console_set_serial_mirror(1);
     print_banner();
     if (shell_run_autoexec()) {
-        basic_ide_set_boot_hint("Welcome — Esc: grid> tutorial | :load tutorial | :samples");
+        basic_ide_set_boot_hint("Esc :help — workshop + OS as one. :tutorial | Help us build the Grid.");
     }
     basic_ide(0);
 }

@@ -1,8 +1,8 @@
 # Grid OS 7.1.1
 
-**Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
+**Flynn's Grid** — a bootable x86_64 frontier where the **operating system and the IDE are one workshop**. Use the machine. Shape the machine. Open, creative, user-first — not CLU's "perfect system." **Help us build the Grid.**
 
-**New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
+**New here?** Read [docs/INTRODUCTION.md](docs/INTRODUCTION.md) — who the GridBASIC IDE is for, why it's fun, and an open invitation to help build a user OS and IDE as one. Then see [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for install and first boot.
 
 **Linux?** See [docs/LINUX.md](docs/LINUX.md) — `make release-linux` for distributable tarballs.
 

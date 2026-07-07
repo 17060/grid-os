@@ -1,6 +1,6 @@
 # Package modules
 
-The **`flynn-ide-tools`** package (v2.0) ships **25 GridBASIC IDE modules** — small programs for Flynn Grid tasks. They install on Flynn disk under `/packages/flynn-ide-tools/`.
+Two seeded packages ship **30 GridBASIC IDE modules** on Flynn disk — **25** in **`flynn-ide-tools`** (v2.1) and **5** in **`flynn-net-tools`** (v1.0). Paths live under `/packages/<name>/modules/`.
 
 ## Run a module
 
@@ -43,9 +43,11 @@ The **`flynn-ide-tools`** package (v2.0) ships **25 GridBASIC IDE modules** — 
 | `flynn-ide-tools` | `irc-check` | `network` | `/packages/flynn-ide-tools/modules/irc-check.bas` | IRC session status |
 | `flynn-ide-tools` | `hosts-table` | `network` | `/packages/flynn-ide-tools/modules/hosts-table.bas` | Show /etc/hosts from Flynn disk |
 | `flynn-ide-tools` | `spawn-catalog` | `system` | `/packages/flynn-ide-tools/modules/spawn-catalog.bas` | Ring-3 program spawn hints |
-| `flynn-net-tools` | `http-probe` | `network` | `/packages/flynn-net-tools/modules/http-probe.bas` | HTTP GET probe via GRID.HTTP |
+| `flynn-net-tools` | `http-probe` | `network` | `/packages/flynn-net-tools/modules/http-probe.bas` | HTTP: GET probe via GRID.HTTP |
 | `flynn-net-tools` | `irc-connect` | `network` | `/packages/flynn-net-tools/modules/irc-connect.bas` | IRC quick-connect helper |
 | `flynn-net-tools` | `https-bridge` | `bridge` | `/packages/flynn-net-tools/modules/https-bridge.bas` | HTTPS bridge status (host bridge) |
+| `flynn-net-tools` | `grid-server` | `network` | `/packages/flynn-net-tools/modules/grid-server.bas` | TCP line server with custom keywords |
+| `flynn-net-tools` | `irc-server` | `network` | `/packages/flynn-net-tools/modules/irc-server.bas` | Flynn IRC server with !bot commands |
 <!-- AUTO:MODULE_TABLE:END -->
 
 ---
@@ -185,11 +187,51 @@ The **`flynn-ide-tools`** package (v2.0) ships **25 GridBASIC IDE modules** — 
 
 ---
 
+### `http-probe`
+
+**Category:** Network (`flynn-net-tools`)  
+**Run:** `Esc :mod run http-probe`  
+**Sample use:** HTTP GET via `GRID.HTTP.GET$("gateway", 80, "/")` — needs host HTTP/HTTPS bridge for upstream TLS.
+
+---
+
+### `irc-connect`
+
+**Category:** Network (`flynn-net-tools`)  
+**Run:** `Esc :mod run irc-connect`  
+**Sample use:** Prints `GRID.IRC.STATUS$` and quick-connect hints before live IRC demos.
+
+---
+
+### `https-bridge`
+
+**Category:** Bridge (`flynn-net-tools`)  
+**Run:** `Esc :mod run https-bridge`  
+**Sample use:** Documents host `make https-bridge` (TCP :8768) for guest HTTP over TLS.
+
+---
+
+### `grid-server`
+
+**Category:** Network (`flynn-net-tools`)  
+**Run:** `Esc :mod run grid-server`  
+**Sample use:** Overview of `GRID.SERVER.*` and IDE `:server new` template for custom TCP keywords.
+
+---
+
+### `irc-server`
+
+**Category:** Network (`flynn-net-tools`)  
+**Run:** `Esc :mod run irc-server`  
+**Sample use:** Overview of `GRID.IRCSERVER.*` and IDE `:ircserver new` bot with **`!time`**, **`!help`**, **`!motd`**, **`!ver`**.
+
+---
+
 ## Install & author
 
 ```bash
-python3 tools/gen_flynn_ide_modules.py   # regenerate MANIFEST + seeds
-python3 tools/sync_basic_wiki.py         # refresh this table
+python3 tools/gen_packages.py      # regenerate MANIFEST + seeds + wiki sync
+python3 tools/sync_basic_wiki.py   # refresh module table only
 make seed-disk
 ```
 

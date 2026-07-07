@@ -20,7 +20,7 @@ The editor scrolls so the cursor stays visible.
 | **Enter** | Split line — inserts newline below cursor |
 | **Backspace** | Delete char left; at column 0, merge with line above |
 | **Delete** | Delete char right; at end of line, merge with line below |
-| **Tab** | Insert spaces (indent) |
+| **Tab** | Insert **4 spaces** (indent) |
 
 ## Command line
 
@@ -29,8 +29,10 @@ The editor scrolls so the cursor stays visible.
 | **Esc** | Open `grid>` command line at bottom |
 | **Esc** (empty prompt) | Cancel command, return to editor |
 | **Enter** (at `grid>`) | Submit command |
+| **Left / Right / Home / End** | Edit command text at `grid>` |
+| **Delete** | Delete char right on command line |
 
-Colon commands start with `:` after `Esc` (e.g. `:run`). Shell commands omit the colon (e.g. `pkg mods`).
+Colon commands start with `:` after `Esc` (e.g. `:run`). Shell commands omit the colon (e.g. `pkg mods`). Package module filters use **`:mods network`** — not bare `mods`.
 
 ## History
 

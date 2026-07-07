@@ -1,8 +1,14 @@
 # Getting started
 
+**Welcome:** [Introduction to Grid OS & the GridBASIC IDE](../INTRODUCTION.md)
+
 ## What is the GridBASIC IDE?
 
-The **GridBASIC IDE** is the fullscreen editor built into Grid OS. You write programs in **GridBASIC** (an advanced BASIC dialect), run them immediately, save to Flynn disk (`/programs/*.bas`), compile to bytecode (`.grid`), and call Grid OS services through **`GRID.*` bindings**.
+The **GridBASIC IDE** is Flynn's workshop built into Grid OS — a fullscreen editor where **using the machine and making the machine are the same breath**. You write programs in **GridBASIC**, run them immediately, save to Flynn disk (`/programs/*.bas`), compile to bytecode (`.grid`), and call Grid OS services through **`GRID.*` bindings**.
+
+Press **Esc** and the IDE opens a magic door: `:run`, `:save`, `:mods`, `:server new`, or the full `grid>` shell — without leaving the editor.
+
+We are not a polished everyday laptop replacement yet, and we will not pretend otherwise. We *are* a real frontier for learners, tinkerers, and anyone who wants to help **build a true user operating system and IDE mixed into one**. **Help us build the Grid.**
 
 Enter from the Flynn shell:
 
@@ -58,9 +64,9 @@ Esc :tutorial          → interactive walkthrough
 grid> tutorial         → run /programs/tutorial.bas (from shell)
 ```
 
-## Package modules (25 tools)
+## Package modules (30 tools)
 
-Special-purpose scripts shipped in **`flynn-ide-tools`**:
+Special-purpose scripts in **`flynn-ide-tools`** (25) and **`flynn-net-tools`** (5):
 
 ```text
 Esc :mods              → list all modules

@@ -2,6 +2,10 @@
 
 Flynn's Grid — a bootable x86_64 hobby OS with GridBASIC IDE, ring-3 sandboxes, multi-session TCP networking, and host bridges for AI and Bitcoin.
 
+**Read first:** [INTRODUCTION.md](INTRODUCTION.md) — who the IDE is for, why it's fun and useful, where we're headed, and how you can help.
+
+When you boot, you land in the **GridBASIC IDE** — editor, language, and path into the rest of the system on one screen. Press **Esc** for `:help`, `:tutorial`, or the embedded `grid>` shell. End of line is optional.
+
 ## Prerequisites
 
 | Tool | Purpose |

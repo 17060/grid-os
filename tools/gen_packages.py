@@ -148,17 +148,19 @@ IDE_MODULES: list[Module] = [
 20 PRINT "=== GridBASIC Samples ==="
 30 PRINT GRID.GFS.LIST$("/programs")
 40 PRINT "Try: tutorial, hello, subdemo, grid2d, demo"
-50 PRINT "IDE: Esc :load tutorial   :run demo.grid"
+50 PRINT "IDE: Esc :load tutorial   :run hello"
 60 END
 """, "dev"),
     Module("ide-cheatsheet", "IDE colon-command reference", """\
 10 REM IDE module: ide-cheatsheet
 20 PRINT "=== IDE Cheatsheet ==="
-30 PRINT ":run :save :load :new :list :find :goto"
-40 PRINT ":mods [cat] :mod run <n> :pkg list|mods"
-50 PRINT ":tutorial :compile :samples :help"
-60 PRINT "grid> pkg mods network   basic mod run <n>"
-70 END
+30 PRINT "Flynn's workshop — OS + IDE on one screen."
+40 PRINT ":run :save :load :new :list :find :goto"
+50 PRINT ":mods [cat] :mod run <n> :pkg list|mods|info"
+60 PRINT ":tutorial :compile :samples :help"
+70 PRINT "Esc opens the grid> shell. Shape the machine."
+80 PRINT "Help us build the Grid. End of line is optional."
+90 END
 """, "dev"),
     Module("beep-scale", "PC speaker note demo", """\
 10 REM IDE module: beep-scale
@@ -184,7 +186,7 @@ IDE_MODULES: list[Module] = [
 10 REM IDE module: ai-ask (host: make ai-bridge)
 20 PRINT "=== Grid AI ==="
 30 PRINT GRID.AI.MODELS$
-40 PRINT GRID.AI.ASK$("What is PRINT in GridBASIC?", "EXPLAIN")
+40 PRINT GRID.AI.EXPLAIN$("What is PRINT in GridBASIC?")
 50 END
 """, "bridge"),
     Module("btc-snapshot", "Bitcoin bridge status", """\
@@ -219,7 +221,7 @@ IDE_MODULES: list[Module] = [
 ]
 
 NET_MODULES: list[Module] = [
-    Module("http-probe", "HTTP GET probe via GRID.HTTP", """\
+    Module("http-probe", "HTTP: GET probe via GRID.HTTP", """\
 10 REM Flynn net-tools: http-probe
 20 PRINT "=== HTTP Probe ==="
 30 R$ = GRID.HTTP.GET$("gateway", 80, "/")
@@ -242,6 +244,26 @@ NET_MODULES: list[Module] = [
 50 PRINT GRID.NET.STATUS$
 60 END
 """, "bridge"),
+    Module("grid-server", "TCP line server with custom keywords", """\
+10 REM Flynn net-tools: grid-server
+20 PRINT "=== Grid TCP Server ==="
+30 PRINT "IDE: Esc :server new — edit template"
+40 PRINT "Shell: server listen 7700"
+50 PRINT GRID.SERVER.STATUS$
+60 PRINT "Built-ins: PING HELP STATUS ECHO QUIT"
+70 PRINT "Custom keywords: TIME VER HELLO <name> in template"
+80 END
+""", "network"),
+    Module("irc-server", "Flynn IRC server with !bot commands", """\
+10 REM Flynn net-tools: irc-server
+20 PRINT "=== Flynn IRC Server ==="
+30 PRINT "IDE: Esc :ircserver new — edit !commands"
+40 PRINT "Shell: ircserver listen 6667"
+50 PRINT GRID.IRCSERVER.STATUS$
+60 PRINT "Connect: irc connect localhost 6667 nick"
+70 PRINT "Join #grid and try !time !help !motd !ver"
+80 END
+""", "network"),
 ]
 
 

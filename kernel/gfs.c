@@ -281,6 +281,7 @@ void gfs_init(void) {
     }
 
     mounted = 1;
+    gfs_seed_defaults();
 }
 
 int gfs_read_file(const char *path, void *out, size_t out_cap, size_t *out_len) {
@@ -526,9 +527,21 @@ void gfs_print_status(void) {
     console_write_line("  Paths: /programs/*  /source/*  /flynn/*  /grid/*");
 }
 
+static int seed_managed_path(const char *path) {
+    return path_starts_with(path, "/packages/") ||
+           path_equal(path, "/etc/hosts") ||
+           path_equal(path, "/programs/demo.bas");
+}
+
 static int seed_one(const char *path, const void *data, size_t size) {
-    if (find_inode(path) >= 0) {
-        return 0;
+    int slot = find_inode(path);
+    if (slot >= 0) {
+        if (!seed_managed_path(path)) {
+            return 0;
+        }
+        if (inodes[slot].size == size) {
+            return 0;
+        }
     }
     return gfs_write_file(path, data, size);
 }
@@ -540,7 +553,7 @@ int gfs_seed_defaults(void) {
         return -1;
     }
 
-    seed_one("/flynn/motd", "The Grid is open. Flynn's archive linked.\n", 42);
+    seed_one("/flynn/motd", "Flynn's Grid — OS + IDE as one workshop. Help us build the Grid.\n", 67);
 
     size = (size_t)(gridsh_bin_end - gridsh_bin);
     seed_one("/programs/gridsh", gridsh_bin, size);
@@ -585,14 +598,14 @@ int gfs_seed_defaults(void) {
     seed_one("/programs/autoexec.bas",
              "10 REM Flynn Boot — runs once at Grid OS startup\n"
              "20 PRINT \"\"\n"
-             "30 PRINT \"=== Welcome to Flynn's Grid ===\"\n"
+             "30 PRINT \"=== Flynn's Grid — OS + IDE as one workshop ===\"\n"
              "40 PRINT GRID.STATUS$\n"
-             "50 PRINT \"Type 'tutorial' or Esc :load tutorial in IDE\"\n"
-             "60 PRINT \"Samples: samples   Modules: pkg mods\"\n"
-             "70 PRINT \"Disable boot script: vault put autoexec off\"\n"
+             "50 PRINT \"Esc :help  :tutorial  :mods  — shape the machine\"\n"
+             "60 PRINT \"Help us build the Grid. End of line is optional.\"\n"
+             "70 PRINT \"Disable: vault put autoexec off\"\n"
              "80 PRINT \"\"\n"
              "90 END\n",
-             304);
+             330);
 
     seed_one("/programs/tutorial.bas",
              "10 REM GridBASIC Tutorial — Flynn Boot Experience\n"
@@ -611,9 +624,9 @@ int gfs_seed_defaults(void) {
              "140 PRINT \"   \"; S$\n"
              "150 PRINT \"5. GRID.WHOAMI$ = \"; GRID.WHOAMI$\n"
              "160 PRINT \"Try: samples   basic run /programs/subdemo.bas\"\n"
-             "170 PRINT \"End of line.\"\n"
+             "170 PRINT \"Help us build the Grid. End of line is optional.\"\n"
              "180 END\n",
-             539);
+             575);
 
     seed_one("/programs/subdemo.bas",
              "10 REM SUB / FUNCTION demo\n"
@@ -639,6 +652,20 @@ int gfs_seed_defaults(void) {
              "80 PRINT \"M(2,3) = \"; M(2,3)\n"
              "90 END\n",
              158);
+
+    seed_one("/programs/demo.bas",
+             "10 REM Bytecode demo -- compile with :compile demo\n"
+             "20 PRINT \"GridBASIC bytecode demo\"\n"
+             "30 PRINT \"Run: Esc :compile demo then :run demo.grid\"\n"
+             "40 END\n",
+             128);
+
+    seed_one("/etc/hosts",
+             "# Grid OS static hosts (also: built-in gateway/grid/ai/btc + UDP DNS)\n"
+             "10.0.2.2   bridge gateway gw ai btc\n"
+             "10.0.2.15  grid host localhost\n"
+             "192.168.1.50  lab\n",
+             155);
 
     seed_one("/packages/flynn-ide-tools/MANIFEST",
              "name=flynn-ide-tools\n"
@@ -854,21 +881,23 @@ int gfs_seed_defaults(void) {
              "20 PRINT \"=== GridBASIC Samples ===\"\n"
              "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
              "40 PRINT \"Try: tutorial, hello, subdemo, grid2d, demo\"\n"
-             "50 PRINT \"IDE: Esc :load tutorial   :run demo.grid\"\n"
+             "50 PRINT \"IDE: Esc :load tutorial   :run hello\"\n"
              "60 END\n"
              "\n",
-             219);
+             215);
 
     seed_one("/packages/flynn-ide-tools/modules/ide-cheatsheet.bas",
              "10 REM IDE module: ide-cheatsheet\n"
              "20 PRINT \"=== IDE Cheatsheet ===\"\n"
-             "30 PRINT \":run :save :load :new :list :find :goto\"\n"
-             "40 PRINT \":mods [cat] :mod run <n> :pkg list|mods\"\n"
-             "50 PRINT \":tutorial :compile :samples :help\"\n"
-             "60 PRINT \"grid> pkg mods network   basic mod run <n>\"\n"
-             "70 END\n"
+             "30 PRINT \"Flynn's workshop — OS + IDE on one screen.\"\n"
+             "40 PRINT \":run :save :load :new :list :find :goto\"\n"
+             "50 PRINT \":mods [cat] :mod run <n> :pkg list|mods|info\"\n"
+             "60 PRINT \":tutorial :compile :samples :help\"\n"
+             "70 PRINT \"Esc opens the grid> shell. Shape the machine.\"\n"
+             "80 PRINT \"Help us build the Grid. End of line is optional.\"\n"
+             "90 END\n"
              "\n",
-             276);
+             400);
 
     seed_one("/packages/flynn-ide-tools/modules/beep-scale.bas",
              "10 REM IDE module: beep-scale\n"
@@ -898,10 +927,10 @@ int gfs_seed_defaults(void) {
              "10 REM IDE module: ai-ask (host: make ai-bridge)\n"
              "20 PRINT \"=== Grid AI ===\"\n"
              "30 PRINT GRID.AI.MODELS$\n"
-             "40 PRINT GRID.AI.ASK$(\"What is PRINT in GridBASIC?\", \"EXPLAIN\")\n"
+             "40 PRINT GRID.AI.EXPLAIN$(\"What is PRINT in GridBASIC?\")\n"
              "50 END\n"
              "\n",
-             172);
+             165);
 
     seed_one("/packages/flynn-ide-tools/modules/btc-snapshot.bas",
              "10 REM IDE module: btc-snapshot (host: make btc-bridge)\n"
@@ -948,11 +977,15 @@ int gfs_seed_defaults(void) {
              "file=/packages/flynn-net-tools/modules/http-probe.bas\n"
              "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
              "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
-             "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
+             "file=/packages/flynn-net-tools/modules/grid-server.bas\n"
+             "file=/packages/flynn-net-tools/modules/irc-server.bas\n"
+             "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP: GET probe via GRID.HTTP:network\n"
              "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
              "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
+             "mod=grid-server:/packages/flynn-net-tools/modules/grid-server.bas:TCP line server with custom keywords:network\n"
+             "mod=irc-server:/packages/flynn-net-tools/modules/irc-server.bas:Flynn IRC server with !bot commands:network\n"
              "\n",
-             599);
+             928);
 
     seed_one("/packages/flynn-net-tools/modules/http-probe.bas",
              "10 REM Flynn net-tools: http-probe\n"
@@ -982,6 +1015,30 @@ int gfs_seed_defaults(void) {
              "60 END\n"
              "\n",
              212);
+
+    seed_one("/packages/flynn-net-tools/modules/grid-server.bas",
+             "10 REM Flynn net-tools: grid-server\n"
+             "20 PRINT \"=== Grid TCP Server ===\"\n"
+             "30 PRINT \"IDE: Esc :server new — edit template\"\n"
+             "40 PRINT \"Shell: server listen 7700\"\n"
+             "50 PRINT GRID.SERVER.STATUS$\n"
+             "60 PRINT \"Built-ins: PING HELP STATUS ECHO QUIT\"\n"
+             "70 PRINT \"Custom keywords: TIME VER HELLO <name> in template\"\n"
+             "80 END\n"
+             "\n",
+             305);
+
+    seed_one("/packages/flynn-net-tools/modules/irc-server.bas",
+             "10 REM Flynn net-tools: irc-server\n"
+             "20 PRINT \"=== Flynn IRC Server ===\"\n"
+             "30 PRINT \"IDE: Esc :ircserver new — edit !commands\"\n"
+             "40 PRINT \"Shell: ircserver listen 6667\"\n"
+             "50 PRINT GRID.IRCSERVER.STATUS$\n"
+             "60 PRINT \"Connect: irc connect localhost 6667 nick\"\n"
+             "70 PRINT \"Join #grid and try !time !help !motd !ver\"\n"
+             "80 END\n"
+             "\n",
+             309);
 
     return 0;
 }

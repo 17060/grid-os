@@ -4,11 +4,13 @@ Complete reference for **Grid OS GridBASIC IDE** — colon commands, shell acces
 
 <!-- AUTO:META:BEGIN -->
 - **Grid OS version:** Grid OS 7.1.1
-- **Packages:** 2 seeded (28 IDE modules total)
-- **`flynn-ide-tools`** von=2.1 — 25 modules — 25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)
-- **`flynn-net-tools`** von=1.0 — 3 modules — Flynn network bridge helpers for GridBASIC IDE
+- **Packages:** 2 seeded (30 IDE modules total)
+- **`flynn-ide-tools`** v2.1 — 25 modules — 25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)
+- **`flynn-net-tools`** v1.0 — 5 modules — Flynn network bridge helpers for GridBASIC IDE
 - **Last synced by:** `python3 tools/sync_basic_wiki.py`
 <!-- AUTO:META:END -->
+
+**New to the Grid?** Start with [Introduction](../INTRODUCTION.md) — who it's for, why it's fun, and an invitation to help build a user OS and IDE as one.
 
 ## How to use this wiki
 
@@ -39,7 +41,7 @@ Each page lists entries in encyclopedia form:
 |--------|--------|
 | [Getting started](getting-started.md) | Boot, editor modes, first program |
 | [Editor keys](editor-keys.md) | Cursor, Esc, history |
-| [Colon commands](colon-commands.md) | `:run`, `:save`, `:mods`, `:ai`, … |
+| [Colon commands](colon-commands.md) | `:run`, `:find`, `:goto`, `:mods`, `:server`, `:ircserver`, `:pkg`, `:ai`, … |
 | [Shell from IDE](shell-from-ide.md) | Every `grid>` command usable in IDE |
 | [Statements](statements.md) | `PRINT`, `FOR`, `SELECT CASE`, `SUB`, … |
 | [Built-ins & operators](builtins.md) | `ABS`, `INSTR$`, `AND`, `MOD`, … |
@@ -53,10 +55,12 @@ Each page lists entries in encyclopedia form:
 After changing commands, keywords, bindings, or package modules:
 
 ```bash
-python3 tools/sync_basic_wiki.py   # refresh version + module table
-python3 tools/gen_flynn_ide_modules.py  # if editing module sources
+python3 tools/gen_packages.py        # regenerate MANIFESTs, seeds, and run wiki sync
+python3 tools/sync_basic_wiki.py     # refresh version + module table only
 make test
 ```
+
+Legacy wrapper: `python3 tools/gen_flynn_ide_modules.py` (calls `gen_packages.py`).
 
 Canonical quick tables also live in [docs/COMMANDS.md](../COMMANDS.md) and [docs/PACKAGES.md](../PACKAGES.md).
 
