@@ -161,6 +161,29 @@ Esc :run
 
 ---
 
+## `:pkg list|mods|run|load|info`
+
+| Syntax | Description |
+|--------|-------------|
+| `:pkg list` | List installed packages |
+| `:pkg mods` | List all IDE modules |
+| `:pkg mods <category>` | Filter by category (network, disc, grid, …) |
+| `:pkg run <name>` | Run module (same as `:mod run`) |
+| `:pkg load <name>` | Load module into editor |
+| `:pkg info <name>` | Package file/manifest details |
+
+**Example:**
+
+```text
+Esc :pkg mods network
+Esc :pkg info flynn-ide-tools
+Esc :mod run pkg-index
+```
+
+**See also:** [Package modules](package-modules.md)
+
+---
+
 ## `:help` (`:h`, `:?`)
 
 **Syntax:** `:help`  
@@ -254,6 +277,58 @@ Esc irc connect gateway 6667 griduser
 Esc irc join #grid
 Esc irc say #grid End of line.
 ```
+
+---
+
+## TCP server (`:server …` or `server …`)
+
+| Syntax | Description |
+|--------|-------------|
+| `:server new` | Load editable TCP server template into the buffer |
+| `:server listen <port>` | Open listen port (same as shell `server listen`) |
+| `:server status` | Show listeners and connected clients |
+| `:server stop [port]` | Unlisten one port or stop all |
+| `:server help` | Command summary |
+
+After `:server new`, edit custom keywords in the template (e.g. **TIME**, **VER**, **HELLO** *name*), then `:run`.
+
+Built-in client commands handled by `GRID.SERVER.BUILTIN`: **PING**, **HELP**, **STATUS**, **ECHO** *text*, **QUIT**.
+
+**Example:**
+
+```text
+Esc :server new
+Esc :run
+```
+
+From another host (QEMU user net): `nc -v 127.0.0.1 7700` then type `PING` or `HELLO Flynn`.
+
+**See also:** [grid-bindings.md](grid-bindings.md) — `GRID.SERVER.*`
+
+---
+
+## IRC server (`:ircserver …` or `ircserver …`)
+
+| Syntax | Description |
+|--------|-------------|
+| `:ircserver new` | Load editable IRC bot template (`!time`, `!help`, `!motd`, `!ver`) |
+| `:ircserver listen <port>` | Open IRC listen port (6667 typical) |
+| `:ircserver status` | Show listeners and connected clients |
+| `:ircserver stop [port]` | Unlisten or stop all |
+| `:ircserver help` | Command summary |
+
+Real IRC clients can connect. Channel **`!commands`** are handled by your GridBASIC bot; normal chat is relayed.
+
+**Example:**
+
+```text
+Esc :ircserver new
+Esc :run
+```
+
+In another session: `irc connect localhost 6667 flynn`, `irc join #grid`, then type `!help`.
+
+**See also:** [grid-bindings.md](grid-bindings.md) — `GRID.IRCSERVER.*`
 
 ---
 

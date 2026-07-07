@@ -1,5 +1,43 @@
 # Grid OS — Changelog
 
+## 7.1.2 — GridBASIC TCP server from IDE
+
+### Grid TCP server
+- **`kernel/server.c`** — line-based TCP server API (listen, accept, poll, reply, built-in dispatch)
+- **`tcp_listen` / `tcp_accept`** — inbound connections on listening ports
+- **`GRID.SERVER.*`** — GridBASIC bindings for custom command servers with built-in **PING/HELP/STATUS/ECHO/QUIT**
+- **IDE** — `:server new|listen|status|stop|help` loads an editable template with sample custom keywords
+- **Shell** — `server listen|status|stop|help`
+- **`flynn-net-tools`** — new **`grid-server`** module
+
+### Flynn IRC server
+- **`kernel/irc_server.c`** — IRC protocol server (NICK/USER/JOIN/PART/PRIVMSG/PING/QUIT)
+- **`tcp_accept_port`** — port-aware accept for IRC vs generic TCP server
+- **`GRID.IRCSERVER.*`** — GridBASIC bindings; `!` channel commands queue as events for custom bot handlers
+- **IDE** — `:ircserver new|listen|status|stop|help` loads template with **!time !help !motd !ver**
+- **Shell** — `ircserver listen|status|stop|help`
+- **`flynn-net-tools`** — new **`irc-server`** module
+
+### Audit fixes (7.1.2)
+- **`tcp.c`** — copy accepted connections into `active_conns[]` pool (fixes pending-slot reuse corruption)
+- **`grid_server_accept()`** — port-aware `tcp_accept_port()`; dead clients call `tcp_close()` in poll
+- **`grid_server` CRLF** — skip `\r` before `\n` line termination
+- **IDE `:server new` template** — poll all slots each loop (not just new accepts)
+- **`GRID.IRCSERVER.ESLOT`** — returns numeric value (not string)
+- **IRC server** — registration gate for JOIN/PART/PRIVMSG; QUIT broadcast to channels; listen-table-full error
+
+### GridBASIC IDE & modules audit
+- **GFS seed-on-mount** — `gfs_seed_defaults()` runs on existing Flynn disks; upgrades `/packages/*`, `/etc/hosts`, `demo.bas`
+- **`GRID.PKG.MODS$`** — 512-byte buffer (lists all 30 modules)
+- **`GRID.GFS.LIST$`** — 32-path listing buffer
+- **`PKG_MOD_MAX`** raised to 48; manifest read buffer 8192; mod-table-full logged
+- **`pkg_run_module`** — distinguishes not found vs read failure
+- **`basic mod load`** / IDE — clear error when GFS read fails (no silent empty buffer)
+- **IDE** — `:mod run|load` bare form usage; `:pkg info` usage; help lists `:pkg info`
+- **`GRID.PKG.INSTALL/REMOVE`** — require STORAGE capability
+- **`ai-ask` module** — uses `GRID.AI.EXPLAIN$` (was broken second arg to `ASK$`)
+- **`sample-menu` module** — references seeded programs only
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI

@@ -13,7 +13,9 @@
 #include "gfs.h"
 #include "http.h"
 #include "irc.h"
+#include "irc_server.h"
 #include "security.h"
+#include "server.h"
 #include "storage.h"
 
 /* ---- console stubs ---- */
@@ -77,6 +79,49 @@ int irc_is_connected(void)                     { return 0; }
 int irc_session(const char *h, uint16_t p, const char *n, const char *c, uint32_t d) {
     (void)h;(void)p;(void)n;(void)c;(void)d; return 0;
 }
+
+/* ---- server stubs ---- */
+void grid_server_init(void)                       { }
+int grid_server_listen(uint16_t port)             { (void)port; return 0; }
+int grid_server_unlisten(uint16_t port)           { (void)port; return 0; }
+void grid_server_stop_all(void)                   { }
+void grid_server_poll(void)                       { }
+int grid_server_accept(void)                      { return 0; }
+int grid_server_read_line(int slot, char *line, size_t cap) {
+    (void)slot; if (cap && line) line[0] = '\0'; return 0;
+}
+int grid_server_write(int slot, const char *text) { (void)slot;(void)text; return 0; }
+int grid_server_reply(int slot, const char *text) { (void)slot;(void)text; return 0; }
+void grid_server_close(int slot)                  { (void)slot; }
+int grid_server_dispatch_builtin(int slot, const char *line) {
+    (void)slot;(void)line; return 0;
+}
+void grid_server_format_status(char *out, size_t cap) {
+    if (cap && out) snprintf(out, cap, "clients=0 listen=none");
+}
+int grid_server_listening(uint16_t port)          { (void)port; return 0; }
+
+/* ---- irc server stubs ---- */
+void grid_irc_server_init(void)                       { }
+int grid_irc_server_listen(uint16_t port)             { (void)port; return 0; }
+int grid_irc_server_unlisten(uint16_t port)           { (void)port; return 0; }
+void grid_irc_server_stop_all(void)                   { }
+void grid_irc_server_poll(void)                       { }
+int grid_irc_server_listening(uint16_t port)          { (void)port; return 0; }
+int grid_irc_server_event(char *out, size_t cap)      { if(cap&&out)out[0]=0; return 0; }
+const char *grid_irc_server_event_kind(void)          { return ""; }
+int grid_irc_server_event_slot(void)                  { return 0; }
+void grid_irc_server_event_nick(char *o, size_t c)    { if(c&&o)o[0]=0; }
+void grid_irc_server_event_target(char *o, size_t c)  { if(c&&o)o[0]=0; }
+void grid_irc_server_event_text(char *o, size_t c)    { if(c&&o)o[0]=0; }
+int grid_irc_server_say(int s, const char *t, const char *m) { (void)s;(void)t;(void)m; return 0; }
+int grid_irc_server_notice(int s, const char *t, const char *m) { (void)s;(void)t;(void)m; return 0; }
+int grid_irc_server_bot_say(const char *t, const char *m) { (void)t;(void)m; return 0; }
+int grid_irc_server_bot_notice(const char *t, const char *m) { (void)t;(void)m; return 0; }
+void grid_irc_server_format_status(char *o, size_t c) {
+    if(c&&o)snprintf(o,c,"clients=0 listen=none");
+}
+void grid_irc_server_client_nick(int s, char *o, size_t c) { (void)s; if(c&&o)o[0]=0; }
 
 /* ---- serial stubs ---- */
 void serial_write(const char *t)             { (void)t; }

@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 #define PKG_MAX       8
-#define PKG_MOD_MAX   32
+#define PKG_MOD_MAX   48
 #define PKG_FILE_MAX  48
 #define PKG_NAME_MAX  24
 #define PKG_PATH_MAX  GFS_PATH_MAX
@@ -231,7 +231,11 @@ static int pkg_parse_mod_line(pkg_entry_t *pe, const char *line) {
     if (name[0] == '\0' || path[0] == '\0') {
         return -1;
     }
-    return pkg_add_mod(pe, name, path, desc, category);
+    if (pkg_add_mod(pe, name, path, desc, category) != 0) {
+        log_event("PKG mod table full");
+        return -1;
+    }
+    return 0;
 }
 
 static int pkg_parse_manifest_text(const char *text, const char *manifest_path) {
@@ -298,7 +302,7 @@ static int pkg_parse_manifest_text(const char *text, const char *manifest_path) 
 }
 
 int pkg_install_manifest(const char *manifest_path) {
-    static char buf[4096];
+    static char buf[8192];
     size_t got = 0;
 
     if (!manifest_path || !gfs_present()) {
@@ -418,9 +422,13 @@ void pkg_seed_defaults(void) {
              "file=/packages/flynn-net-tools/modules/http-probe.bas\n"
              "file=/packages/flynn-net-tools/modules/irc-connect.bas\n"
              "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
+             "file=/packages/flynn-net-tools/modules/grid-server.bas\n"
+             "file=/packages/flynn-net-tools/modules/irc-server.bas\n"
              "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
              "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
              "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
+             "mod=grid-server:/packages/flynn-net-tools/modules/grid-server.bas:TCP line server with custom keywords:network\n"
+             "mod=irc-server:/packages/flynn-net-tools/modules/irc-server.bas:Flynn IRC server with !bot commands:network\n"
              "\n",
              "/packages/flynn-net-tools/MANIFEST");
     /* AUTO:PKG_SEED:END */
@@ -544,7 +552,26 @@ int pkg_recv_gridlink(void) {
 
     console_set_color(GRID_COL_OK);
     console_write("GridPKG: installed ");
-    console_write_char((char)('0' + (files % 10)));
+    {
+        char num[8];
+        int v = files;
+        int k = 0;
+        if (v == 0) {
+            num[k++] = '0';
+        } else {
+            char t[8];
+            int tlen = 0;
+            while (v > 0) {
+                t[tlen++] = (char)('0' + (v % 10));
+                v /= 10;
+            }
+            while (tlen > 0) {
+                num[k++] = t[--tlen];
+            }
+        }
+        num[k] = '\0';
+        console_write(num);
+    }
     console_write_line(" file(s)");
     console_set_color(GRID_COL_DEFAULT);
     return files > 0 ? 0 : -1;
@@ -677,11 +704,18 @@ int pkg_run_module(const char *name) {
     if (pkg_find_module(name, path, sizeof(path), 0, 0) != 0) {
         return -1;
     }
+    if (gfs_present()) {
+        size_t probe = 0;
+        char tmp[8];
+        if (gfs_read_file(path, tmp, sizeof(tmp), &probe) != 0) {
+            return -2;
+        }
+    }
     int rc = basic_run_file(path);
     if (rc == 0) {
         disc_on_module_run(name);
     }
-    return rc;
+    return rc == 0 ? 0 : -2;
 }
 
 int pkg_module_category(const char *name, char *cat_out, size_t cat_cap) {

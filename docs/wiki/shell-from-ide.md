@@ -199,6 +199,41 @@ Esc irc read
 
 ---
 
+## TCP server
+
+### `:server new` · `:server listen <port>` · `:server status` · `:server stop [port]`
+
+Same as shell **`server listen|status|stop|help`**. `:server new` loads a GridBASIC template with custom keywords (**TIME**, **VER**, **HELLO** *name*) plus built-in **PING/HELP/STATUS/ECHO/QUIT**.
+
+**Example:**
+
+```text
+Esc :server new
+Esc :run
+Esc server status
+```
+
+---
+
+## IRC server
+
+### `:ircserver new` · `:ircserver listen <port>` · `:ircserver status` · `:ircserver stop [port]`
+
+Same as shell **`ircserver listen|status|stop|help`**. `:ircserver new` loads a GridBASIC IRC bot template. Edit **`!commands`** in channel `#grid` (**!time**, **!help**, **!motd**, **!ver**).
+
+**Example:**
+
+```text
+Esc :ircserver new
+Esc :run
+Esc irc connect localhost 6667 flynn
+Esc irc join #grid
+```
+
+In `#grid`, type `!time` or `!help`.
+
+---
+
 ## Portal & serial
 
 ### `portal` · `portal export` · `portal import` · `portal recv` · `portal pkg` · `portal duel`

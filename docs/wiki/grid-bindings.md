@@ -262,6 +262,96 @@ Host: `make ai-bridge` (TCP :8766)
 
 ---
 
+## Grid TCP server
+
+Line-oriented TCP server for custom command protocols from GridBASIC.
+
+| Binding | Role |
+|---------|------|
+| `GRID.SERVER.LISTEN` port | Start listening (stmt) |
+| `GRID.SERVER.LISTEN$(port)` | Returns `"ok"` or error |
+| `GRID.SERVER.POLL` | Poll network + read client lines |
+| `GRID.SERVER.ACCEPT$()` | Accept client; returns slot number string |
+| `GRID.SERVER.CMD$(slot)` | Next complete line from client |
+| `GRID.SERVER.WRITE` slot, text | Raw write (no CRLF) |
+| `GRID.SERVER.REPLY` slot, text | Write line with CRLF |
+| `GRID.SERVER.BUILTIN` slot, line | Dispatch PING/HELP/STATUS/ECHO/QUIT |
+| `GRID.SERVER.BUILTIN$(slot, line$)` | `"1"` if handled, else `"0"` |
+| `GRID.SERVER.CLOSE` slot | Close client |
+| `GRID.SERVER.STOP` [port] | Unlisten port or stop all |
+| `GRID.SERVER.STATUS$` | Listener + client summary |
+
+Built-in commands: **PING**, **HELP**, **STATUS**, **ECHO** *text*, **QUIT** / **EXIT**.
+
+**IDE:** `Esc` `:server new` loads an editable template with sample custom keywords (**TIME**, **VER**, **HELLO** *name*).
+
+**Shell:** `server listen 7700`, `server status`, `server stop`
+
+**Sample:**
+
+```basic
+10 R$ = GRID.SERVER.LISTEN$(7700)
+20 WHILE 1
+30   GRID.SERVER.POLL
+40   S = VAL(GRID.SERVER.ACCEPT$())
+50   IF S > 0 THEN GOSUB SERVE
+60   FOR SI = 1 TO 8
+70     S = SI
+80     CMD$ = GRID.SERVER.CMD$(S)
+90     IF CMD$ <> "" THEN GOSUB SERVE
+100  NEXT SI
+110 WEND
+120 SERVE:
+130  IF CMD$ = "TIME" THEN GRID.SERVER.REPLY S, STR$(GRID.TIME): RETURN
+140  IF GRID.SERVER.BUILTIN$(S, CMD$) = "0" THEN GRID.SERVER.REPLY S, "502 unknown"
+150  RETURN
+```
+
+---
+
+## Flynn IRC server
+
+Real IRC protocol server for GridBASIC bots with **`!` command** hooks.
+
+| Binding | Role |
+|---------|------|
+| `GRID.IRCSERVER.LISTEN` port | Start IRC listen (stmt) |
+| `GRID.IRCSERVER.LISTEN$(port)` | Returns `"ok"` or error |
+| `GRID.IRCSERVER.POLL` | Accept clients + process IRC wire protocol |
+| `GRID.IRCSERVER.EVENT$()` | Next bot event (`PRIVMSG\|slot\|nick\|target\|text`) |
+| `GRID.IRCSERVER.KIND$` | Last event kind (`PRIVMSG`, `JOIN`, `PART`, `QUIT`) |
+| `GRID.IRCSERVER.ENICK$` / `ETARGET$` / `ETEXT$` | Last event fields |
+| `GRID.IRCSERVER.ESLOT` | Last event client slot |
+| `GRID.IRCSERVER.NICK$(slot)` | Connected client nick |
+| `GRID.IRCSERVER.SAY` slot, target$, text$ | PRIVMSG as client |
+| `GRID.IRCSERVER.NOTICE` slot, target$, text$ | NOTICE as client |
+| `GRID.IRCSERVER.BOT.SAY` target$, text$ | Bot reply as `grid.flynn` |
+| `GRID.IRCSERVER.BOT.NOTICE` target$, text$ | Bot notice |
+| `GRID.IRCSERVER.STOP` [port] | Stop IRC server |
+| `GRID.IRCSERVER.STATUS$` | Listener + client summary |
+
+Channel messages starting with **`!`** (e.g. `!time`) are **not broadcast** — they queue a `PRIVMSG` event for your GridBASIC bot loop. Normal chat is relayed to the channel.
+
+**IDE:** `Esc` `:ircserver new` — editable bot with **!time**, **!help**, **!motd**, **!ver**
+
+**Shell:** `ircserver listen 6667`
+
+**Sample:**
+
+```basic
+10 R$ = GRID.IRCSERVER.LISTEN$(6667)
+20 WHILE 1
+30   GRID.IRCSERVER.POLL
+40   E$ = GRID.IRCSERVER.EVENT$()
+50   IF E$ <> "" AND GRID.IRCSERVER.KIND$ = "PRIVMSG" THEN
+60     IF GRID.IRCSERVER.ETEXT$ = "!time" THEN GRID.IRCSERVER.BOT.SAY "#grid", STR$(GRID.TIME)
+70 WEND
+```
+
+Connect from Grid OS shell: `irc connect localhost 6667 flynn` then `irc join #grid`.
+
+---
+
 ## Grid BTC
 
 | Binding | RPC / role |

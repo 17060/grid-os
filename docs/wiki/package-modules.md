@@ -46,6 +46,8 @@ The **`flynn-ide-tools`** package (v2.0) ships **25 GridBASIC IDE modules** — 
 | `flynn-net-tools` | `http-probe` | `network` | `/packages/flynn-net-tools/modules/http-probe.bas` | HTTP GET probe via GRID.HTTP |
 | `flynn-net-tools` | `irc-connect` | `network` | `/packages/flynn-net-tools/modules/irc-connect.bas` | IRC quick-connect helper |
 | `flynn-net-tools` | `https-bridge` | `bridge` | `/packages/flynn-net-tools/modules/https-bridge.bas` | HTTPS bridge status (host bridge) |
+| `flynn-net-tools` | `grid-server` | `network` | `/packages/flynn-net-tools/modules/grid-server.bas` | TCP line server with custom keywords |
+| `flynn-net-tools` | `irc-server` | `network` | `/packages/flynn-net-tools/modules/irc-server.bas` | Flynn IRC server with !bot commands |
 <!-- AUTO:MODULE_TABLE:END -->
 
 ---
