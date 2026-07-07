@@ -1555,9 +1555,14 @@ static void cmd_basic(int argc, char *argv[]) {
             return;
         }
         if (equals(argv[2], "run")) {
-            if (pkg_run_module(argv[3]) != 0) {
+            int rc = pkg_run_module(argv[3]);
+            if (rc == -1) {
                 console_set_color(GRID_COL_ERROR);
                 console_write_line("Module not found — try: pkg mods");
+                console_set_color(GRID_COL_DEFAULT);
+            } else if (rc != 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Module read failed — attach Flynn disk or: gfs seed");
                 console_set_color(GRID_COL_DEFAULT);
             }
             return;

@@ -1056,10 +1056,10 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         return make_str(body);
     }
     if (strequal(name, "GRID.GFS.LIST$")) {
-        char paths[16][GFS_PATH_MAX];
+        char paths[32][GFS_PATH_MAX];
         const char *prefix = (argc > 0 && argv[0].is_str) ? argv[0].s : "/";
-        int n = gfs_list_paths(prefix, paths, 16);
-        char b[512];
+        int n = gfs_list_paths(prefix, paths, 32);
+        char b[768];
         size_t pos = 0;
         for (int i = 0; i < n && pos + 1 < sizeof(b); ++i) {
             if (i > 0 && pos + 1 < sizeof(b)) b[pos++] = ',';
@@ -1281,7 +1281,7 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         return make_str(b);
     }
     if (strequal(name, "GRID.PKG.MODS$") || strequal(name, "GRID.PKG.MOD.LIST$")) {
-        char b[256];
+        char b[512];
         pkg_format_module_list(b, sizeof(b));
         return make_str(b);
     }
@@ -2176,6 +2176,10 @@ static void exec_grid_stmt(void) {
         return;
     }
     if (strequal(name, "GRID.PKG.INSTALL")) {
+        if (!security_has_capability(CAP_STORAGE)) {
+            set_error("PKG install denied (need STORAGE cap)");
+            return;
+        }
         value_t v = eval_expr();
         char p[GFS_PATH_MAX];
         size_t j = 0;
@@ -2194,6 +2198,10 @@ static void exec_grid_stmt(void) {
         return;
     }
     if (strequal(name, "GRID.PKG.REMOVE")) {
+        if (!security_has_capability(CAP_STORAGE)) {
+            set_error("PKG remove denied (need STORAGE cap)");
+            return;
+        }
         value_t v = eval_expr();
         char n[32];
         size_t j = 0;

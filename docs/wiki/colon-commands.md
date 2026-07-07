@@ -161,6 +161,29 @@ Esc :run
 
 ---
 
+## `:pkg list|mods|run|load|info`
+
+| Syntax | Description |
+|--------|-------------|
+| `:pkg list` | List installed packages |
+| `:pkg mods` | List all IDE modules |
+| `:pkg mods <category>` | Filter by category (network, disc, grid, …) |
+| `:pkg run <name>` | Run module (same as `:mod run`) |
+| `:pkg load <name>` | Load module into editor |
+| `:pkg info <name>` | Package file/manifest details |
+
+**Example:**
+
+```text
+Esc :pkg mods network
+Esc :pkg info flynn-ide-tools
+Esc :mod run pkg-index
+```
+
+**See also:** [Package modules](package-modules.md)
+
+---
+
 ## `:help` (`:h`, `:?`)
 
 **Syntax:** `:help`  

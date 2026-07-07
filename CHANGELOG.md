@@ -26,6 +26,18 @@
 - **`GRID.IRCSERVER.ESLOT`** — returns numeric value (not string)
 - **IRC server** — registration gate for JOIN/PART/PRIVMSG; QUIT broadcast to channels; listen-table-full error
 
+### GridBASIC IDE & modules audit
+- **GFS seed-on-mount** — `gfs_seed_defaults()` runs on existing Flynn disks; upgrades `/packages/*`, `/etc/hosts`, `demo.bas`
+- **`GRID.PKG.MODS$`** — 512-byte buffer (lists all 30 modules)
+- **`GRID.GFS.LIST$`** — 32-path listing buffer
+- **`PKG_MOD_MAX`** raised to 48; manifest read buffer 8192; mod-table-full logged
+- **`pkg_run_module`** — distinguishes not found vs read failure
+- **`basic mod load`** / IDE — clear error when GFS read fails (no silent empty buffer)
+- **IDE** — `:mod run|load` bare form usage; `:pkg info` usage; help lists `:pkg info`
+- **`GRID.PKG.INSTALL/REMOVE`** — require STORAGE capability
+- **`ai-ask` module** — uses `GRID.AI.EXPLAIN$` (was broken second arg to `ASK$`)
+- **`sample-menu` module** — references seeded programs only
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI
