@@ -31,6 +31,9 @@ int basic_ide(const char *path);
 /* One-line hint shown on the IDE command row after boot (e.g. Flynn welcome). */
 void basic_ide_set_boot_hint(const char *msg);
 
+/* Load a GFS path into the active IDE buffer (for package modules). */
+int basic_ide_load_module(const char *path);
+
 /* Lexer / value types shared with the IDE for syntax help. */
 void basic_print_version(void);
 

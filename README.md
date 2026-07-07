@@ -1,4 +1,4 @@
-# Grid OS 7.0
+# Grid OS 7.1
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
@@ -13,6 +13,12 @@
 **Android (Termux)?** See [docs/ANDROID_TERMUX.md](docs/ANDROID_TERMUX.md) — download `GridOS-*-Android-Termux.sh` or `make release-termux`.
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
+
+**Packages & IDE modules?** See [docs/PACKAGES.md](docs/PACKAGES.md) — `pkg`, GridLink `.gridpkg`, `:mod run`.
+
+## What's new in 7.1
+
+Grid package manager — `pkg list|mods|install|remove|recv`, seeded **flynn-ide-tools** IDE modules (`disc-status`, `grid-ping`, `patrol-arm`), shell `basic mod run|load`, IDE `:mods`/`:mod run|load`, `GRID.PKG.*` bindings, host `tools/gridpkg_build.py`. See [docs/PACKAGES.md](docs/PACKAGES.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 7.0
 

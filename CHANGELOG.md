@@ -1,5 +1,21 @@
 # Grid OS — Changelog
 
+## 7.1 — Grid package manager + IDE modules
+
+### Package manager (`pkg`)
+- **`pkg list|mods|info|install|remove|recv`** — manage Grid packages on Flynn disk (`/packages/*/MANIFEST`)
+- **GridLink PKG frames** — `portal pkg`, `pkg recv`, `GRID.PORTAL.PKG`, `GRID.PKG.RECV`
+- **Host tool** — `tools/gridpkg_build.py`, `gridctl portal-pkg-push`
+
+### IDE modules
+- Seeded **`flynn-ide-tools`** package with modules: `disc-status`, `grid-ping`, `patrol-arm`
+- **Shell** — `basic mod run|load <name>`
+- **IDE** — `:mods`, `:mod run <name>`, `:mod load <name>`
+- **GridBASIC** — `GRID.PKG.LIST$`, `GRID.PKG.MODS$`, `GRID.PKG.INSTALL`, `GRID.PKG.REMOVE`, `GRID.PKG.MOD.RUN`
+
+### Docs
+- **`docs/PACKAGES.md`** — manifest format, install, GridLink push
+
 ## 7.0 — Elite GridBASIC + platform expansion
 
 ### GridBASIC language

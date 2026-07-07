@@ -588,11 +588,11 @@ int gfs_seed_defaults(void) {
              "30 PRINT \"=== Welcome to Flynn's Grid ===\"\n"
              "40 PRINT GRID.STATUS$\n"
              "50 PRINT \"Type 'tutorial' or Esc :load tutorial in IDE\"\n"
-             "60 PRINT \"Samples: samples   Run: basic run /programs/hello.bas\"\n"
+             "60 PRINT \"Samples: samples   Modules: pkg mods\"\n"
              "70 PRINT \"Disable boot script: vault put autoexec off\"\n"
              "80 PRINT \"\"\n"
              "90 END\n",
-             323);
+             304);
 
     seed_one("/programs/tutorial.bas",
              "10 REM GridBASIC Tutorial — Flynn Boot Experience\n"
@@ -639,6 +639,42 @@ int gfs_seed_defaults(void) {
              "80 PRINT \"M(2,3) = \"; M(2,3)\n"
              "90 END\n",
              158);
+
+    seed_one("/packages/flynn-ide-tools/MANIFEST",
+             "name=flynn-ide-tools\n"
+             "version=1.0\n"
+             "desc=GridBASIC IDE tools for Flynn's Grid\n"
+             "file=/packages/flynn-ide-tools/MANIFEST\n"
+             "mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel\n"
+             "mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts\n"
+             "mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol\n",
+             386);
+
+    seed_one("/packages/flynn-ide-tools/modules/disc-status.bas",
+             "10 REM IDE module: disc-status\n"
+             "20 GRID.CLS\n"
+             "30 PRINT \"=== Identity Disc ===\"\n"
+             "40 PRINT GRID.DISC.STATUS$\n"
+             "50 PRINT \"Entity: \"; GRID.DISC.ENTITY$\n"
+             "60 PRINT \"Level: \"; GRID.DISC.LEVEL\n"
+             "70 PRINT \"XP: \"; GRID.DISC.XP\n"
+             "80 END\n",
+             215);
+
+    seed_one("/packages/flynn-ide-tools/modules/grid-ping.bas",
+             "10 REM IDE module: grid-ping\n"
+             "20 PRINT \"=== Grid Ping ===\"\n"
+             "30 PRINT \"gateway: \"; GRID.PING(\"gateway\")\n"
+             "40 PRINT \"grid: \"; GRID.PING(\"grid\")\n"
+             "50 END\n",
+             145);
+
+    seed_one("/packages/flynn-ide-tools/modules/patrol-arm.bas",
+             "10 REM IDE module: patrol-arm\n"
+             "20 GRID.RECOGNIZER.START\n"
+             "30 PRINT GRID.RECOGNIZER.STATUS$\n"
+             "40 END\n",
+             95);
 
     return 0;
 }

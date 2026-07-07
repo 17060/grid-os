@@ -2,6 +2,7 @@
 #include "gfs.h"
 #include "link.h"
 #include "log.h"
+#include "pkg.h"
 #include "security.h"
 #include "serial.h"
 #include "storage.h"
@@ -202,87 +203,8 @@ int gridlink_recv_file(void) {
     return 0;
 }
 
-#define GRIDLINK_PKG GRIDLINK_HDR "/PKG"
-
 int gridlink_recv_package(void) {
-    char line[128];
-    size_t len;
-    int files = 0;
-
-    if (!security_require_capability(CAP_STORAGE, "portal pkg")) {
-        return -1;
-    }
-    if (!gfs_present()) {
-        console_set_color(GRID_COL_ERROR);
-        console_write_line("GFS not mounted — attach Flynn arcade disk.");
-        console_set_color(GRID_COL_DEFAULT);
-        return -1;
-    }
-
-    console_write_line("GridLink: waiting for PKG frame on COM1...");
-
-    for (int attempt = 0; attempt < 512; ++attempt) {
-        len = serial_read_line(line, sizeof(line), 5000000);
-        if (len == 0) {
-            continue;
-        }
-        if (equals_prefix(line, GRIDLINK_PKG)) {
-            break;
-        }
-        if (equals_prefix(line, GRIDLINK_END)) {
-            console_write_line("GridLink: empty package.");
-            return 0;
-        }
-    }
-
-    for (int attempt = 0; attempt < 256; ++attempt) {
-        len = serial_read_line(line, sizeof(line), 5000000);
-        if (len == 0) {
-            continue;
-        }
-        if (equals_prefix(line, GRIDLINK_END)) {
-            break;
-        }
-        char path[GFS_PATH_MAX];
-        uint32_t size = 0;
-        size_t i = 0;
-        while (line[i] && line[i] != ' ' && i + 1 < sizeof(path)) {
-            path[i] = line[i];
-            i++;
-        }
-        path[i] = '\0';
-        if (path[0] == '\0') {
-            continue;
-        }
-        while (line[i] == ' ') {
-            i++;
-        }
-        if (parse_uint(line + i, &size) != 0 || size == 0 || size > 16384) {
-            continue;
-        }
-        uint8_t buf[16384];
-        uint32_t got = 0;
-        while (got < size) {
-            int b = serial_read_byte();
-            if (b < 0) {
-                break;
-            }
-            buf[got++] = (uint8_t)b;
-        }
-        if (got != size) {
-            continue;
-        }
-        if (gfs_write_file(path, buf, size) == 0) {
-            files++;
-        }
-    }
-
-    console_set_color(GRID_COL_OK);
-    console_write("GridLink: package installed ");
-    console_write_char((char)('0' + (files % 10)));
-    console_write_line(" file(s)");
-    console_set_color(GRID_COL_DEFAULT);
-    return files > 0 ? 0 : -1;
+    return pkg_recv_gridlink();
 }
 
 int gridlink_duel_ping(void) {

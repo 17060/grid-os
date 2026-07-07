@@ -1,6 +1,6 @@
 # Grid OS on Linux
 
-Run **Grid OS 7.0** on Linux with QEMU.
+Run **Grid OS 7.1** on Linux with QEMU.
 
 ## Quick start
 
@@ -38,4 +38,6 @@ Host push a `.gridpkg` manifest over serial:
 #GRIDLINK/END
 ```
 
-Guest: `portal pkg` or `GRID.PORTAL.PKG` in GridBASIC.
+Guest: `portal pkg` or `pkg recv` or `GRID.PORTAL.PKG` in GridBASIC.
+
+See [PACKAGES.md](PACKAGES.md) for manifest format and IDE modules.

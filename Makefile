@@ -42,7 +42,7 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/gfs.o build/elf.o build/ide.o build/mouse.o build/sched.o \
                build/timer.o build/link.o build/net.o build/dns.o build/tcp.o build/irc.o build/http.o \
                build/basic.o build/basic_pp.o build/basic_ide.o build/speaker.o \
-               build/graphics.o build/recognizer.o build/disc.o \
+               build/graphics.o build/recognizer.o build/disc.o build/pkg.o \
                build/ai.o build/btc.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
 
@@ -168,7 +168,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.0'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.1'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'

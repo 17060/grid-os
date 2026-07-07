@@ -92,7 +92,7 @@ AUTOEXEC_BAS = (
     b"30 PRINT \"=== Welcome to Flynn's Grid ===\"\n"
     b"40 PRINT GRID.STATUS$\n"
     b"50 PRINT \"Type 'tutorial' or Esc :load tutorial in IDE\"\n"
-    b"60 PRINT \"Samples: samples   Run: basic run /programs/hello.bas\"\n"
+    b"60 PRINT \"Samples: samples   Modules: pkg mods\"\n"
     b"70 PRINT \"Disable boot script: vault put autoexec off\"\n"
     b"80 PRINT \"\"\n"
     b"90 END\n"
@@ -144,6 +144,11 @@ GRID2D_BAS = (
     b"90 END\n"
 )
 
+PKG_MANIFEST = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/MANIFEST"
+PKG_DISC_STATUS = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/modules/disc-status.bas"
+PKG_GRID_PING = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/modules/grid-ping.bas"
+PKG_PATROL_ARM = Path(__file__).resolve().parent.parent / "packages/flynn-ide-tools/modules/patrol-arm.bas"
+
 ETC_HOSTS = (
     b"# Grid OS static hosts (also: built-in gateway/grid/ai/btc + UDP DNS)\n"
     b"10.0.2.2   bridge gateway gw ai btc\n"
@@ -191,6 +196,10 @@ def main() -> int:
         (17, "/programs/tutorial.bas", TUTORIAL_BAS),
         (18, "/programs/subdemo.bas", SUBDEMO_BAS),
         (19, "/programs/grid2d.bas", GRID2D_BAS),
+        (20, "/packages/flynn-ide-tools/MANIFEST", PKG_MANIFEST.read_bytes()),
+        (21, "/packages/flynn-ide-tools/modules/disc-status.bas", PKG_DISC_STATUS.read_bytes()),
+        (22, "/packages/flynn-ide-tools/modules/grid-ping.bas", PKG_GRID_PING.read_bytes()),
+        (23, "/packages/flynn-ide-tools/modules/patrol-arm.bas", PKG_PATROL_ARM.read_bytes()),
     ]
 
     for slot, path, payload in files:

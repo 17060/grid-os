@@ -14,6 +14,7 @@
 #include "link.h"
 #include "log.h"
 #include "net.h"
+#include "pkg.h"
 #include "program.h"
 #include "recognizer.h"
 #include "sched.h"
@@ -99,8 +100,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 7.0 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.0  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 7.1 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -157,7 +158,8 @@ static void cmd_help(void) {
     console_write_line("  irc join|part|say|read|status   Manage IRC session");
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
-    console_write_line("  basic [ide|run|compile|samples|help]  GridBASIC language + IDE");
+    console_write_line("  pkg [list|mods|info|install|remove|recv]  Grid package manager");
+    console_write_line("  basic [ide|run|compile|samples|mod|help]  GridBASIC language + IDE");
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
     console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
@@ -508,6 +510,7 @@ static void cmd_gfs(int argc, char *argv[]) {
             return;
         }
         if (gfs_seed_defaults() == 0) {
+            pkg_rescan();
             console_set_color(GRID_COL_OK);
             console_write_line("Flynn archive re-seeded on disk.");
             console_set_color(GRID_COL_DEFAULT);
@@ -1264,6 +1267,94 @@ static int shell_run_autoexec(void) {
     return 1;
 }
 
+static void cmd_pkg(int argc, char *argv[]) {
+    if (argc == 1 || equals(argv[1], "help") || equals(argv[1], "?")) {
+        console_write_line("Grid package manager:");
+        console_write_line("  pkg list              installed packages");
+        console_write_line("  pkg mods              GridBASIC IDE modules");
+        console_write_line("  pkg info <name>       package details");
+        console_write_line("  pkg install <path>    register a MANIFEST on Flynn disk");
+        console_write_line("  pkg remove <name>     uninstall package + files");
+        console_write_line("  pkg recv              receive GridLink PKG frame on COM1");
+        console_write_line("Host: python3 tools/gridpkg_build.py packages/flynn-ide-tools/MANIFEST");
+        return;
+    }
+    if (equals(argv[1], "list")) {
+        pkg_list_packages();
+        return;
+    }
+    if (equals(argv[1], "mods")) {
+        pkg_list_modules();
+        return;
+    }
+    if (equals(argv[1], "info")) {
+        if (argc < 3) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Usage: pkg info <name>");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (pkg_info(argv[2]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Package not found.");
+            console_set_color(GRID_COL_DEFAULT);
+        }
+        return;
+    }
+    if (equals(argv[1], "install")) {
+        if (argc < 3) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Usage: pkg install <manifest-path>");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (!security_require_capability(CAP_STORAGE, "pkg install")) {
+            return;
+        }
+        if (pkg_install_manifest(argv[2]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Install failed — check MANIFEST path on Flynn disk.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write_line("Package installed.");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+    if (equals(argv[1], "remove")) {
+        if (argc < 3) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Usage: pkg remove <name>");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (!security_require_capability(CAP_STORAGE, "pkg remove")) {
+            return;
+        }
+        if (pkg_remove(argv[2]) != 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Remove failed — package not found.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        console_set_color(GRID_COL_OK);
+        console_write_line("Package removed.");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+    if (equals(argv[1], "recv")) {
+        if (!security_require_capability(CAP_STORAGE, "pkg recv")) {
+            return;
+        }
+        (void)pkg_recv_gridlink();
+        return;
+    }
+    console_set_color(GRID_COL_ERROR);
+    console_write_line("Usage: pkg [list|mods|info|install|remove|recv]");
+    console_set_color(GRID_COL_DEFAULT);
+}
+
 static void cmd_basic(int argc, char *argv[]) {
     if (shell_in_basic_ide && (argc < 2 || equals(argv[1], "ide"))) {
         console_write_line("Already in GridBASIC — edit above, shell below.");
@@ -1309,12 +1400,43 @@ static void cmd_basic(int argc, char *argv[]) {
         cmd_samples();
         return;
     }
+    if (equals(argv[1], "mod")) {
+        if (argc < 4) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("Usage: basic mod run|load <name>");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        if (equals(argv[2], "run")) {
+            if (pkg_run_module(argv[3]) != 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Module not found — try: pkg mods");
+                console_set_color(GRID_COL_DEFAULT);
+            }
+            return;
+        }
+        if (equals(argv[2], "load")) {
+            char path[GFS_PATH_MAX];
+            if (pkg_find_module(argv[3], path, sizeof(path), 0, 0) != 0) {
+                console_set_color(GRID_COL_ERROR);
+                console_write_line("Module not found — try: pkg mods");
+                console_set_color(GRID_COL_DEFAULT);
+                return;
+            }
+            basic_ide(path);
+            return;
+        }
+        console_set_color(GRID_COL_ERROR);
+        console_write_line("Usage: basic mod run|load <name>");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
     if (equals(argv[1], "help") || equals(argv[1], "?")) {
         basic_print_version();
         return;
     }
     console_set_color(GRID_COL_ERROR);
-    console_write_line("Usage: basic [ide [file] | run <file> | compile <in> <out.grid> | samples | help]");
+    console_write_line("Usage: basic [ide [file] | run <file> | compile <in> <out.grid> | mod run|load <name> | samples | help]");
     console_set_color(GRID_COL_DEFAULT);
 }
 
@@ -1550,7 +1672,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 7.0 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 7.1 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
@@ -1882,6 +2004,8 @@ void shell_dispatch_line(char *line) {
         cmd_http(argc, argv);
     } else if (equals(argv[0], "irc")) {
         cmd_irc(argc, argv);
+    } else if (equals(argv[0], "pkg")) {
+        cmd_pkg(argc, argv);
     } else if (equals(argv[0], "basic")) {
         cmd_basic(argc, argv);
     } else if (equals(argv[0], "tutorial")) {

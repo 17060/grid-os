@@ -5,6 +5,7 @@
 #include "gfs.h"
 #include "grid.h"
 #include "irc.h"
+#include "pkg.h"
 #include "security.h"
 #include "shell.h"
 #include "storage.h"
@@ -24,7 +25,9 @@
  *   grid> :load <name>  read from GFS
  *   grid> :new          clear the buffer
  *   grid> :list         print the buffer (paused)
- *   grid> :samples      list Flynn disk sample programs
+ *   grid> :mod run <n>   run installed IDE module
+ *   grid> :mod load <n> load module source into editor
+ *   grid> :mods         list IDE modules (pkg mods)
  *   grid> :help         IDE editing help
  *   grid> :ai ask ...   AI prompt (host bridge or offline help)
  *   grid> :ai explain   explain current line
@@ -580,6 +583,100 @@ static void cmd_tutorial_steps(ide_t *e) {
     ide_status(e, "Tutorial complete — :load tutorial", GRID_COL_OK);
 }
 
+static int load_path_into(ide_t *e, const char *path) {
+    static char buf[8192];
+    size_t got = 0;
+    if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
+        return -1;
+    }
+    buf[got] = '\0';
+    e->n = 0;
+    e->row = 0;
+    e->col = 0;
+    e->top = 0;
+    size_t i = 0;
+    int row = 0;
+    size_t col = 0;
+    e->lines[0][0] = '\0';
+    while (buf[i] && row < IDE_MAX_LINES) {
+        char c = buf[i++];
+        if (c == '\n') {
+            row++;
+            col = 0;
+            if (row < IDE_MAX_LINES) {
+                e->lines[row][0] = '\0';
+            }
+        } else if (c == '\r') {
+        } else if (col + 1 < IDE_LINE_LEN) {
+            e->lines[row][col++] = c;
+            e->lines[row][col] = '\0';
+        }
+    }
+    if (row >= IDE_MAX_LINES) {
+        row = IDE_MAX_LINES - 1;
+    }
+    e->n = row + 1;
+    if (e->n == 0) {
+        e->n = 1;
+        e->lines[0][0] = '\0';
+    }
+    scopy(e->path, sizeof(e->path), path);
+    e->dirty = 0;
+    return 0;
+}
+
+int basic_ide_load_module(const char *path) {
+    if (!path || !path[0]) {
+        return -1;
+    }
+    if (load_path_into(&ide, path) != 0) {
+        return -1;
+    }
+    ide_redraw(&ide);
+    return 0;
+}
+
+static void cmd_mod_run(ide_t *e, const char *name) {
+    if (!name[0]) {
+        ide_status(e, "usage: mod run <name>", GRID_COL_ERROR);
+        return;
+    }
+    console_clear();
+    if (pkg_run_module(name) != 0) {
+        ide_status(e, "module not found", GRID_COL_ERROR);
+        return;
+    }
+    console_set_color(GRID_COL_DIM);
+    console_write_line("--- press any key to return to GridBASIC ---");
+    console_set_color(GRID_COL_DEFAULT);
+    (void)console_read_key();
+    ide_redraw(e);
+}
+
+static void cmd_mod_load(ide_t *e, const char *name) {
+    char path[GFS_PATH_MAX];
+    if (!name[0]) {
+        ide_status(e, "usage: mod load <name>", GRID_COL_ERROR);
+        return;
+    }
+    if (pkg_find_module(name, path, sizeof(path), 0, 0) != 0) {
+        ide_status(e, "module not found", GRID_COL_ERROR);
+        return;
+    }
+    if (load_path_into(e, path) != 0) {
+        ide_status(e, "module load failed", GRID_COL_ERROR);
+        return;
+    }
+    char msg[80];
+    scopy(msg, sizeof(msg), "mod ");
+    scopy(msg + 4, sizeof(msg) - 4, name);
+    ide_status(e, msg, GRID_COL_OK);
+}
+
+static void cmd_mods_list(ide_t *e) {
+    run_shell_line(e, "pkg mods");
+}
+
 static void cmd_load(ide_t *e, const char *name) {
     if (!name[0]) { ide_status(e, "usage: load <name>", GRID_COL_ERROR); return; }
     char path[80]; make_path(name, path, sizeof(path));
@@ -923,6 +1020,9 @@ static void cmd_help(void) {
     console_write_line("  :load <name>          read /programs/<name>.bas");
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
+    console_write_line("  :mods                 list IDE modules (pkg mods)");
+    console_write_line("  :mod run <name>       run installed IDE module");
+    console_write_line("  :mod load <name>      load module into editor");
     console_write_line("  :samples              list /programs/*.bas samples");
     console_write_line("  :tutorial             interactive GridBASIC walkthrough");
     console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
@@ -949,6 +1049,7 @@ static void cmd_help(void) {
     console_write_line("  GRID.CLS  GRID.COLOR n  GRID.LOG msg  GRID.WAIT ticks");
     console_write_line("  GRID.SPAWN \"name\"  GRID.TIME  GRID.PING(ip$)  GRID.CAP(n)");
     console_write_line("  GRID.AI.ASK$/PRINT   GRID.IRC.*   GRID.BTC.*");
+    console_write_line("  GRID.PKG.LIST$/MODS$   GRID.PKG.INSTALL/REMOVE/MOD.RUN/RECV");
     console_set_color(GRID_COL_DIM);
     console_write_line("--- press any key ---");
     console_set_color(GRID_COL_DEFAULT);
@@ -967,6 +1068,9 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
         ide_status(e, "new buffer", GRID_COL_OK); return 1;
     }
     if (sequal(cmd, "list") || sequal(cmd, "l")) { cmd_list(e); return 1; }
+    if (sequal(cmd, "mods")) { cmd_mods_list(e); return 1; }
+    if (starts_with(cmd, "mod run ")) { cmd_mod_run(e, cmd + 8); return 1; }
+    if (starts_with(cmd, "mod load ")) { cmd_mod_load(e, cmd + 9); return 1; }
     if (sequal(cmd, "samples")) { run_shell_line(e, "samples"); return 1; }
     if (sequal(cmd, "tutorial") || sequal(cmd, "t")) { cmd_tutorial_steps(e); return 1; }
     if (starts_with(cmd, "compile ")) { cmd_compile(e, cmd + 8); return 1; }

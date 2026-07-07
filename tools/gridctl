@@ -13,6 +13,7 @@ gridctl — host helper for Grid OS arcade disk
   gridctl seed          write GFS2FLYN programs + welcome.grid to disk
   gridctl install PROG  install build/PROG.elf to /programs/PROG on disk
   gridctl portal-push PATH FILE  send FILE to Grid OS portal recv over COM1
+  gridctl portal-pkg-push MANIFEST  send package bundle over GridLink PKG
   gridctl run           boot Grid OS (q35 + virtio-blk, GUI window)
   gridctl run-4k        boot with 4K HDMI window (scaled VGA text)
   gridctl run-hd        boot with HD HDMI window (1920x1080)
@@ -37,6 +38,7 @@ Inside Grid OS:
   spawn gridsh          load from /programs/gridsh
   portal export         GridLink vault frame on COM1
   portal recv             receive /programs/* over GridLink
+  pkg list|mods           package manager + IDE modules
   ide                   Grid Workshop — 1980s IDE (GridScript)
   gfs seed              re-seed Flynn archive (needs STORAGE cap)
 EOF
@@ -59,6 +61,19 @@ portal_push() {
   echo "$size"
   cat "$host_file"
   echo '#GRIDLINK/END'
+}
+
+portal_pkg_push() {
+  local manifest="$1"
+  if [[ ! -f "$manifest" ]]; then
+    echo "Missing manifest: $manifest" >&2
+    exit 1
+  fi
+  echo "GridLink PKG push from $manifest"
+  echo "Start Grid OS headless, then in guest: portal pkg  (or pkg recv)"
+  echo "Pipe this output to COM1 while guest waits."
+  echo
+  python3 "$ROOT/tools/gridpkg_build.py" "$manifest"
 }
 
 cmd="${1:-}"
@@ -104,6 +119,13 @@ case "$cmd" in
       exit 1
     fi
     portal_push "$2" "$3"
+    ;;
+  portal-pkg-push)
+    if [[ $# -lt 2 ]]; then
+      echo "Usage: gridctl portal-pkg-push <MANIFEST>" >&2
+      exit 1
+    fi
+    portal_pkg_push "$2"
     ;;
   run)
     make -C "$ROOT" run

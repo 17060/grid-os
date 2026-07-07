@@ -1,0 +1,8 @@
+10 REM IDE module: disc-status
+20 GRID.CLS
+30 PRINT "=== Identity Disc ==="
+40 PRINT GRID.DISC.STATUS$
+50 PRINT "Entity: "; GRID.DISC.ENTITY$
+60 PRINT "Level: "; GRID.DISC.LEVEL
+70 PRINT "XP: "; GRID.DISC.XP
+80 END

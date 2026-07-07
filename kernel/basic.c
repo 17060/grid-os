@@ -14,6 +14,7 @@
 #include "log.h"
 #include "irc.h"
 #include "net.h"
+#include "pkg.h"
 #include "program.h"
 #include "recognizer.h"
 #include "sched.h"
@@ -1015,7 +1016,7 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) == 0 ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 7.0 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 7.1 — GridBASIC online"); }
     if (strequal(name, "GRID.CAP"))     {
         if (argc > 0) {
             uint32_t cap = (uint32_t)(to_num(&argv[0]) / BASIC_SCALE);
@@ -1200,6 +1201,16 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         recognizer_status(b, sizeof(b));
         return make_str(b);
     }
+    if (strequal(name, "GRID.PKG.LIST$")) {
+        char b[256];
+        pkg_format_package_list(b, sizeof(b));
+        return make_str(b);
+    }
+    if (strequal(name, "GRID.PKG.MODS$") || strequal(name, "GRID.PKG.MOD.LIST$")) {
+        char b[256];
+        pkg_format_module_list(b, sizeof(b));
+        return make_str(b);
+    }
     set_error("FUNC: unknown function");
     return make_num(0);
 }
@@ -1239,7 +1250,9 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.ISO.LIST$") ||
         strequal(name, "GRID.DISC.STATUS$") || strequal(name, "GRID.DISC.ENTITY$") ||
         strequal(name, "GRID.DISC.LEVEL") || strequal(name, "GRID.DISC.XP") ||
-        strequal(name, "GRID.RECOGNIZER.STATUS$")) {
+        strequal(name, "GRID.RECOGNIZER.STATUS$") ||
+        strequal(name, "GRID.PKG.LIST$") || strequal(name, "GRID.PKG.MODS$") ||
+        strequal(name, "GRID.PKG.MOD.LIST$")) {
         return 1;
     }
     return 0;
@@ -1927,7 +1940,7 @@ static void exec_grid_stmt(void) {
         return;
     }
     if (strequal(name, "GRID.PORTAL.PKG")) {
-        gridlink_recv_package();
+        pkg_recv_gridlink();
         return;
     }
     if (strequal(name, "GRID.PORTAL.DUEL")) {
@@ -1950,6 +1963,64 @@ static void exec_grid_stmt(void) {
         }
         program_spawn_named(n);
         disc_on_program_run(n);
+        return;
+    }
+    if (strequal(name, "GRID.PKG.INSTALL")) {
+        value_t v = eval_expr();
+        char p[GFS_PATH_MAX];
+        size_t j = 0;
+        if (!v.is_str) {
+            set_error("GRID.PKG.INSTALL: need path$");
+            return;
+        }
+        while (v.s[j] && j + 1 < sizeof(p)) {
+            p[j] = v.s[j];
+            j++;
+        }
+        p[j] = '\0';
+        if (pkg_install_manifest(p) != 0) {
+            set_error("PKG install failed");
+        }
+        return;
+    }
+    if (strequal(name, "GRID.PKG.REMOVE")) {
+        value_t v = eval_expr();
+        char n[32];
+        size_t j = 0;
+        if (!v.is_str) {
+            set_error("GRID.PKG.REMOVE: need name$");
+            return;
+        }
+        while (v.s[j] && j + 1 < sizeof(n)) {
+            n[j] = v.s[j];
+            j++;
+        }
+        n[j] = '\0';
+        if (pkg_remove(n) != 0) {
+            set_error("PKG remove failed");
+        }
+        return;
+    }
+    if (strequal(name, "GRID.PKG.MOD.RUN")) {
+        value_t v = eval_expr();
+        char n[32];
+        size_t j = 0;
+        if (!v.is_str) {
+            set_error("GRID.PKG.MOD.RUN: need name$");
+            return;
+        }
+        while (v.s[j] && j + 1 < sizeof(n)) {
+            n[j] = v.s[j];
+            j++;
+        }
+        n[j] = '\0';
+        if (pkg_run_module(n) != 0) {
+            set_error("module not found");
+        }
+        return;
+    }
+    if (strequal(name, "GRID.PKG.RECV")) {
+        pkg_recv_gridlink();
         return;
     }
     set_error("GRID: unknown statement");
@@ -2764,7 +2835,7 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 7.0 — Elite BASIC for the Grid");
+    console_write_line("GridBASIC 7.1 — Elite BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
     console_write_line("SHARED #IF/#INCLUDE bytecode .grid compile SHARED SUB/FUNCTION");
     console_write_line("DEF FN SUB/FUNCTION LOCAL CALL ELSEIF ON ERROR GOTO");

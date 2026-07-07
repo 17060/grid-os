@@ -1,4 +1,4 @@
-# Grid OS 6.9 — Commands & GridBASIC Reference
+# Grid OS 7.1 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -16,7 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `cycles` | Same as `status` (elapsed cycles) |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 6.9 |
+| `about` | About Grid OS 7.1 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs
@@ -77,6 +77,13 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `portal export` | Export vault frame on COM1 |
 | `portal import` | Receive vault from host |
 | `portal recv` | Install `/programs/*` over GridLink |
+| `portal pkg` | Install `.gridpkg` bundle over GridLink |
+| `pkg list` | Installed Grid packages |
+| `pkg mods` | GridBASIC IDE modules |
+| `pkg info <name>` | Package details + module list |
+| `pkg install <manifest>` | Register MANIFEST on Flynn disk |
+| `pkg remove <name>` | Uninstall package and files |
+| `pkg recv` | Receive GridLink PKG frame on COM1 |
 | `serial` / `serial status` | COM1 status |
 | `serial write <text>` | Transmit on COM1 |
 | `serial read` | Read one line from COM1 |
@@ -101,6 +108,9 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `basic` | Open GridBASIC IDE |
 | `basic ide [file]` | IDE with optional load path |
 | `basic run <file>` | Run `.bas` from GFS |
+| `basic mod run <name>` | Run installed IDE module |
+| `basic mod load <name>` | Open IDE with module source |
+| `basic compile <in> <out.grid>` | Compile to bytecode |
 | `basic samples` | List Flynn disk sample programs |
 | `basic help` / `basic ?` | GridBASIC version + syntax summary |
 | `tutorial` | Run Flynn Boot tutorial (`/programs/tutorial.bas`) |
@@ -159,7 +169,12 @@ Host bridge: run `make btc-bridge` on the host (TCP port 8767). Requires Bitcoin
 | `:load <name>` | | Read from GFS |
 | `:new` | | Clear buffer |
 | `:list` | `:l` | Print program |
+| `:mods` | | List IDE modules (`pkg mods`) |
+| `:mod run <name>` | | Run installed IDE module |
+| `:mod load <name>` | | Load module source into editor |
 | `:samples` | | List Flynn disk sample programs |
+| `:tutorial` | `:t` | Interactive GridBASIC walkthrough |
+| `:compile <name>` | | Compile buffer to `/programs/<name>.grid` |
 | `:help` | `:h`, `:?` | IDE help |
 | `:ai ask <prompt>` | | Ask the AI |
 | `:ai explain` | | Explain current editor line |

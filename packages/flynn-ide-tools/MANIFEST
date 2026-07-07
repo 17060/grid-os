@@ -1,0 +1,7 @@
+name=flynn-ide-tools
+version=1.0
+desc=GridBASIC IDE tools for Flynn's Grid
+file=/packages/flynn-ide-tools/MANIFEST
+mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel
+mod=grid-ping:/packages/flynn-ide-tools/modules/grid-ping.bas:Ping gateway and grid hosts
+mod=patrol-arm:/packages/flynn-ide-tools/modules/patrol-arm.bas:Start recognizer patrol

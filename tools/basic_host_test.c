@@ -184,6 +184,15 @@ int gridlink_recv_file(void) { return -1; }
 int gridlink_recv_package(void) { return -1; }
 int gridlink_duel_ping(void) { return 0; }
 
+void pkg_init(void) {}
+void pkg_rescan(void) {}
+int pkg_install_manifest(const char *p) { (void)p; return 0; }
+int pkg_remove(const char *n) { (void)n; return 0; }
+int pkg_recv_gridlink(void) { return -1; }
+int pkg_run_module(const char *n) { (void)n; return -1; }
+void pkg_format_package_list(char *o, size_t c) { if (c && o) o[0] = '\0'; }
+void pkg_format_module_list(char *o, size_t c) { if (c && o) o[0] = '\0'; }
+
 int iso_evolve(int id) { (void)id; return 0; }
 
 int main(void) {
