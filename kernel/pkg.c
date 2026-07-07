@@ -141,6 +141,9 @@ static int pkg_add_mod(pkg_entry_t *pe, const char *name, const char *path,
     const char *cat = (category && category[0]) ? category : "general";
     for (int i = 0; i < PKG_MOD_MAX; ++i) {
         if (g_mods[i].used && pkg_streq(g_mods[i].name, name)) {
+            if (!pkg_streq(g_mods[i].pkg, pe->name)) {
+                log_event("PKG mod name collision overwrite");
+            }
             pkg_copy(g_mods[i].path, sizeof(g_mods[i].path), path);
             pkg_copy(g_mods[i].desc, sizeof(g_mods[i].desc), desc ? desc : "");
             pkg_copy(g_mods[i].category, sizeof(g_mods[i].category), cat);
@@ -195,39 +198,73 @@ static int pkg_parse_kv(pkg_entry_t *pe, const char *key, const char *val) {
     return 0;
 }
 
+static void pkg_copy_span(char *d, size_t cap, const char *start, const char *end) {
+    size_t n = 0;
+
+    if (!d || cap == 0) {
+        return;
+    }
+    d[0] = '\0';
+    if (!start || !end || end <= start) {
+        return;
+    }
+    while (start + n < end && n + 1 < cap) {
+        d[n] = start[n];
+        n++;
+    }
+    d[n] = '\0';
+}
+
+/* mod=name:path:description:category — description may contain ':' */
 static int pkg_parse_mod_line(pkg_entry_t *pe, const char *line) {
     char name[PKG_NAME_MAX];
     char path[PKG_PATH_MAX];
     char desc[48];
     char category[16];
-    size_t i = 0;
-    size_t k = 0;
-    int field = 0;
-    name[0] = path[0] = desc[0] = category[0] = '\0';
+    const char *first_colon = 0;
+    const char *second_colon = 0;
+    const char *last_colon = 0;
+    const char *p;
 
-    while (line[i] && field < 4) {
-        k = 0;
-        char *out = name;
-        size_t cap = sizeof(name);
-        if (field == 1) {
-            out = path;
-            cap = sizeof(path);
-        } else if (field == 2) {
-            out = desc;
-            cap = sizeof(desc);
-        } else if (field == 3) {
-            out = category;
-            cap = sizeof(category);
-        }
-        while (line[i] && line[i] != ':' && k + 1 < cap) {
-            out[k++] = line[i++];
-        }
-        out[k] = '\0';
-        if (line[i] == ':') {
-            i++;
-        }
-        field++;
+    name[0] = path[0] = desc[0] = category[0] = '\0';
+    if (!line || !line[0]) {
+        return -1;
     }
+
+    for (p = line; *p; ++p) {
+        if (*p == ':') {
+            if (!first_colon) {
+                first_colon = p;
+            } else if (!second_colon) {
+                second_colon = p;
+            }
+            last_colon = p;
+        }
+    }
+
+    if (!first_colon || first_colon == line) {
+        return -1;
+    }
+
+    pkg_copy_span(name, sizeof(name), line, first_colon);
+
+    if (!second_colon) {
+        pkg_copy_span(path, sizeof(path), first_colon + 1, p);
+    } else {
+        pkg_copy_span(path, sizeof(path), first_colon + 1, second_colon);
+    }
+
+    if (path[0] != '/') {
+        return -1;
+    }
+
+    if (second_colon && last_colon && last_colon > second_colon) {
+        pkg_copy_span(desc, sizeof(desc), second_colon + 1, last_colon);
+        pkg_copy_span(category, sizeof(category), last_colon + 1, p);
+    } else if (second_colon) {
+        pkg_copy_span(desc, sizeof(desc), second_colon + 1, p);
+    }
+
     if (name[0] == '\0' || path[0] == '\0') {
         return -1;
     }
@@ -240,7 +277,7 @@ static int pkg_parse_mod_line(pkg_entry_t *pe, const char *line) {
 
 static int pkg_parse_manifest_text(const char *text, const char *manifest_path) {
     pkg_entry_t *pe = 0;
-    char line[256];
+    char line[512];
     size_t li = 0;
 
     pe = pkg_alloc();
@@ -424,7 +461,7 @@ void pkg_seed_defaults(void) {
              "file=/packages/flynn-net-tools/modules/https-bridge.bas\n"
              "file=/packages/flynn-net-tools/modules/grid-server.bas\n"
              "file=/packages/flynn-net-tools/modules/irc-server.bas\n"
-             "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP GET probe via GRID.HTTP:network\n"
+             "mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP: GET probe via GRID.HTTP:network\n"
              "mod=irc-connect:/packages/flynn-net-tools/modules/irc-connect.bas:IRC quick-connect helper:network\n"
              "mod=https-bridge:/packages/flynn-net-tools/modules/https-bridge.bas:HTTPS bridge status (host bridge):bridge\n"
              "mod=grid-server:/packages/flynn-net-tools/modules/grid-server.bas:TCP line server with custom keywords:network\n"

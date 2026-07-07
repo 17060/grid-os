@@ -1,4 +1,5 @@
 #include "console.h"
+#include "log.h"
 #include "net.h"
 #include "tcp.h"
 
@@ -102,6 +103,7 @@ static int register_conn(tcp_conn_t *c) {
             return 0;
         }
     }
+    log_event("TCP connection pool full");
     return -1;
 }
 
@@ -187,6 +189,7 @@ static int promote_pending(tcp_conn_t *p, tcp_conn_t **out) {
         *out = &active_conns[i];
         return 0;
     }
+    log_event("TCP accept pool full");
     return -1;
 }
 

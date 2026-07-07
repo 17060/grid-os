@@ -1,5 +1,6 @@
 #include "irc_server.h"
 
+#include "log.h"
 #include "net.h"
 #include "tcp.h"
 
@@ -192,6 +193,7 @@ static void send_numeric(irc_server_client_t *c, int code, const char *text) {
 static void enqueue_event(const char *kind, int slot, const char *nick,
                             const char *target, const char *text) {
     if (g_event_count >= GRID_IRC_SERVER_EVENTS) {
+        log_event("IRC server event queue overflow");
         g_event_head = (g_event_head + 1) % GRID_IRC_SERVER_EVENTS;
         g_event_count--;
     }

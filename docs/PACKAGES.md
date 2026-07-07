@@ -10,7 +10,7 @@ At the `grid>` prompt:
 
 ```text
 pkg list                 # installed packages
-pkg mods                 # all IDE modules (28 seeded)
+pkg mods                 # all IDE modules (30 seeded)
 pkg mods network         # filter by category
 basic mod run disc-status
 basic mod load ide-cheatsheet   # opens GridBASIC IDE with module source
@@ -61,15 +61,21 @@ In the GridBASIC IDE, press **Esc** and type:
 
 ### flynn-net-tools (v1.0)
 
+5 modules for network probes, bridges, and Flynn TCP/IRC servers.
+
 | Module | Category | Purpose |
 |--------|----------|---------|
-| `http-probe` | network | HTTP GET probe via `GRID.HTTP` |
+| `http-probe` | network | HTTP: GET probe via `GRID.HTTP` |
 | `irc-connect` | network | IRC quick-connect helper |
 | `https-bridge` | bridge | HTTPS bridge status (host bridge) |
+| `grid-server` | network | TCP line server with custom keywords |
+| `irc-server` | network | Flynn IRC server with `!bot` commands |
+
+**Total:** 30 IDE modules (25 + 5).
 
 Files live under `/packages/<name>/` on the Flynn arcade disk.
 
-Regenerate from source: `python3 tools/gen_packages.py`
+Regenerate from source: `make gen-packages` (or `python3 tools/gen_packages.py`).
 
 ## MANIFEST format
 
@@ -77,16 +83,19 @@ Each package has a `MANIFEST` file:
 
 ```text
 name=flynn-ide-tools
-version=2.0
+version=2.1
 desc=25 GridBASIC IDE tools for Flynn's Grid
 file=/packages/flynn-ide-tools/MANIFEST
 file=/packages/flynn-ide-tools/modules/disc-status.bas
 mod=disc-status:/packages/flynn-ide-tools/modules/disc-status.bas:Identity disc status panel:disc
+mod=http-probe:/packages/flynn-net-tools/modules/http-probe.bas:HTTP: GET probe via GRID.HTTP:network
 ```
 
 - **`name`**, **`version`**, **`desc`** — package metadata
 - **`file=`** — files owned by the package (removed on `pkg remove`)
-- **`mod=name:path:description:category`** — registers a GridBASIC IDE module (category optional, defaults to `general`)
+- **`mod=name:path:description:category`** — registers a GridBASIC IDE module
+  - **Description may contain `:`** — the parser treats the last `:` as the category separator
+  - Category is optional; defaults to `general`
 
 Install from an on-disk manifest:
 
@@ -99,6 +108,8 @@ Remove a package and its files:
 ```text
 pkg remove flynn-ide-tools
 ```
+
+Duplicate module names across packages **overwrite** the prior entry (logged to audit log).
 
 ## GridBASIC bindings
 
@@ -131,11 +142,15 @@ portal pkg
 pkg recv
 ```
 
+## TCP connection pool
+
+The kernel maintains a **global pool of 12 TCP connections** (plus 4 pending handshakes and 4 listen ports). GRID.SERVER, IRC server/client, HTTP, and bridge clients share this pool — there is no per-service reservation. When the pool is full, new connects and accepts fail (logged to audit log).
+
 ## Authoring modules
 
 1. Add `packages/flynn-ide-tools/modules/my-mod.bas` (GridBASIC source).
-2. Add entries to `tools/gen_flynn_ide_modules.py` or edit `MANIFEST` manually.
-3. Run `python3 tools/gen_flynn_ide_modules.py` to sync MANIFEST + `kernel/gfs.c` seeds.
+2. Add entries to `tools/gen_packages.py` (`IDE_MODULES` or `NET_MODULES`).
+3. Run `make gen-packages` to sync MANIFEST, `kernel/gfs.c` seeds, and `kernel/pkg.c` boot seeds.
 4. `make seed-disk` — push with `gridctl portal-pkg-push` or `pkg install`.
 
 Source template: [packages/flynn-ide-tools/](../packages/flynn-ide-tools/).

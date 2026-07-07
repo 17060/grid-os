@@ -10,7 +10,9 @@
 #define TCP_PSH 0x08u
 #define TCP_ACK 0x10u
 
-#define TCP_MAX_CONNECTIONS 8
+/* Global TCP pool — shared by GRID.SERVER, IRC server/client, HTTP, AI/BTC
+ * bridges. No per-subsystem quota; each service competes for slots. */
+#define TCP_MAX_CONNECTIONS 12
 #define TCP_MAX_LISTENERS   4
 #define TCP_MAX_PENDING     4
 

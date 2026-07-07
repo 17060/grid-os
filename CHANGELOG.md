@@ -38,6 +38,15 @@
 - **`ai-ask` module** — uses `GRID.AI.EXPLAIN$` (was broken second arg to `ASK$`)
 - **`sample-menu` module** — references seeded programs only
 
+### P2/P3 audit follow-up
+- **`pkg_parse_mod_line`** — last-colon category split; descriptions may contain `:`
+- **`pkg_add_mod`** — logs audit event on cross-package module name collision
+- **Manifest line buffer** — 256 → 512 bytes in `pkg_parse_manifest_text`
+- **IRC server events** — queue 16 → 32; overflow logged to audit log
+- **TCP pool** — 8 → 12 global connections; pool-full and accept-full logged
+- **`docs/PACKAGES.md`** — 30 modules documented; colon-in-desc MANIFEST note; TCP pool section
+- **`make gen-packages`** — runs `tools/gen_packages.py`; `build/gfs.o` / `build/pkg.o` depend on stamp
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI

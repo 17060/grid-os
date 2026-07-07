@@ -219,7 +219,7 @@ IDE_MODULES: list[Module] = [
 ]
 
 NET_MODULES: list[Module] = [
-    Module("http-probe", "HTTP GET probe via GRID.HTTP", """\
+    Module("http-probe", "HTTP: GET probe via GRID.HTTP", """\
 10 REM Flynn net-tools: http-probe
 20 PRINT "=== HTTP Probe ==="
 30 R$ = GRID.HTTP.GET$("gateway", 80, "/")

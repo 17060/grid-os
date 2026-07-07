@@ -71,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk gen-packages sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -107,6 +107,17 @@ build/interrupts.o: boot/interrupts.s | build
 
 build/%.o: kernel/%.c | build
 	$(CC) $(CFLAGS) -c $< -o $@
+
+GEN_PACKAGES_STAMP = build/.gen-packages.stamp
+
+gen-packages: $(GEN_PACKAGES_STAMP)
+
+$(GEN_PACKAGES_STAMP): tools/gen_packages.py
+	python3 tools/gen_packages.py
+	touch $@
+
+build/gfs.o: $(GEN_PACKAGES_STAMP)
+build/pkg.o: $(GEN_PACKAGES_STAMP)
 
 # GridBASIC uses pure 64-bit fixed-point arithmetic (no hardware FP at all),
 # so basic.c/basic_ide.c build with the standard kernel CFLAGS (-mno-sse).

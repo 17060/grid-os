@@ -43,7 +43,7 @@ The **`flynn-ide-tools`** package (v2.0) ships **25 GridBASIC IDE modules** — 
 | `flynn-ide-tools` | `irc-check` | `network` | `/packages/flynn-ide-tools/modules/irc-check.bas` | IRC session status |
 | `flynn-ide-tools` | `hosts-table` | `network` | `/packages/flynn-ide-tools/modules/hosts-table.bas` | Show /etc/hosts from Flynn disk |
 | `flynn-ide-tools` | `spawn-catalog` | `system` | `/packages/flynn-ide-tools/modules/spawn-catalog.bas` | Ring-3 program spawn hints |
-| `flynn-net-tools` | `http-probe` | `network` | `/packages/flynn-net-tools/modules/http-probe.bas` | HTTP GET probe via GRID.HTTP |
+| `flynn-net-tools` | `http-probe` | ` GET probe via GRID.HTTP` | `/packages/flynn-net-tools/modules/http-probe.bas` | HTTP |
 | `flynn-net-tools` | `irc-connect` | `network` | `/packages/flynn-net-tools/modules/irc-connect.bas` | IRC quick-connect helper |
 | `flynn-net-tools` | `https-bridge` | `bridge` | `/packages/flynn-net-tools/modules/https-bridge.bas` | HTTPS bridge status (host bridge) |
 | `flynn-net-tools` | `grid-server` | `network` | `/packages/flynn-net-tools/modules/grid-server.bas` | TCP line server with custom keywords |
