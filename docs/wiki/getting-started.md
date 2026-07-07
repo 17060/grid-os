@@ -1,5 +1,7 @@
 # Getting started
 
+**Welcome:** [Introduction to Grid OS & the GridBASIC IDE](../INTRODUCTION.md)
+
 ## What is the GridBASIC IDE?
 
 The **GridBASIC IDE** is the fullscreen editor built into Grid OS. You write programs in **GridBASIC** (an advanced BASIC dialect), run them immediately, save to Flynn disk (`/programs/*.bas`), compile to bytecode (`.grid`), and call Grid OS services through **`GRID.*` bindings**.

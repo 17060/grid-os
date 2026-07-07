@@ -38,6 +38,9 @@
 - **`ai-ask` module** — uses `GRID.AI.EXPLAIN$` (was broken second arg to `ASK$`)
 - **`sample-menu` module** — references seeded programs only
 
+### Introduction & community
+- **`docs/INTRODUCTION.md`** — who the GridBASIC IDE is for, why it's fun/useful, potential, open invitation to contributors
+
 ### P2/P3 audit follow-up
 - **`pkg_parse_mod_line`** — last-colon category split; descriptions may contain `:`
 - **`pkg_add_mod`** — logs audit event on cross-package module name collision

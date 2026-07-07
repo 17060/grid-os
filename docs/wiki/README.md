@@ -10,6 +10,8 @@ Complete reference for **Grid OS GridBASIC IDE** — colon commands, shell acces
 - **Last synced by:** `python3 tools/sync_basic_wiki.py`
 <!-- AUTO:META:END -->
 
+**New to the Grid?** Start with [Introduction](../INTRODUCTION.md) — who it's for, why it's fun, and an invitation to help build a user OS and IDE as one.
+
 ## How to use this wiki
 
 Each page lists entries in encyclopedia form:
