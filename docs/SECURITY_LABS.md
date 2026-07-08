@@ -1,6 +1,6 @@
 # Grid OS Security Labs
 
-**700 GridBASIC demos** across nine hat-color teams on the Flynn arcade disk. Each lab teaches a slice of Grid OS security — capabilities, vault, GFS, networking, host bridges, audit logs — in a controlled QEMU environment.
+**750 GridBASIC demos** across ten labs on the Flynn arcade disk — nine hat-color security teams plus **Flynn daemon** background-service demos for the GridBASIC IDE. Each lab teaches a slice of Grid OS — capabilities, vault, GFS, networking, host bridges, audit logs, IDE daemons — in a controlled QEMU environment.
 
 **Run labs in QEMU only.** GridBASIC in the kernel is trusted code with broad capabilities. These demos are for learning and purple-team drills, not production attack tooling.
 
@@ -41,10 +41,11 @@ Each lab also has a **menu** on disk: `/programs/<lab>/menu.bas`.
 | Yellow | `yellowteam` | `yt` | 50 | Audit, policy, GRC, compliance review |
 | Orange | `orangeteam` | `ot` | 50 | Threat intel — IOCs, net/GFS/BTC/AI collection |
 | Grey | `greyteam` | `gy` | 100 | Ambiguous ethics — probe, disclose, compare hats |
+| Flynn | `daemonteam` | `dm` | 50 | **IDE background daemons** — jobs, audit, net, vault, spawn |
 
-**Shell commands:** `redteam`, `blackhat`, `whiteteam`, `blueteam`, `purpleteam`, `greenteam`, `yellowteam`, `orangeteam`, `greyteam`
+**Shell commands:** `redteam`, `blackhat`, `whiteteam`, `blueteam`, `purpleteam`, `greenteam`, `yellowteam`, `orangeteam`, `greyteam`, `daemonteam`
 
-**IDE colon commands:** `:redteam`, `:blackhat`, … `:greyteam` (same listings)
+**IDE colon commands:** `:redteam`, `:blackhat`, … `:greyteam`, `:daemonteam` (same listings)
 
 ## Lab catalog
 
@@ -159,6 +160,18 @@ grid> basic run /programs/redteam/rt24-full-recon.bas
 grid> basic run /programs/blueteam/bt92-ioc-hunt.bas
 ```
 
+### 6. Flynn daemon IDE lab
+
+```text
+grid> daemonteam
+grid> basic run /programs/daemonteam/dm01-boot-daemon.bas
+grid> basic run /programs/daemonteam/dm11-audit-tail-daemon.bas
+grid> basic run /programs/daemonteam/dm41-spawn-daemon.bas
+grid> basic run /programs/daemonteam/dm50-graduation.bas
+```
+
+From IDE: **Esc** `:daemonteam` then `:load dm01-boot-daemon` or `:run /programs/daemonteam/dm01-boot-daemon.bas`
+
 ## Host bridges (optional)
 
 Some demos call host services. Without bridges they still run but may print offline/skip messages.
@@ -222,8 +235,9 @@ Checks demo counts, duplicate filenames, GFS READ paths against the seed invento
 | `/programs/yellowteam/` | 50 + menu |
 | `/programs/orangeteam/` | 50 + menu |
 | `/programs/greyteam/` | 100 + menu |
+| `/programs/daemonteam/` | 50 + menu |
 
-Flynn disk: **128 MB**, **1024 GFS inodes** (`tools/gfs_common.py`, `Makefile` `DISK_MB`).
+Flynn disk: **128 MB**, **1280 GFS inodes** (`kernel/gfs.c`, `Makefile` `DISK_MB`).
 
 ### Tests
 

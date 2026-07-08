@@ -9,4 +9,5 @@
 90 PRINT GRID.GFS.LIST$("/programs/yellowteam")
 100 PRINT GRID.GFS.LIST$("/programs/orangeteam")
 110 PRINT GRID.GFS.LIST$("/programs/greyteam")
-120 END
+120 PRINT GRID.GFS.LIST$("/programs/daemonteam")
+130 END

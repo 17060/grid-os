@@ -16,6 +16,7 @@ GREENTEAM_DIR = ROOT / "programs" / "greenteam"
 YELLOWTEAM_DIR = ROOT / "programs" / "yellowteam"
 ORANGETEAM_DIR = ROOT / "programs" / "orangeteam"
 GREYTEAM_DIR = ROOT / "programs" / "greyteam"
+DAEMONTeam_DIR = ROOT / "programs" / "daemonteam"
 
 
 @dataclass
@@ -707,6 +708,7 @@ def whiteteam_demos() -> list[Demo]:
             'PRINT GRID.GFS.LIST$("/programs/yellowteam")',
             'PRINT GRID.GFS.LIST$("/programs/orangeteam")',
             'PRINT GRID.GFS.LIST$("/programs/greyteam")',
+            'PRINT GRID.GFS.LIST$("/programs/daemonteam")',
         ]),
         (98, "verify-tutorials", ['PRINT LEN(GRID.GFS.READ$("/programs/tutorial.bas"))']),
         (99, "ethical-use", ['PRINT "White team: authorized testing only"']),
@@ -1345,6 +1347,100 @@ def orangeteam_demos() -> list[Demo]:
     return demos
 
 
+def daemonteam_demos() -> list[Demo]:
+    """50 Flynn grid daemon demos for GridBASIC IDE (dm01-dm50)."""
+    demos: list[Demo] = []
+
+    core = [
+        (1, "boot-daemon", ['PRINT "Daemon: Flynn boot watcher online"', "PRINT GRID.STATUS$"]),
+        (2, "ide-heartbeat", ['PRINT "Daemon: IDE heartbeat tick"', "PRINT GRID.TIME"]),
+        (3, "whoami-daemon", ['PRINT "Daemon: identity service"', 'PRINT GRID.WHOAMI$']),
+        (4, "caps-daemon", ['PRINT "Daemon: capability broker"', 'PRINT GRID.CAPS$']),
+        (5, "disc-daemon", ['PRINT "Daemon: disc status relay"', "PRINT GRID.DISC.STATUS$"]),
+        (6, "status-daemon", ['PRINT "Daemon: grid status feed"', "PRINT GRID.STATUS$"]),
+        (7, "tick-daemon", ['PRINT "Daemon: cycle counter"', "PRINT GRID.TIME", "GRID.WAIT 2", "PRINT GRID.TIME"]),
+        (8, "cls-daemon", ['PRINT "Daemon: screen refresh"', "GRID.CLS", 'PRINT "Flynn daemon cleared screen"']),
+        (9, "color-daemon", ['PRINT "Daemon: theme pulse"', "GRID.COLOR 11", 'PRINT "Daemon color set"']),
+        (10, "wait-daemon", ['PRINT "Daemon: cooperative sleep"', "GRID.WAIT 3", 'PRINT "Daemon woke"']),
+    ]
+    for num, tag, stmts in core:
+        body = [f'PRINT "=== DM{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"dm{num:02d}-{tag}.bas", f"dm{num:02d} -- {tag}", body))
+
+    audit = [
+        (11, "audit-tail-daemon", ["PRINT GRID.LOG.TAIL$(8)"]),
+        (12, "audit-writer", ['GRID.LOG "daemon-dm12 heartbeat"', "PRINT GRID.LOG.TAIL$(4)"]),
+        (13, "audit-rotate", ["PRINT GRID.LOG.TAIL$(16)", 'PRINT "Daemon: tail rotate sim"']),
+        (14, "audit-watch-red", ['PRINT "Daemon watches redteam canaries"', "PRINT GRID.LOG.TAIL$(6)"]),
+        (15, "audit-watch-black", ['PRINT "Daemon watches blackhat drops"', "PRINT GRID.LOG.TAIL$(6)"]),
+        (16, "audit-forward", ['GRID.LOG "daemon-forward dm16"', 'PRINT GRID.VAULT.GET$("motd")']),
+        (17, "audit-pack", ["PRINT GRID.LOG.TAIL$(12)", 'PRINT GRID.WHOAMI$']),
+        (18, "audit-iso", ["PRINT GRID.ISO.LIST$", "PRINT GRID.LOG.TAIL$(4)"]),
+        (19, "audit-bridge", ["PRINT GRID.BTC.STATUS$", "PRINT GRID.IRC.STATUS$"]),
+        (20, "audit-export", ['PRINT "Daemon: audit snapshot"', "PRINT GRID.LOG.TAIL$(10)"]),
+    ]
+    for num, tag, stmts in audit:
+        body = [f'PRINT "=== DM{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"dm{num:02d}-{tag}.bas", f"dm{num:02d} -- {tag}", body))
+
+    net = [
+        (21, "net-poll-daemon", ["PRINT GRID.NET.STATUS$"]),
+        (22, "ping-daemon", ['PRINT GRID.PING("gateway")']),
+        (23, "dns-daemon", ['PRINT GRID.DNS.RESOLVE$("grid")', 'PRINT GRID.DNS.RESOLVE$("gateway")']),
+        (24, "http-daemon", ['R$ = GRID.HTTP.GET$("gateway", 80, "/")', 'PRINT "len="; LEN(R$)']),
+        (25, "irc-daemon", ["PRINT GRID.IRC.STATUS$"]),
+        (26, "net-bridge-daemon", ["PRINT GRID.BTC.STATUS$", 'PRINT GRID.PING("bridge")']),
+        (27, "hosts-daemon", ['PRINT GRID.GFS.READ$("/etc/hosts")']),
+        (28, "net-jobs-daemon", ["PRINT GRID.JOBS.LIST$", "PRINT GRID.NET.STATUS$"]),
+        (29, "portal-daemon", ['PRINT "Daemon: portal link watch"', 'PRINT GRID.PING("grid")']),
+        (30, "net-sweep-daemon", ['PRINT GRID.PING("10.0.2.2")', 'PRINT GRID.PING("10.0.2.15")']),
+    ]
+    for num, tag, stmts in net:
+        body = [f'PRINT "=== DM{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"dm{num:02d}-{tag}.bas", f"dm{num:02d} -- {tag}", body))
+
+    storage = [
+        (31, "vault-sync-daemon", ["GRID.VAULT.SYNC", 'PRINT GRID.VAULT.LIST$']),
+        (32, "vault-put-daemon", ['GRID.VAULT.PUT "daemon-dm32", "flynn-daemon"', "GRID.VAULT.SYNC"]),
+        (33, "vault-get-daemon", ['PRINT GRID.VAULT.GET$("autoexec")']),
+        (34, "gfs-index-daemon", ['PRINT GRID.GFS.LIST$("/programs")']),
+        (35, "gfs-packages-daemon", ['PRINT GRID.GFS.LIST$("/packages")']),
+        (36, "gfs-flynn-daemon", ['PRINT GRID.GFS.LIST$("/flynn")', 'PRINT GRID.GFS.READ$("/flynn/motd")']),
+        (37, "pkg-list-daemon", ["PRINT GRID.PKG.LIST$"]),
+        (38, "pkg-mods-daemon", ["PRINT GRID.PKG.MODS$"]),
+        (39, "pkg-run-daemon", ['PRINT "Daemon: mod catalog ready"', 'PRINT GRID.PKG.MODS$("network")']),
+        (40, "storage-pack-daemon", ['PRINT GRID.VAULT.LIST$', 'PRINT GRID.GFS.LIST$("/programs/daemonteam")']),
+    ]
+    for num, tag, stmts in storage:
+        body = [f'PRINT "=== DM{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"dm{num:02d}-{tag}.bas", f"dm{num:02d} -- {tag}", body))
+
+    workers = [
+        (41, "spawn-daemon", ['PRINT "Daemon: spawn catalog"', 'PRINT GRID.GFS.LIST$("/programs")']),
+        (42, "jobs-daemon", ["PRINT GRID.JOBS.LIST$"]),
+        (43, "iso-daemon", ["PRINT GRID.ISO.LIST$"]),
+        (44, "recognizer-daemon", ['PRINT "Daemon: patrol-arm via :mod run patrol-arm"', "PRINT GRID.LOG.TAIL$(4)"]),
+        (45, "ai-daemon", ["PRINT GRID.AI.MODELS$"]),
+        (46, "btc-daemon", ["PRINT GRID.BTC.STATUS$"]),
+        (47, "module-daemon", ['PRINT "IDE modules for daemons"', "PRINT GRID.PKG.MODS$"]),
+        (48, "lab-daemon", [
+            'PRINT GRID.GFS.LIST$("/programs/redteam")',
+            'PRINT "Daemon indexes security labs"',
+        ]),
+        (49, "daemon-supervisor", [
+            "PRINT GRID.STATUS$",
+            "PRINT GRID.JOBS.LIST$",
+            "PRINT GRID.LOG.TAIL$(6)",
+        ]),
+        (50, "graduation", ['PRINT "Flynn daemon lab 50/50"', 'PRINT "QEMU lab only — IDE daemons"']),
+    ]
+    for num, tag, stmts in workers:
+        body = [f'PRINT "=== DM{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"dm{num:02d}-{tag}.bas", f"dm{num:02d} -- {tag}", body))
+
+    return demos
+
+
 def greyteam_demos() -> list[Demo]:
     """100 gray-hat ambiguous-ethics lab demos (gy01-gy100)."""
     demos: list[Demo] = []
@@ -1524,6 +1620,7 @@ def main() -> int:
     yellow = yellowteam_demos()
     orange = orangeteam_demos()
     grey = greyteam_demos()
+    daemon = daemonteam_demos()
     assert len(red) == 100, f"expected 100 red demos, got {len(red)}"
     assert len(black) == 100, f"expected 100 black demos, got {len(black)}"
     assert len(white) == 100, f"expected 100 white demos, got {len(white)}"
@@ -1533,6 +1630,7 @@ def main() -> int:
     assert len(yellow) == 50, f"expected 50 yellow demos, got {len(yellow)}"
     assert len(orange) == 50, f"expected 50 orange demos, got {len(orange)}"
     assert len(grey) == 100, f"expected 100 grey demos, got {len(grey)}"
+    assert len(daemon) == 50, f"expected 50 daemon demos, got {len(daemon)}"
 
     labs = [
         (REDTEAM_DIR, red, "rt", "Red team lab menu", "Grid OS Red Team Lab (100)"),
@@ -1544,6 +1642,7 @@ def main() -> int:
         (YELLOWTEAM_DIR, yellow, "yt", "Yellow team lab menu", "Grid OS Yellow Hat Lab (50 audit)"),
         (ORANGETEAM_DIR, orange, "ot", "Orange team lab menu", "Grid OS Orange Hat Lab (50 intel)"),
         (GREYTEAM_DIR, grey, "gy", "Grey team lab menu", "Grid OS Grey Hat Lab (100 gray ethics)"),
+        (DAEMONTeam_DIR, daemon, "dm", "Daemon lab menu", "Grid OS Flynn Daemon Lab (50 IDE daemons)"),
     ]
 
     for directory, _, _, _, _ in labs:
@@ -1566,6 +1665,7 @@ def main() -> int:
     print(f"Generated {len(yellow)} yellow-hat demos in {YELLOWTEAM_DIR}")
     print(f"Generated {len(orange)} orange-hat demos in {ORANGETEAM_DIR}")
     print(f"Generated {len(grey)} grey-hat demos in {GREYTEAM_DIR}")
+    print(f"Generated {len(daemon)} Flynn daemon demos in {DAEMONTeam_DIR}")
     return 0
 
 

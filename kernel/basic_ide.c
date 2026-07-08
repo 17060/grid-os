@@ -1251,6 +1251,7 @@ static void cmd_help(void) {
     console_write_line("  :yellowteam           yellow hat lab (50 audit demos)");
     console_write_line("  :orangeteam           orange hat lab (50 threat intel demos)");
     console_write_line("  :greyteam             grey hat lab (100 gray ethics demos)");
+    console_write_line("  :daemonteam           Flynn daemon lab (50 IDE background demos)");
     console_write_line("  :tutorial             interactive GridBASIC walkthrough");
     console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
     console_write_line("  Programs are limited to 65535 bytes for :run/:save/:compile");
@@ -1319,6 +1320,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (sequal(cmd, "yellowteam")) { run_shell_line(e, "yellowteam"); return 1; }
     if (sequal(cmd, "orangeteam")) { run_shell_line(e, "orangeteam"); return 1; }
     if (sequal(cmd, "greyteam")) { run_shell_line(e, "greyteam"); return 1; }
+    if (sequal(cmd, "daemonteam")) { run_shell_line(e, "daemonteam"); return 1; }
     if (sequal(cmd, "tutorial") || sequal(cmd, "t")) { cmd_tutorial_steps(e); return 1; }
     if (starts_with(cmd, "compile ")) { cmd_compile(e, cmd + 8); return 1; }
     if (starts_with(cmd, "compile")) { cmd_compile(e, cmd + 7); return 1; }

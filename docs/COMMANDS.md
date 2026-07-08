@@ -132,6 +132,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `yellowteam` | Yellow hat — 50 audit/compliance demos |
 | `orangeteam` | Orange hat — 50 threat intel demos |
 | `greyteam` | Grey hat — 100 gray-ethics demos |
+| `daemonteam` | Flynn daemon lab — 50 IDE background-service demos |
 
 Full guide: [docs/SECURITY_LABS.md](SECURITY_LABS.md)
 
