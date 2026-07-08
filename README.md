@@ -22,7 +22,7 @@
 
 **Cookbook?** See [docs/wiki/cookbook.md](docs/wiki/cookbook.md) — modules, packages, bytecode, duels.
 
-**Security labs?** See [docs/SECURITY_LABS.md](docs/SECURITY_LABS.md) — 700 hat-color demos (red/black/white/blue/purple/green/yellow/orange/grey).
+**Security labs?** See [docs/SECURITY_LABS.md](docs/SECURITY_LABS.md) — 750 demos (9 hat-color labs + Flynn daemon IDE lab).
 
 ## What's new in 7.1.1
 

@@ -21,6 +21,7 @@ LABS: dict[str, tuple[str, int]] = {
     "yellowteam": ("yt", 50),
     "orangeteam": ("ot", 50),
     "greyteam": ("gy", 100),
+    "daemonteam": ("dm", 50),
 }
 
 GFS_READ_RE = re.compile(r'GRID\.GFS\.READ\$\("([^"]+)"\)')

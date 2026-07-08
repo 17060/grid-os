@@ -1,0 +1,5 @@
+10 REM dm18 -- audit-iso
+20 PRINT "=== DM18: audit-iso ==="
+30 PRINT GRID.ISO.LIST$
+40 PRINT GRID.LOG.TAIL$(4)
+50 END

@@ -212,7 +212,7 @@ See `docs/COMMANDS.md` for the complete command reference.
 
 **GridBASIC encyclopedia:** [docs/wiki/encyclopedia/README.md](wiki/encyclopedia/README.md) — 307 commands/keywords with sample programs.
 
-**Security labs:** [docs/SECURITY_LABS.md](SECURITY_LABS.md) — 700 hat-color GridBASIC demos (`redteam`, `greyteam`, …).
+**Security labs:** [docs/SECURITY_LABS.md](SECURITY_LABS.md) — 750 GridBASIC demos (`redteam`, `daemonteam`, …).
 
 **GridBASIC encyclopedia:** [docs/wiki/README.md](wiki/README.md) — colon commands, keywords, `GRID.*`, and all seeded modules.
 

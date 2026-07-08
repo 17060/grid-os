@@ -175,6 +175,7 @@ static void cmd_help(void) {
     console_write_line("  yellowteam        Yellow hat lab — 50 audit/compliance demos");
     console_write_line("  orangeteam        Orange hat lab — 50 threat intel demos");
     console_write_line("  greyteam          Grey hat lab — 100 gray-ethics demos");
+    console_write_line("  daemonteam        Flynn daemon lab — 50 IDE background demos");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1283,6 +1284,10 @@ static void cmd_greyteam(void) {
     cmd_security_lab("/programs/greyteam/", "=== Grid OS Grey Hat Lab (100 gray demos) ===");
 }
 
+static void cmd_daemonteam(void) {
+    cmd_security_lab("/programs/daemonteam/", "=== Grid OS Flynn Daemon Lab (50 IDE demos) ===");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -2119,6 +2124,8 @@ void shell_dispatch_line(char *line) {
         cmd_orangeteam();
     } else if (equals(argv[0], "greyteam")) {
         cmd_greyteam();
+    } else if (equals(argv[0], "daemonteam")) {
+        cmd_daemonteam();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {
