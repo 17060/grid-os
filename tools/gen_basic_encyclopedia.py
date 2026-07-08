@@ -228,6 +228,8 @@ def build_entries() -> list[Entry]:
          ['PRINT "Esc then :orangeteam"']),
         ("greyteam", ":greyteam", "Grey hat lab", "Lists 100 gray-ethics demos",
          ['PRINT "Esc then :greyteam"']),
+        ("daemonteam", ":daemonteam", "Flynn daemon lab", "Lists 50 IDE background demos",
+         ['PRINT "Esc then :daemonteam"']),
     ]
     for slug, syn, purpose, actions, body in ide_cmds:
         e.append(colon_meta(slug, syn.split()[0], purpose, actions, body))
@@ -319,6 +321,7 @@ def build_entries() -> list[Entry]:
         ("yellowteam", "yellowteam", "Yellow hat lab", "Lists /programs/yellowteam/ demos"),
         ("orangeteam", "orangeteam", "Orange hat lab", "Lists /programs/orangeteam/ demos"),
         ("greyteam", "greyteam", "Grey hat lab", "Lists /programs/greyteam/ demos"),
+        ("daemonteam", "daemonteam", "Flynn daemon lab", "Lists /programs/daemonteam/ demos"),
         ("ai", "ai", "AI command summary", "Shows ai subcommands"),
         ("ai-ask", "ai ask <prompt>", "Ask AI", "Sends prompt to bridge"),
         ("ai-explain", "ai explain [line]", "Explain BASIC line", "AI line explanation"),

@@ -1,6 +1,6 @@
 # 02 — IDE colon commands
 
-31 encyclopedia entries.
+32 encyclopedia entries.
 
 ## `:run`
 
@@ -680,6 +680,28 @@
 30 REM Purpose: Grey hat lab
 40 REM Action: Lists 100 gray-ethics demos
 50 PRINT "Esc then :greyteam"
+60 END
+```
+
+---
+
+## `:daemonteam`
+
+| Field | Value |
+|-------|-------|
+| **Where** | IDE colon bar (Esc) |
+| **Syntax** | `:daemonteam` |
+| **Purpose** | Flynn daemon lab |
+| **Action** | Lists 50 IDE background demos |
+| **Sample** | `programs/encyclopedia/ide-daemonteam.bas` |
+| **See also** | [colon-commands.md](../colon-commands.md) |
+
+```basic
+10 REM Encyclopedia: :daemonteam
+20 REM Where: IDE colon bar
+30 REM Purpose: Flynn daemon lab
+40 REM Action: Lists 50 IDE background demos
+50 PRINT "Esc then :daemonteam"
 60 END
 ```
 

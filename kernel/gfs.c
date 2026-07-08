@@ -494,6 +494,27 @@ int gfs_list_paths(const char *prefix, char paths[][GFS_PATH_MAX], int max_paths
     return count;
 }
 
+static void gfs_write_u32(uint32_t value) {
+    char buf[16];
+    size_t pos = 0;
+    uint32_t count = value;
+    if (count == 0) {
+        buf[pos++] = '0';
+    } else {
+        char tmp[16];
+        size_t tlen = 0;
+        while (count > 0) {
+            tmp[tlen++] = (char)('0' + (count % 10));
+            count /= 10;
+        }
+        while (tlen > 0) {
+            buf[pos++] = tmp[--tlen];
+        }
+    }
+    buf[pos] = '\0';
+    console_write(buf);
+}
+
 void gfs_print_status(void) {
     int used = 0;
 
@@ -516,27 +537,9 @@ void gfs_print_status(void) {
     console_write_line("");
     console_set_color(GRID_COL_DEFAULT);
     console_write("  Inodes:    ");
-    char buf[16];
-    size_t pos = 0;
-    uint32_t count = (uint32_t)used;
-    if (count == 0) {
-        buf[pos++] = '0';
-    } else {
-        char tmp[16];
-        size_t tlen = 0;
-        while (count > 0) {
-            tmp[tlen++] = (char)('0' + (count % 10));
-            count /= 10;
-        }
-        while (tlen > 0) {
-            buf[pos++] = tmp[--tlen];
-        }
-    }
-    buf[pos] = '\0';
-    console_write(buf);
+    gfs_write_u32((uint32_t)used);
     console_write(" / ");
-    console_write_char((char)('0' + (GFS_INODE_MAX / 10) % 10));
-    console_write_char((char)('0' + (GFS_INODE_MAX % 10)));
+    gfs_write_u32(GFS_INODE_MAX);
     console_write_line(" files");
     console_write_line("  Max file:  65536 B");
     console_write_line("  Paths: /programs/*  /source/*  /flynn/*  /grid/*");

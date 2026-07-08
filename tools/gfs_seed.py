@@ -376,6 +376,9 @@ def main() -> int:
         slot += 1
 
     for slot, path, payload in files:
+        if slot >= GFS_INODE_MAX:
+            print(f"GFS inode overflow: slot {slot} >= {GFS_INODE_MAX} for {path}", file=sys.stderr)
+            return 1
         if isinstance(payload, Path):
             payload = payload.read_bytes()
         if len(payload) > GFS_FILE_CAP:

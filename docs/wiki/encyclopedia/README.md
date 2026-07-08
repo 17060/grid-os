@@ -3,15 +3,15 @@
 Every Grid OS GridBASIC IDE command, shell command, language keyword, built-in,
 `GRID.*` binding, and preprocessor directive — with purpose, action, and sample program.
 
-**Total entries:** 307
+**Total entries:** 309
 
 Sample programs live in `programs/encyclopedia/` on the Flynn disk after `make seed-disk`.
 
 ## Volumes
 
 - [01 — Editor keys](editor-keys.md) — 12 entries
-- [02 — IDE colon commands](ide-commands.md) — 31 entries
-- [03 — Flynn shell commands](shell-commands.md) — 104 entries
+- [02 — IDE colon commands](ide-commands.md) — 32 entries
+- [03 — Flynn shell commands](shell-commands.md) — 105 entries
 - [04 — Statement keywords](keywords.md) — 47 entries
 - [05 — Built-in functions](builtins-ref.md) — 27 entries
 - [06 — GRID statements](grid-statements.md) — 39 entries

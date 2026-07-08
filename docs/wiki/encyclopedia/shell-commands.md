@@ -1,6 +1,6 @@
 # 03 — Flynn shell commands
 
-104 encyclopedia entries.
+105 encyclopedia entries.
 
 ## `help`
 
@@ -1867,6 +1867,28 @@
 30 REM Purpose: Grey hat lab
 40 REM Action: Lists /programs/greyteam/ demos
 50 PRINT "At grid> type: greyteam"
+60 END
+```
+
+---
+
+## `daemonteam`
+
+| Field | Value |
+|-------|-------|
+| **Where** | grid> shell (Esc from IDE) |
+| **Syntax** | `daemonteam` |
+| **Purpose** | Flynn daemon lab |
+| **Action** | Lists /programs/daemonteam/ demos |
+| **Sample** | `programs/encyclopedia/cmd-daemonteam.bas` |
+| **See also** | [shell-from-ide.md](../shell-from-ide.md) |
+
+```basic
+10 REM Encyclopedia: daemonteam
+20 REM Where: grid> shell
+30 REM Purpose: Flynn daemon lab
+40 REM Action: Lists /programs/daemonteam/ demos
+50 PRINT "At grid> type: daemonteam"
 60 END
 ```
 

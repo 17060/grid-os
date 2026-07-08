@@ -1210,7 +1210,8 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     }
     if (strequal(name, "GRID.PKG.MODS$") || strequal(name, "GRID.PKG.MOD.LIST$")) {
         char b[256];
-        pkg_format_module_list(b, sizeof(b));
+        const char *category = (argc > 0 && argv[0].is_str) ? argv[0].s : 0;
+        pkg_format_module_list_filtered(b, sizeof(b), category);
         return make_str(b);
     }
     set_error("FUNC: unknown function");

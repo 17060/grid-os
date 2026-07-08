@@ -65,7 +65,7 @@ Blue team demos **watch for these artifacts** after you run black/red exercises.
 
 Defensive posture: read-only cap audits, hardening messages, integrity scans, bridge audits.
 
-**List all labs:** `wt97-list-security-labs.bas` — prints GFS listings for all nine `/programs/<lab>/` directories.
+**List all labs:** `wt97-list-security-labs.bas` — prints GFS listings for all **ten** `/programs/<lab>/` directories.
 
 ### Blue team (`bt01`–`bt100`)
 
@@ -218,7 +218,7 @@ Source: `tools/gen_security_demos.py` — regenerates all `.bas` files and `menu
 make audit-security-demos
 ```
 
-Checks demo counts, duplicate filenames, GFS READ paths against the seed inventory, and inode budget (760 / 1024 slots after full seed).
+Checks demo counts, duplicate filenames, GFS READ paths against the seed inventory, and inode budget (~1120 / 1280 slots after full seed).
 
 `make seed-disk` runs **gen → audit → seed** automatically.
 

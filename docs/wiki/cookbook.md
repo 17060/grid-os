@@ -4,7 +4,7 @@ Practical recipes for Flynn's Grid — modules, packages, bytecode, and duels.
 
 ## Security lab campaign
 
-700 hat-color demos ship on the Flynn disk. From shell:
+750 lab demos ship on the Flynn disk (ten labs including Flynn daemonteam). From shell:
 
 ```text
 grid> whiteteam
