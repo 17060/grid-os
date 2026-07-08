@@ -1080,7 +1080,7 @@ def greenteam_demos() -> list[Demo]:
         (47, "/programs/redteam"), (48, "/programs/greenteam"), (49, "/grid"), (50, "/"),
     ]
     for num, path in gfs_safe:
-        tag = path.strip("/").replace("/", "-") or "root"
+        tag = path.strip("/").replace("/", "-").replace(".", "-") or "root"
         demos.append(Demo(
             f"gt{num:02d}-gfs-path-{tag[:20]}.bas",
             f"gt{num:02d} -- safe GFS list {path}",
