@@ -15,6 +15,9 @@ QEMU    = qemu-system-x86_64
 CFLAGS  = -std=c11 -ffreestanding -fno-stack-protector -fno-pic -fno-pie -mno-red-zone \
           -mno-mmx -mno-sse -mno-sse2 -Wall -Wextra -O2 \
           -Ikernel/include
+ifdef GRIDOS_VBE_4K
+CFLAGS  += -DGRIDOS_VBE_4K=1
+endif
 ifdef HOST_GCC
   LDFLAGS += -no-pie
   USER_CFLAGS = -fno-pie
@@ -43,8 +46,14 @@ KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \
                build/timer.o build/link.o build/net.o build/dns.o build/tcp.o build/irc.o build/http.o \
                build/basic.o build/basic_pp.o build/basic_ide.o build/speaker.o \
                build/graphics.o build/recognizer.o build/disc.o build/pkg.o \
-               build/ai.o build/btc.o build/shell.o $(USER_EMBED)
+               $(VBE_OBJS) build/ai.o build/btc.o build/shell.o $(USER_EMBED)
 TARGET = build/grid-os.bin
+
+ifdef GRIDOS_VBE_4K
+VBE_OBJS = build/vbe.o build/font8x16.o
+else
+VBE_OBJS =
+endif
 
 QEMU_MACHINE  = q35,acpi=off
 QEMU_CPU      = qemu64
@@ -152,7 +161,9 @@ run: $(TARGET) $(DISK_IMAGE)
 		-kernel build/grid-os.elf $(QEMU_DRIVE) $(QEMU_VIRTIO) \
 		$(QEMU_NET) $(QEMU_SERIAL) $(QEMU_DISPLAY) $(QEMU_COMMON)
 
-run-4k: $(TARGET) $(DISK_IMAGE)
+run-4k: $(DISK_IMAGE)
+	rm -f build/vbe.o build/font8x16.o build/kernel.o build/console.o build/shell.o build/grid-os.bin build/grid-os.elf
+	$(MAKE) GRIDOS_VBE_4K=1 $(TARGET)
 	./tools/qemu_hdmi_4k.sh
 
 run-hd: $(TARGET) $(DISK_IMAGE)
