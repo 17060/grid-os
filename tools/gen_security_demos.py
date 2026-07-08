@@ -697,7 +697,17 @@ def whiteteam_demos() -> list[Demo]:
         (94, "net-audit", ["PRINT GRID.NET.STATUS$", 'PRINT GRID.PING("gateway")']),
         (95, "full-white-scan", ['PRINT GRID.WHOAMI$', 'PRINT GRID.CAPS$', "PRINT GRID.LOG.TAIL$(8)"]),
         (96, "vault-backup", ['GRID.VAULT.SYNC', 'PRINT "Vault synced to arcade disk"']),
-        (97, "list-security-labs", ['PRINT GRID.GFS.LIST$("/programs/redteam")', 'PRINT GRID.GFS.LIST$("/programs/blueteam")']),
+        (97, "list-security-labs", [
+            'PRINT GRID.GFS.LIST$("/programs/redteam")',
+            'PRINT GRID.GFS.LIST$("/programs/blackhat")',
+            'PRINT GRID.GFS.LIST$("/programs/whiteteam")',
+            'PRINT GRID.GFS.LIST$("/programs/blueteam")',
+            'PRINT GRID.GFS.LIST$("/programs/purpleteam")',
+            'PRINT GRID.GFS.LIST$("/programs/greenteam")',
+            'PRINT GRID.GFS.LIST$("/programs/yellowteam")',
+            'PRINT GRID.GFS.LIST$("/programs/orangeteam")',
+            'PRINT GRID.GFS.LIST$("/programs/greyteam")',
+        ]),
         (98, "verify-tutorials", ['PRINT LEN(GRID.GFS.READ$("/programs/tutorial.bas"))']),
         (99, "ethical-use", ['PRINT "White team: authorized testing only"']),
         (100, "lab-complete", ['PRINT "White team lab 100/100"', 'PRINT GRID.STATUS$']),
@@ -1280,7 +1290,7 @@ def orangeteam_demos() -> list[Demo]:
         (30, "/programs/greyteam/menu.bas"),
     ]
     for num, path in intel_paths:
-        tag = path.split("/")[-1].replace(".", "-")
+        tag = path.strip("/").replace("/", "-").replace(".", "-")
         demos.append(Demo(
             f"ot{num:02d}-intel-gfs-{tag}.bas",
             f"ot{num:02d} -- GFS intel {path}",
