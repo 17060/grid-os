@@ -163,6 +163,8 @@ DEMO_BAS = (
 PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
 REDTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "redteam"
 BLACKHAT_ROOT = Path(__file__).resolve().parent.parent / "programs" / "blackhat"
+WHITETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "whiteteam"
+BLUETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "blueteam"
 
 
 def lab_seed_files(root: Path, vfs_dir: str) -> list[tuple[str, bytes]]:
@@ -180,6 +182,14 @@ def redteam_seed_files() -> list[tuple[str, bytes]]:
 
 def blackhat_seed_files() -> list[tuple[str, bytes]]:
     return lab_seed_files(BLACKHAT_ROOT, "/programs/blackhat")
+
+
+def whiteteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(WHITETEAM_ROOT, "/programs/whiteteam")
+
+
+def blueteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(BLUETEAM_ROOT, "/programs/blueteam")
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
@@ -286,6 +296,14 @@ def main() -> int:
         slot += 1
 
     for path, payload in blackhat_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in whiteteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in blueteam_seed_files():
         files.append((slot, path, payload))
         slot += 1
 

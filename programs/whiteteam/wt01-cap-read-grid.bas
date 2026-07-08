@@ -1,0 +1,5 @@
+10 REM wt01 -- verify READ_GRID granted
+20 PRINT "=== WT01: Cap compliance ==="
+30 IF GRID.CAP(1) THEN PRINT "OK: READ_GRID" ELSE PRINT "FAIL: READ_GRID"
+40 PRINT "Mask: "; GRID.CAPS$
+50 END

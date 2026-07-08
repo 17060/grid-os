@@ -1,0 +1,5 @@
+10 REM bt90 -- monitor-loop
+20 PRINT "=== BT90: monitor-loop ==="
+30 PRINT GRID.TIME
+40 PRINT GRID.RECOGNIZER.STATUS$
+50 END

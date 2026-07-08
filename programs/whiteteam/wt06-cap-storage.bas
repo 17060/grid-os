@@ -1,0 +1,5 @@
+10 REM wt06 -- verify STORAGE granted
+20 PRINT "=== WT06: Cap compliance ==="
+30 IF GRID.CAP(64) THEN PRINT "OK: STORAGE" ELSE PRINT "FAIL: STORAGE"
+40 PRINT "Mask: "; GRID.CAPS$
+50 END

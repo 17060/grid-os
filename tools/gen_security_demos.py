@@ -9,6 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REDTEAM_DIR = ROOT / "programs" / "redteam"
 BLACKHAT_DIR = ROOT / "programs" / "blackhat"
+WHITETEAM_DIR = ROOT / "programs" / "whiteteam"
+BLUETEAM_DIR = ROOT / "programs" / "blueteam"
 
 
 @dataclass
@@ -497,6 +499,389 @@ def blackhat_demos() -> list[Demo]:
     return demos
 
 
+def whiteteam_demos() -> list[Demo]:
+    demos: list[Demo] = []
+
+    cap_checks = [
+        (1, 1, "READ_GRID"), (2, 2, "WRITE_GRID"), (3, 4, "SPAWN"),
+        (4, 8, "COMMUNICATE"), (5, 32, "ISO_RESEARCH"), (6, 64, "STORAGE"),
+        (7, 1, "READ-required"), (8, 64, "STORAGE-required"),
+        (9, 4, "SPAWN-required"), (10, 8, "COMM-required"),
+    ]
+    for num, cap, name in cap_checks:
+        demos.append(Demo(
+            f"wt{num:02d}-cap-{name.lower().replace('_', '-')}.bas",
+            f"wt{num:02d} -- verify {name} granted",
+            [
+                f'PRINT "=== WT{num:02d}: Cap compliance ==="',
+                f'IF GRID.CAP({cap}) THEN PRINT "OK: {name}" ELSE PRINT "FAIL: {name}"',
+                'PRINT "Mask: "; GRID.CAPS$',
+            ],
+        ))
+
+    vault_ops = [
+        (11, "list-keys", 'PRINT GRID.VAULT.LIST$'),
+        (12, "read-motd", 'PRINT GRID.VAULT.GET$("motd")'),
+        (13, "read-autoexec", 'PRINT GRID.VAULT.GET$("autoexec")'),
+        (14, "sync-reminder", 'PRINT "Run GRID.VAULT.SYNC after changes"'),
+        (15, "export-hint", 'PRINT "Vault export: GRID.VAULT.EXPORT via COM1"'),
+        (16, "no-secrets-print", 'PRINT "Never PRINT raw vault secrets in prod"'),
+        (17, "check-node", 'PRINT GRID.VAULT.GET$("node")'),
+        (18, "check-theme", 'PRINT GRID.VAULT.GET$("theme")'),
+        (19, "canary-clean", 'PRINT GRID.VAULT.GET$("redteam-canary")'),
+        (20, "canary-bh-scan", 'PRINT GRID.VAULT.GET$("bh-persist-21")'),
+    ]
+    for num, tag, stmt in vault_ops:
+        body = [f'PRINT "=== WT{num:02d}: Vault hygiene ==="', stmt]
+        if num == 14:
+            body.append('PRINT "Keys: "; GRID.VAULT.LIST$')
+        demos.append(Demo(f"wt{num:02d}-vault-{tag}.bas", f"wt{num:02d} -- vault {tag}", body))
+
+    gfs_checks = [
+        (21, "/programs/hello.bas"), (22, "/programs/tutorial.bas"),
+        (23, "/etc/hosts"), (24, "/flynn/motd"), (25, "/programs/autoexec.bas"),
+        (26, "/packages/flynn-ide-tools/MANIFEST"), (27, "/programs/redteam/menu.bas"),
+        (28, "/programs/blackhat/menu.bas"), (29, "/source/welcome.grid"),
+        (30, "/grid/recognizer.log"),
+    ]
+    for num, path in gfs_checks:
+        tag = path.split("/")[-1].replace(".", "-")[:20]
+        demos.append(Demo(
+            f"wt{num:02d}-gfs-ok-{tag}.bas",
+            f"wt{num:02d} -- verify GFS {path}",
+            [
+                f'PRINT "=== WT{num:02d}: GFS integrity ==="',
+                f'R$ = GRID.GFS.READ$("{path}")',
+                'IF LEN(R$) > 0 THEN PRINT "OK: file present" ELSE PRINT "MISSING"',
+            ],
+        ))
+
+    for num in range(31, 41):
+        demos.append(Demo(
+            f"wt{num:02d}-audit-review-{num}.bas",
+            f"wt{num:02d} -- audit log review {num}",
+            [
+                f'PRINT "=== WT{num:02d}: Audit review ==="',
+                f"PRINT GRID.LOG.TAIL$({num - 20})",
+                'PRINT "Review for forged BH markers"',
+            ],
+        ))
+
+    net_base = [
+        (41, "status"), (42, "gateway-ping"), (43, "grid-ping"), (44, "bridge-ping"),
+        (45, "dns-gateway"), (46, "dns-grid"), (47, "host-ping"), (48, "net-baseline"),
+        (49, "http-safe-get"), (50, "no-post-secrets"),
+    ]
+    for num, tag in net_base:
+        stmts = [f'PRINT "=== WT{num:02d}: Network baseline ==="']
+        if tag == "status":
+            stmts.append("PRINT GRID.NET.STATUS$")
+        elif tag.endswith("-ping"):
+            host = tag.replace("-ping", "")
+            stmts.append(f'PRINT GRID.PING("{host}")')
+        elif tag.startswith("dns-"):
+            stmts.append(f'PRINT GRID.DNS.RESOLVE$("{tag[4:]}")')
+        elif tag == "net-baseline":
+            stmts += ["PRINT GRID.NET.STATUS$", 'PRINT GRID.PING("gateway")']
+        elif tag == "http-safe-get":
+            stmts.append('R$=GRID.HTTP.GET$("gateway",80,"/")')
+            stmts.append('PRINT "len="; LEN(R$)')
+        else:
+            stmts.append('PRINT "Do not POST credentials over guest HTTP"')
+        demos.append(Demo(f"wt{num:02d}-net-{tag}.bas", f"wt{num:02d} -- net {tag}", stmts))
+
+    bridge_safe = [
+        (51, "btc-status"), (52, "btc-balance-readonly"), (53, "btc-no-stop"),
+        (54, "ai-models"), (55, "ai-safe-ask"), (56, "irc-status-only"),
+        (57, "bridge-testnet"), (58, "bridge-host-firewall"), (59, "serial-policy"),
+        (60, "no-bridge-prod"),
+    ]
+    for num, tag in bridge_safe:
+        stmts = [f'PRINT "=== WT{num:02d}: Safe bridge use ==="']
+        if tag == "btc-status":
+            stmts.append("PRINT GRID.BTC.STATUS$")
+        elif tag == "btc-balance-readonly":
+            stmts += ["PRINT GRID.BTC.STATUS$", 'PRINT GRID.BTC.BALANCE$']
+        elif tag == "btc-no-stop":
+            stmts.append('PRINT "Never call stop on prod bitcoind"')
+        elif tag == "ai-models":
+            stmts.append("PRINT GRID.AI.MODELS$")
+        elif tag == "ai-safe-ask":
+            stmts.append('PRINT GRID.AI.ASK$("Explain GRID.VAULT.SYNC", "EXPLAIN")')
+        elif tag == "irc-status-only":
+            stmts.append("PRINT GRID.IRC.STATUS$")
+        elif tag == "bridge-testnet":
+            stmts.append('PRINT "Use testnet/regtest for btc-bridge"')
+        elif tag == "bridge-host-firewall":
+            stmts.append('PRINT "Bind bridges to 127.0.0.1 in prod"')
+        elif tag == "serial-policy":
+            stmts.append('PRINT "COM1: vault export only with intent"')
+        else:
+            stmts.append('PRINT "Disable host bridges on prod Flynn nodes"')
+        demos.append(Demo(f"wt{num:02d}-bridge-{tag}.bas", f"wt{num:02d} -- bridge {tag}", stmts))
+
+    for num in range(61, 71):
+        demos.append(Demo(
+            f"wt{num:02d}-pkg-inventory-{num}.bas",
+            f"wt{num:02d} -- authorized package inventory",
+            [
+                f'PRINT "=== WT{num:02d}: Pkg inventory ==="',
+                'PRINT GRID.PKG.LIST$',
+                'PRINT GRID.PKG.MODS$',
+            ],
+        ))
+
+    disc_checks = [
+        (71, "whoami"), (72, "disc-status"), (73, "disc-entity"), (74, "disc-level"),
+        (75, "caps-decode"), (76, "identity-match"), (77, "iso-policy"), (78, "spawn-policy"),
+        (79, "jobs-policy"), (80, "patrol-policy"),
+    ]
+    for num, tag in disc_checks:
+        stmts = [f'PRINT "=== WT{num:02d}: Identity policy ==="']
+        if tag == "whoami":
+            stmts.append('PRINT GRID.WHOAMI$')
+        elif tag == "disc-status":
+            stmts.append("PRINT GRID.DISC.STATUS$")
+        elif tag == "disc-entity":
+            stmts.append('PRINT GRID.DISC.ENTITY$')
+        elif tag == "disc-level":
+            stmts.append('PRINT GRID.DISC.LEVEL')
+        elif tag == "caps-decode":
+            stmts.append('PRINT "Caps: "; GRID.CAPS$')
+        elif tag == "identity-match":
+            stmts += ['PRINT GRID.WHOAMI$', "PRINT GRID.DISC.STATUS$"]
+        elif tag == "iso-policy":
+            stmts.append('PRINT "ISO: observe/quarantine only"')
+        elif tag == "spawn-policy":
+            stmts.append('PRINT "Spawn only signed /programs ELF"')
+        elif tag == "jobs-policy":
+            stmts.append("PRINT GRID.JOBS.LIST$")
+        else:
+            stmts.append("PRINT GRID.RECOGNIZER.STATUS$")
+        demos.append(Demo(f"wt{num:02d}-id-{tag}.bas", f"wt{num:02d} -- identity {tag}", stmts))
+
+    hardening = [
+        (81, "least-privilege"), (82, "fail-closed"), (83, "audit-everything"),
+        (84, "vault-encrypt-hint"), (85, "gfs-wx-hint"), (86, "ring3-only"),
+        (87, "no-basic-untrusted"), (88, "bridge-isolation"), (89, "lab-only"),
+        (90, "report-findings"),
+    ]
+    for num, tag in hardening:
+        msgs = {
+            "least-privilege": "Grant minimum CAP_* for programs",
+            "fail-closed": "Deny on missing capability",
+            "audit-everything": "Use GRID.LOG for sensitive actions",
+            "vault-encrypt-hint": "Seal vault on shared disks",
+            "gfs-wx-hint": "Treat GFS writes as privileged",
+            "ring3-only": "Untrusted code in ring-3 spawn only",
+            "no-basic-untrusted": ":run GridBASIC is kernel-trusted",
+            "bridge-isolation": "Host bridges are trust boundaries",
+            "lab-only": "Run security labs in QEMU only",
+            "report-findings": "File issues: red findings to blue team",
+        }
+        demos.append(Demo(
+            f"wt{num:02d}-harden-{tag}.bas",
+            f"wt{num:02d} -- hardening {tag}",
+            [f'PRINT "=== WT{num:02d}: Hardening ==="', f'PRINT "{msgs[tag]}"'],
+        ))
+
+    wt_combos = [
+        (91, "compliance-scan", ['PRINT GRID.CAPS$', 'PRINT GRID.VAULT.LIST$']),
+        (92, "integrity-scan", ['PRINT GRID.GFS.LIST$("/programs")', "PRINT GRID.LOG.TAIL$(6)"]),
+        (93, "bridge-audit", ["PRINT GRID.BTC.STATUS$", "PRINT GRID.AI.MODELS$"]),
+        (94, "net-audit", ["PRINT GRID.NET.STATUS$", 'PRINT GRID.PING("gateway")']),
+        (95, "full-white-scan", ['PRINT GRID.WHOAMI$', 'PRINT GRID.CAPS$', "PRINT GRID.LOG.TAIL$(8)"]),
+        (96, "vault-backup", ['GRID.VAULT.SYNC', 'PRINT "Vault synced to arcade disk"']),
+        (97, "list-security-labs", ['PRINT GRID.GFS.LIST$("/programs/redteam")', 'PRINT GRID.GFS.LIST$("/programs/blueteam")']),
+        (98, "verify-tutorials", ['PRINT LEN(GRID.GFS.READ$("/programs/tutorial.bas"))']),
+        (99, "ethical-use", ['PRINT "White team: authorized testing only"']),
+        (100, "lab-complete", ['PRINT "White team lab 100/100"', 'PRINT GRID.STATUS$']),
+    ]
+    for num, tag, stmts in wt_combos:
+        body = [f'PRINT "=== WT{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"wt{num:02d}-{tag}.bas", f"wt{num:02d} -- {tag}", body))
+
+    return demos
+
+
+def blueteam_demos() -> list[Demo]:
+    demos: list[Demo] = []
+
+    for num in range(1, 11):
+        demos.append(Demo(
+            f"bt{num:02d}-audit-watch-{num}.bas",
+            f"bt{num:02d} -- SOC audit watch {num}",
+            [
+                f'PRINT "=== BT{num:02d}: Audit watch ==="',
+                f"PRINT GRID.LOG.TAIL$({num + 4})",
+                'PRINT "Look for REDTEAM/BH forged markers"',
+            ],
+        ))
+
+    bh_keys = [f"bh-persist-{n}" for n in range(21, 31)]
+    for i, key in enumerate(bh_keys, start=11):
+        demos.append(Demo(
+            f"bt{i:02d}-vault-ioc-{i}.bas",
+            f"bt{i:02d} -- vault IOC {key}",
+            [
+                f'PRINT "=== BT{i:02d}: Vault IOC ==="',
+                'PRINT GRID.VAULT.LIST$',
+                f'V$ = GRID.VAULT.GET$("{key}")',
+                'IF LEN(V$) > 0 THEN PRINT "ALERT: persistence key" ELSE PRINT "clear"',
+            ],
+        ))
+
+    for num in range(21, 31):
+        demos.append(Demo(
+            f"bt{num:02d}-gfs-ioc-drop-{num}.bas",
+            f"bt{num:02d} -- GFS drop watch {num}",
+            [
+                f'PRINT "=== BT{num:02d}: GFS IOC ==="',
+                f'PRINT GRID.GFS.READ$("/programs/blackhat/drop-{num}.txt")',
+                'PRINT GRID.GFS.LIST$("/programs/blackhat")',
+            ],
+        ))
+
+    net_mon = [
+        (31, "net-status"), (32, "gateway"), (33, "bridge"), (34, "host"),
+        (35, "10-0-2-2"), (36, "dns-anomaly"), (37, "ping-baseline"),
+        (38, "http-anomaly"), (39, "irc-watch"), (40, "btc-watch"),
+    ]
+    for num, tag in net_mon:
+        stmts = [f'PRINT "=== BT{num:02d}: Net monitor ==="']
+        if tag == "net-status":
+            stmts.append("PRINT GRID.NET.STATUS$")
+        elif tag == "dns-anomaly":
+            stmts.append('PRINT GRID.DNS.RESOLVE$("gateway")')
+        elif tag == "ping-baseline":
+            stmts += ['PRINT GRID.PING("gateway")', 'PRINT GRID.PING("bridge")']
+        elif tag == "http-anomaly":
+            stmts.append('PRINT LEN(GRID.HTTP.GET$("gateway",80,"/"))')
+        elif tag == "irc-watch":
+            stmts.append("PRINT GRID.IRC.STATUS$")
+        elif tag == "btc-watch":
+            stmts.append("PRINT GRID.BTC.STATUS$")
+        elif tag == "10-0-2-2":
+            stmts.append('PRINT GRID.PING("10.0.2.2")')
+        else:
+            stmts.append(f'PRINT GRID.PING("{tag}")')
+        demos.append(Demo(f"bt{num:02d}-net-{tag}.bas", f"bt{num:02d} -- net monitor {tag}", stmts))
+
+    for num in range(41, 51):
+        demos.append(Demo(
+            f"bt{num:02d}-jobs-watch-{num}.bas",
+            f"bt{num:02d} -- sandbox job watch",
+            [
+                f'PRINT "=== BT{num:02d}: Jobs ==="',
+                "PRINT GRID.JOBS.LIST$",
+                'PRINT GRID.GFS.LIST$("/programs")',
+            ],
+        ))
+
+    for num in range(51, 61):
+        demos.append(Demo(
+            f"bt{num:02d}-iso-watch-{num}.bas",
+            f"bt{num:02d} -- ISO zone watch",
+            [
+                f'PRINT "=== BT{num:02d}: ISO ==="',
+                "PRINT GRID.ISO.LIST$",
+                'PRINT "Quarantine anomalies — do not derez"',
+            ],
+        ))
+
+    anomaly = [
+        (61, "redteam-canary"), (62, "bh-log-marker"), (63, "spawn-surface"),
+        (64, "patrol-abuse"), (65, "pkg-change"), (66, "caps-drift"),
+        (67, "serial-inbound"), (68, "vault-export"), (69, "gfs-canary"),
+        (70, "bridge-up"),
+    ]
+    for num, tag in anomaly:
+        stmts = [f'PRINT "=== BT{num:02d}: Anomaly {tag} ==="']
+        if tag == "redteam-canary":
+            stmts.append('PRINT GRID.VAULT.GET$("redteam-canary")')
+        elif tag == "bh-log-marker":
+            stmts.append('PRINT GRID.LOG.TAIL$(8)')
+        elif tag == "spawn-surface":
+            stmts.append("PRINT GRID.JOBS.LIST$")
+        elif tag == "patrol-abuse":
+            stmts.append("PRINT GRID.RECOGNIZER.STATUS$")
+        elif tag == "pkg-change":
+            stmts.append('PRINT GRID.PKG.LIST$')
+        elif tag == "caps-drift":
+            stmts.append('PRINT GRID.CAPS$')
+        elif tag == "serial-inbound":
+            stmts.append('PRINT GRID.SERIAL.READ$')
+        elif tag == "vault-export":
+            stmts.append('PRINT "Watch for GRID.VAULT.EXPORT events"')
+        elif tag == "gfs-canary":
+            stmts.append('PRINT GRID.GFS.READ$("/programs/redteam/canary.txt")')
+        else:
+            stmts += ["PRINT GRID.BTC.STATUS$", "PRINT GRID.AI.MODELS$"]
+        demos.append(Demo(f"bt{num:02d}-detect-{tag}.bas", f"bt{num:02d} -- detect {tag}", stmts))
+
+    ir_steps = [
+        (71, "triage"), (72, "contain"), (73, "evidence"), (74, "eradicate"),
+        (75, "recover"), (76, "lessons"), (77, "escalate"), (78, "isolate-bridge"),
+        (79, "kill-jobs"), (80, "sync-vault"),
+    ]
+    ir_msgs = {
+        "triage": "1. Tail audit  2. List vault  3. Note caps",
+        "contain": "Stop host bridges; patrol stand-down",
+        "evidence": "Save GRID.LOG.TAIL$ and vault list",
+        "eradicate": "Remove bh-persist-* keys; delete GFS drops",
+        "recover": "GFS seed; vault sync from backup",
+        "lessons": "Update flynn-ide-tools modules",
+        "escalate": "grid> help — notify operator",
+        "isolate-bridge": "make btc-bridge OFF on host",
+        "kill-jobs": "Review GRID.JOBS.LIST$; shell jobs",
+        "sync-vault": "GRID.VAULT.SYNC after cleanup",
+    }
+    for num, step in ir_steps:
+        demos.append(Demo(
+            f"bt{num:02d}-ir-{step}.bas",
+            f"bt{num:02d} -- incident response {step}",
+            [
+                f'PRINT "=== BT{num:02d}: IR {step} ==="',
+                f'PRINT "{ir_msgs[step]}"',
+                "PRINT GRID.LOG.TAIL$(4)",
+            ],
+        ))
+
+    bt_combos = [
+        (81, "soc-dashboard", ["PRINT GRID.NET.STATUS$", "PRINT GRID.LOG.TAIL$(6)", "PRINT GRID.JOBS.LIST$"]),
+        (82, "vault-sweep", ['PRINT GRID.VAULT.LIST$', 'PRINT GRID.VAULT.GET$("redteam-canary")']),
+        (83, "gfs-sweep", ['PRINT GRID.GFS.LIST$("/programs/blackhat")', 'PRINT GRID.GFS.LIST$("/programs/redteam")']),
+        (84, "bridge-sweep", ["PRINT GRID.BTC.STATUS$", "PRINT GRID.IRC.STATUS$"]),
+        (85, "identity-sweep", ['PRINT GRID.WHOAMI$', 'PRINT GRID.CAPS$']),
+        (86, "post-redteam", ['PRINT GRID.LOG.TAIL$(16)', 'PRINT GRID.VAULT.LIST$']),
+        (87, "post-blackhat", ['PRINT GRID.GFS.LIST$("/programs/blackhat")', "PRINT GRID.LOG.TAIL$(12)"]),
+        (88, "purple-hint", ['PRINT "Purple team: run red then blue demos"']),
+        (89, "forensics-pack", ["PRINT GRID.ISO.LIST$", "PRINT GRID.LOG.TAIL$(20)"]),
+        (90, "monitor-loop", ['PRINT GRID.TIME', "PRINT GRID.RECOGNIZER.STATUS$"]),
+    ]
+    for num, tag, stmts in bt_combos:
+        body = [f'PRINT "=== BT{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"bt{num:02d}-{tag}.bas", f"bt{num:02d} -- {tag}", body))
+
+    final = [
+        (91, "full-soc", ['PRINT GRID.NET.STATUS$', "PRINT GRID.LOG.TAIL$(10)", "PRINT GRID.JOBS.LIST$", 'PRINT GRID.VAULT.LIST$']),
+        (92, "ioc-hunt", ['PRINT GRID.VAULT.LIST$', 'PRINT GRID.GFS.LIST$("/programs/blackhat")']),
+        (93, "threat-hunt", ["PRINT GRID.ISO.LIST$", 'PRINT GRID.PING("10.0.2.2")']),
+        (94, "defense-verify", ['PRINT GRID.CAP(64)', 'PRINT GRID.CAP(1)']),
+        (95, "align-white", ['PRINT "Pair with whiteteam wt91-wt100"']),
+        (96, "align-red", ['PRINT "Compare to redteam rt24-full-recon"']),
+        (97, "block-bh", ['PRINT "Detect bh-persist keys then delete"']),
+        (98, "restore-gfs", ['PRINT "gfs seed after bh23 drops"']),
+        (99, "close-incident", ['GRID.LOG "BLUE: incident closed"', "PRINT GRID.LOG.TAIL$(3)"]),
+        (100, "lab-complete", ['PRINT "Blue team lab 100/100"', 'PRINT GRID.STATUS$']),
+    ]
+    for num, tag, stmts in final:
+        body = [f'PRINT "=== BT{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"bt{num:02d}-{tag}.bas", f"bt{num:02d} -- {tag}", body))
+
+    return demos
+
+
 def write_menu(directory: Path, prefix: str, title: str, demos: list[Demo], lab_name: str) -> None:
     vfs_base = f"/programs/{directory.name}"
     lines: list[str] = []
@@ -533,29 +918,35 @@ def write_menu(directory: Path, prefix: str, title: str, demos: list[Demo], lab_
 def main() -> int:
     red = redteam_core() + redteam_extended()
     black = blackhat_demos()
+    white = whiteteam_demos()
+    blue = blueteam_demos()
     assert len(red) == 100, f"expected 100 red demos, got {len(red)}"
     assert len(black) == 100, f"expected 100 black demos, got {len(black)}"
+    assert len(white) == 100, f"expected 100 white demos, got {len(white)}"
+    assert len(blue) == 100, f"expected 100 blue demos, got {len(blue)}"
 
-    if REDTEAM_DIR.exists():
-        for old in REDTEAM_DIR.glob("*.bas"):
-            old.unlink()
-    if BLACKHAT_DIR.exists():
-        for old in BLACKHAT_DIR.glob("*.bas"):
-            old.unlink()
+    labs = [
+        (REDTEAM_DIR, red, "rt", "Red team lab menu", "Grid OS Red Team Lab (100)"),
+        (BLACKHAT_DIR, black, "bh", "Black hat lab menu", "Grid OS Black Hat Lab (100)"),
+        (WHITETEAM_DIR, white, "wt", "White team lab menu", "Grid OS White Team Lab (100)"),
+        (BLUETEAM_DIR, blue, "bt", "Blue team lab menu", "Grid OS Blue Team Lab (100)"),
+    ]
 
-    REDTEAM_DIR.mkdir(parents=True, exist_ok=True)
-    BLACKHAT_DIR.mkdir(parents=True, exist_ok=True)
+    for directory, _, _, _, _ in labs:
+        if directory.exists():
+            for old in directory.glob("*.bas"):
+                old.unlink()
+        directory.mkdir(parents=True, exist_ok=True)
 
-    for demo in red:
-        write_demo(REDTEAM_DIR, demo)
-    for demo in black:
-        write_demo(BLACKHAT_DIR, demo)
-
-    write_menu(REDTEAM_DIR, "rt", "Red team lab menu", red, "Grid OS Red Team Lab (100)")
-    write_menu(BLACKHAT_DIR, "bh", "Black hat lab menu", black, "Grid OS Black Hat Lab (100)")
+    for directory, demos, prefix, menu_title, lab_name in labs:
+        for demo in demos:
+            write_demo(directory, demo)
+        write_menu(directory, prefix, menu_title, demos, lab_name)
 
     print(f"Generated {len(red)} red-team demos in {REDTEAM_DIR}")
     print(f"Generated {len(black)} black-hat demos in {BLACKHAT_DIR}")
+    print(f"Generated {len(white)} white-team demos in {WHITETEAM_DIR}")
+    print(f"Generated {len(blue)} blue-team demos in {BLUETEAM_DIR}")
     return 0
 
 

@@ -1,0 +1,5 @@
+10 REM bt84 -- bridge-sweep
+20 PRINT "=== BT84: bridge-sweep ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.IRC.STATUS$
+50 END

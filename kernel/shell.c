@@ -165,6 +165,8 @@ static void cmd_help(void) {
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
     console_write_line("  redteam           Red team lab — 100 demos (/programs/redteam/)");
     console_write_line("  blackhat          Black hat lab — 100 demos (/programs/blackhat/)");
+    console_write_line("  whiteteam         White team lab — 100 demos (/programs/whiteteam/)");
+    console_write_line("  blueteam          Blue team lab — 100 demos (/programs/blueteam/)");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1245,6 +1247,14 @@ static void cmd_blackhat(void) {
     cmd_security_lab("/programs/blackhat/", "=== Grid OS Black Hat Lab (100 demos) ===");
 }
 
+static void cmd_whiteteam(void) {
+    cmd_security_lab("/programs/whiteteam/", "=== Grid OS White Team Lab (100 demos) ===");
+}
+
+static void cmd_blueteam(void) {
+    cmd_security_lab("/programs/blueteam/", "=== Grid OS Blue Team Lab (100 demos) ===");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -2067,6 +2077,10 @@ void shell_dispatch_line(char *line) {
         cmd_redteam();
     } else if (equals(argv[0], "blackhat")) {
         cmd_blackhat();
+    } else if (equals(argv[0], "whiteteam")) {
+        cmd_whiteteam();
+    } else if (equals(argv[0], "blueteam")) {
+        cmd_blueteam();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {
