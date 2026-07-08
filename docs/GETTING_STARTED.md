@@ -202,10 +202,11 @@ CI runs the same on every push to `main` via GitHub Actions.
 
 ## What's not in-guest yet
 
-- Native high-resolution framebuffer (80×25 VGA is scaled in HD/4K windows)
 - TLS/HTTPS (use host bridges)
 - Full Bitcoin node or LLM in-kernel (128 MB RAM — bridges instead)
 - Real DNS (static hostname table only)
+
+**4K display:** use `make run-4k` — see [DISPLAY_4K.md](DISPLAY_4K.md).
 
 See `docs/COMMANDS.md` for the complete command reference.
 

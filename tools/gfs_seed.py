@@ -357,6 +357,11 @@ def main() -> int:
         files.append((slot, path, payload))
         slot += 1
 
+    fourk_demo = root / "programs" / "4k-ide-demo.bas"
+    if fourk_demo.is_file():
+        files.append((slot, "/programs/4k-ide-demo.bas", fourk_demo.read_bytes()))
+        slot += 1
+
     for path, payload in encyclopedia_seed_files():
         files.append((slot, path, payload))
         slot += 1

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch Grid OS in HDMI 4K mode (3840x2160 QEMU window, scaled VGA text).
+# Launch Grid OS in HDMI 4K mode (3840x2160 Bochs VBE + GridBASIC IDE).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -33,8 +33,9 @@ exec "$QEMU" \
     -device virtio-net-pci,netdev=net0 \
     -serial stdio \
     -device VGA,xres=3840,yres=2160,edid=on \
+    -global VGA.vgamem_mb=32 \
     $QEMU_DISPLAY \
-    -name "Grid OS — HDMI 4K (3840x2160)" \
+    -name "Grid OS — HDMI 4K (3840x2160) + GridBASIC IDE" \
     -no-reboot \
     -device isa-debug-exit,iobase=0xf4,iosize=0x04 &
 QPID=$!
