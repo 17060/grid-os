@@ -33,6 +33,7 @@ Each page lists entries in encyclopedia form:
 | Call the Grid from BASIC | [GRID bindings](grid-bindings.md) |
 | Run packaged tools | [Package modules](package-modules.md) |
 | Security lab demos | [Security labs](../SECURITY_LABS.md) |
+| **Full encyclopedia (307 entries)** | **[encyclopedia/README.md](encyclopedia/README.md)** |
 | Recipes & campaigns | [Cookbook](cookbook.md) |
 
 ## Wiki contents

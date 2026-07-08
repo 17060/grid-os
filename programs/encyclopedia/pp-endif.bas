@@ -1,0 +1,4 @@
+#IF 1
+10 PRINT "yes"
+#ENDIF
+20 END

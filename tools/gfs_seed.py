@@ -170,6 +170,7 @@ GREENTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "greentea
 YELLOWTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "yellowteam"
 ORANGETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "orangeteam"
 GREYTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "greyteam"
+ENCYCLOPEDIA_ROOT = Path(__file__).resolve().parent.parent / "programs" / "encyclopedia"
 
 
 def lab_seed_files(root: Path, vfs_dir: str) -> list[tuple[str, bytes]]:
@@ -215,6 +216,10 @@ def orangeteam_seed_files() -> list[tuple[str, bytes]]:
 
 def greyteam_seed_files() -> list[tuple[str, bytes]]:
     return lab_seed_files(GREYTEAM_ROOT, "/programs/greyteam")
+
+
+def encyclopedia_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(ENCYCLOPEDIA_ROOT, "/programs/encyclopedia")
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
@@ -349,6 +354,10 @@ def main() -> int:
         slot += 1
 
     for path, payload in greyteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in encyclopedia_seed_files():
         files.append((slot, path, payload))
         slot += 1
 

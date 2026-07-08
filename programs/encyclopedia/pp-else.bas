@@ -1,0 +1,6 @@
+#IF 0
+10 PRINT "skip"
+#ELSE
+10 PRINT "kept"
+#ENDIF
+20 END

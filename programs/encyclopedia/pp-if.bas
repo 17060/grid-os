@@ -1,0 +1,4 @@
+#IF GRIDOS7
+10 PRINT "on Grid OS 7"
+#ENDIF
+20 END

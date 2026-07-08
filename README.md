@@ -16,7 +16,7 @@
 
 **Packages & IDE modules?** See [docs/PACKAGES.md](docs/PACKAGES.md) — `pkg`, GridLink `.gridpkg`, `:mod run`.
 
-**GridBASIC IDE encyclopedia?** See [docs/wiki/README.md](docs/wiki/README.md) — full command/keyword reference with examples.
+**GridBASIC IDE encyclopedia?** See [docs/wiki/README.md](docs/wiki/README.md) — full command/keyword reference with examples. **Complete edition:** [docs/wiki/encyclopedia/README.md](docs/wiki/encyclopedia/README.md) — 307 entries with sample programs.
 
 **Cookbook?** See [docs/wiki/cookbook.md](docs/wiki/cookbook.md) — modules, packages, bytecode, duels.
 

@@ -2,7 +2,7 @@
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
-**Full encyclopedia (examples for every command & keyword):** [docs/wiki/README.md](wiki/README.md)
+**Full encyclopedia (examples for every command & keyword):** [docs/wiki/README.md](wiki/README.md) · [Complete edition — 307 samples](wiki/encyclopedia/README.md)
 
 ## Shell commands (`grid>`)
 

@@ -1,0 +1,6 @@
+10 REM Encyclopedia: GRID.RECOGNIZER.STATUS$
+20 REM Where: GridBASIC GRID binding
+30 REM Purpose: Patrol status
+40 REM Action: Returns result of GRID.RECOGNIZER.STATUS$
+50 PRINT GRID.RECOGNIZER.STATUS$
+60 END
