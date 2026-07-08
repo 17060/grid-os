@@ -167,6 +167,7 @@ static void cmd_help(void) {
     console_write_line("  blackhat          Black hat lab — 100 demos (/programs/blackhat/)");
     console_write_line("  whiteteam         White team lab — 100 demos (/programs/whiteteam/)");
     console_write_line("  blueteam          Blue team lab — 100 demos (/programs/blueteam/)");
+    console_write_line("  purpleteam        Purple team lab — 25 attack/detect/fix chains");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1255,6 +1256,10 @@ static void cmd_blueteam(void) {
     cmd_security_lab("/programs/blueteam/", "=== Grid OS Blue Team Lab (100 demos) ===");
 }
 
+static void cmd_purpleteam(void) {
+    cmd_security_lab("/programs/purpleteam/", "=== Grid OS Purple Team Lab (25 chains) ===");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -2081,6 +2086,8 @@ void shell_dispatch_line(char *line) {
         cmd_whiteteam();
     } else if (equals(argv[0], "blueteam")) {
         cmd_blueteam();
+    } else if (equals(argv[0], "purpleteam")) {
+        cmd_purpleteam();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {

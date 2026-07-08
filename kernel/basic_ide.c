@@ -1246,6 +1246,7 @@ static void cmd_help(void) {
     console_write_line("  :blackhat             black hat lab (100 offensive demos)");
     console_write_line("  :whiteteam            white team lab (100 ethical demos)");
     console_write_line("  :blueteam             blue team lab (100 defender demos)");
+    console_write_line("  :purpleteam           purple team (25 attack/detect/fix chains)");
     console_write_line("  :tutorial             interactive GridBASIC walkthrough");
     console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
     console_write_line("  Programs are limited to 65535 bytes for :run/:save/:compile");
@@ -1309,6 +1310,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (sequal(cmd, "blackhat")) { run_shell_line(e, "blackhat"); return 1; }
     if (sequal(cmd, "whiteteam")) { run_shell_line(e, "whiteteam"); return 1; }
     if (sequal(cmd, "blueteam")) { run_shell_line(e, "blueteam"); return 1; }
+    if (sequal(cmd, "purpleteam")) { run_shell_line(e, "purpleteam"); return 1; }
     if (sequal(cmd, "tutorial") || sequal(cmd, "t")) { cmd_tutorial_steps(e); return 1; }
     if (starts_with(cmd, "compile ")) { cmd_compile(e, cmd + 8); return 1; }
     if (starts_with(cmd, "compile")) { cmd_compile(e, cmd + 7); return 1; }

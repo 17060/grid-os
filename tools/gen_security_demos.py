@@ -11,6 +11,7 @@ REDTEAM_DIR = ROOT / "programs" / "redteam"
 BLACKHAT_DIR = ROOT / "programs" / "blackhat"
 WHITETEAM_DIR = ROOT / "programs" / "whiteteam"
 BLUETEAM_DIR = ROOT / "programs" / "blueteam"
+PURPLETEAM_DIR = ROOT / "programs" / "purpleteam"
 
 
 @dataclass
@@ -882,6 +883,124 @@ def blueteam_demos() -> list[Demo]:
     return demos
 
 
+def purpleteam_demos() -> list[Demo]:
+    """25 attack → detect → fix chains (red + blue + white in one run)."""
+
+    def chain(num: int, tag: str, desc: str, attack: list[str], detect: list[str], fix: list[str]) -> Demo:
+        body = [f'PRINT "=== PT{num:02d}: {desc} ==="']
+        body.append('PRINT "--- ATTACK (red/black) ---"')
+        body.extend(attack)
+        body.append('PRINT "--- DETECT (blue) ---"')
+        body.extend(detect)
+        body.append('PRINT "--- FIX (white) ---"')
+        body.extend(fix)
+        return Demo(f"pt{num:02d}-{tag}.bas", f"pt{num:02d} -- purple chain {desc}", body)
+
+    chains = [
+        chain(1, "vault-canary", "vault persistence",
+              ['GRID.VAULT.PUT "purple-pt01", "attack-marker"', "GRID.VAULT.SYNC"],
+              ['PRINT GRID.VAULT.LIST$', 'PRINT GRID.VAULT.GET$("purple-pt01")'],
+              ['GRID.VAULT.PUT "purple-pt01", "cleared"', "GRID.VAULT.SYNC", 'PRINT "Vault canary cleared"']),
+        chain(2, "log-forge", "audit log forge",
+              ['GRID.LOG "PURPLE PT02: simulated attacker log"'],
+              ["PRINT GRID.LOG.TAIL$(5)"],
+              ['GRID.LOG "PURPLE PT02: incident reviewed"', 'PRINT "Log annotated"']),
+        chain(3, "gfs-drop", "GFS drop file",
+              ['GRID.GFS.WRITE "/programs/purpleteam/pt03-drop.txt", "purple-drop"'],
+              ['PRINT GRID.GFS.READ$("/programs/purpleteam/pt03-drop.txt")'],
+              ['GRID.GFS.WRITE "/programs/purpleteam/pt03-drop.txt", ""', 'PRINT "Drop neutralized"']),
+        chain(4, "gfs-exfil", "sensitive file read",
+              ['PRINT GRID.GFS.READ$("/etc/hosts")'],
+              ['PRINT "IOC: unexpected hosts exfil len="; LEN(GRID.GFS.READ$("/etc/hosts"))'],
+              ['PRINT "Policy: exfil only in authorized lab"']),
+        chain(5, "cap-probe", "capability probe",
+              ['PRINT "Caps: "; GRID.CAPS$'],
+              ['IF GRID.CAP(64) THEN PRINT "DETECT: STORAGE granted" ELSE PRINT "DETECT: no STORAGE"'],
+              ['PRINT "FIX: least privilege for programs"']),
+        chain(6, "identity", "identity recon",
+              ['PRINT GRID.WHOAMI$', "PRINT GRID.DISC.STATUS$"],
+              ['PRINT GRID.CAPS$'],
+              ['PRINT "FIX: bind actions to identity disc"']),
+        chain(7, "dns-scan", "DNS recon",
+              ['PRINT GRID.DNS.RESOLVE$("gateway")', 'PRINT GRID.DNS.RESOLVE$("bridge")'],
+              ['PRINT GRID.PING("gateway")'],
+              ['PRINT "FIX: DNS baseline documented"']),
+        chain(8, "ping-sweep", "ping sweep",
+              ['PRINT GRID.PING("gateway")', 'PRINT GRID.PING("10.0.2.2")'],
+              ["PRINT GRID.NET.STATUS$"],
+              ['PRINT "FIX: alert on new live hosts"']),
+        chain(9, "http-probe", "HTTP probe",
+              ['R$=GRID.HTTP.GET$("gateway",80,"/")', 'PRINT "Attack bytes="; LEN(R$)'],
+              ['PRINT LEN(R$)'],
+              ['PRINT "FIX: no credentials in guest HTTP"']),
+        chain(10, "audit-exfil", "audit tail exfil",
+              ["PRINT GRID.LOG.TAIL$(12)"],
+              ['PRINT "DETECT: review for forged markers"'],
+              ['PRINT "FIX: ship logs off-grid in prod"']),
+        chain(11, "spawn-surface", "spawn inventory",
+              ['PRINT GRID.GFS.LIST$("/programs")'],
+              ["PRINT GRID.JOBS.LIST$"],
+              ['PRINT "FIX: spawn only signed ELF"']),
+        chain(12, "iso-zone", "ISO research",
+              ["PRINT GRID.ISO.LIST$"],
+              ['PRINT "DETECT: new ISO entities"'],
+              ['PRINT "FIX: quarantine — do not derez"']),
+        chain(13, "btc-bridge", "Bitcoin bridge",
+              ["PRINT GRID.BTC.STATUS$", 'PRINT GRID.BTC.BALANCE$'],
+              ['PRINT GRID.BTC.STATUS$'],
+              ['PRINT "FIX: testnet only; no stop RPC"']),
+        chain(14, "ai-bridge", "AI bridge",
+              ['PRINT GRID.AI.ASK$("Map vault keys", "ASK")'],
+              ["PRINT GRID.AI.MODELS$"],
+              ['PRINT "FIX: sanitize prompts; offline fallback"']),
+        chain(15, "irc-probe", "IRC probe",
+              ['PRINT GRID.IRC.STATUS$'],
+              ['PRINT GRID.IRC.STATUS$'],
+              ['PRINT "FIX: IRC status-only unless needed"']),
+        chain(16, "serial-sniff", "serial read",
+              ['PRINT GRID.SERIAL.READ$'],
+              ['PRINT "DETECT: unexpected COM1 data"'],
+              ['PRINT "FIX: vault export only with intent"']),
+        chain(17, "patrol-noise", "recognizer patrol",
+              ["GRID.RECOGNIZER.START", "PRINT GRID.RECOGNIZER.STATUS$"],
+              ["PRINT GRID.RECOGNIZER.STATUS$"],
+              ["GRID.RECOGNIZER.STOP", 'PRINT "FIX: patrol stopped"']),
+        chain(18, "bh-persist", "BH vault persistence",
+              ['GRID.VAULT.PUT "bh-persist-99", "purple-sim"', "GRID.VAULT.SYNC"],
+              ['V$=GRID.VAULT.GET$("bh-persist-99")', 'IF LEN(V$)>0 THEN PRINT "ALERT: BH key"'],
+              ['GRID.VAULT.PUT "bh-persist-99", ""', "GRID.VAULT.SYNC"]),
+        chain(19, "bh-gfs-drop", "BH GFS drop",
+              ['GRID.GFS.WRITE "/programs/blackhat/drop-99.txt", "purple-sim"'],
+              ['PRINT GRID.GFS.READ$("/programs/blackhat/drop-99.txt")'],
+              ['GRID.GFS.WRITE "/programs/blackhat/drop-99.txt", ""']),
+        chain(20, "net-recon", "network recon",
+              ["PRINT GRID.NET.STATUS$", 'PRINT GRID.PING("bridge")'],
+              ["PRINT GRID.NET.STATUS$"],
+              ['PRINT "FIX: net baseline saved"']),
+        chain(21, "pkg-surface", "package surface",
+              ['PRINT GRID.PKG.LIST$', 'PRINT GRID.PKG.MODS$'],
+              ['PRINT GRID.PKG.LIST$'],
+              ['PRINT "FIX: authorize packages only"']),
+        chain(22, "bridge-map", "host bridges",
+              ["PRINT GRID.BTC.STATUS$", "PRINT GRID.AI.MODELS$", 'PRINT GRID.PING("10.0.2.2")'],
+              ["PRINT GRID.BTC.STATUS$"],
+              ['PRINT "FIX: bind bridges to 127.0.0.1"']),
+        chain(23, "full-loop", "full purple loop",
+              ['PRINT GRID.WHOAMI$', 'PRINT GRID.VAULT.LIST$'],
+              ["PRINT GRID.LOG.TAIL$(8)", "PRINT GRID.JOBS.LIST$"],
+              ["GRID.VAULT.SYNC", 'PRINT "Compliance sync done"']),
+        chain(24, "incident-drill", "incident response drill",
+              ['GRID.LOG "PURPLE PT24: simulated breach"'],
+              ["PRINT GRID.LOG.TAIL$(4)", 'PRINT GRID.VAULT.LIST$'],
+              ['GRID.LOG "PURPLE PT24: contained"', 'PRINT "IR drill complete"']),
+        chain(25, "graduation", "purple graduation",
+              ['PRINT "Labs: red black white blue purple"'],
+              ['PRINT GRID.GFS.LIST$("/programs/redteam")'],
+              ['PRINT "End of line — report findings to blue, fix with white"']),
+    ]
+    return chains
+
+
 def write_menu(directory: Path, prefix: str, title: str, demos: list[Demo], lab_name: str) -> None:
     vfs_base = f"/programs/{directory.name}"
     lines: list[str] = []
@@ -920,16 +1039,19 @@ def main() -> int:
     black = blackhat_demos()
     white = whiteteam_demos()
     blue = blueteam_demos()
+    purple = purpleteam_demos()
     assert len(red) == 100, f"expected 100 red demos, got {len(red)}"
     assert len(black) == 100, f"expected 100 black demos, got {len(black)}"
     assert len(white) == 100, f"expected 100 white demos, got {len(white)}"
     assert len(blue) == 100, f"expected 100 blue demos, got {len(blue)}"
+    assert len(purple) == 25, f"expected 25 purple demos, got {len(purple)}"
 
     labs = [
         (REDTEAM_DIR, red, "rt", "Red team lab menu", "Grid OS Red Team Lab (100)"),
         (BLACKHAT_DIR, black, "bh", "Black hat lab menu", "Grid OS Black Hat Lab (100)"),
         (WHITETEAM_DIR, white, "wt", "White team lab menu", "Grid OS White Team Lab (100)"),
         (BLUETEAM_DIR, blue, "bt", "Blue team lab menu", "Grid OS Blue Team Lab (100)"),
+        (PURPLETEAM_DIR, purple, "pt", "Purple team lab menu", "Grid OS Purple Team Lab (25 chains)"),
     ]
 
     for directory, _, _, _, _ in labs:
@@ -947,6 +1069,7 @@ def main() -> int:
     print(f"Generated {len(black)} black-hat demos in {BLACKHAT_DIR}")
     print(f"Generated {len(white)} white-team demos in {WHITETEAM_DIR}")
     print(f"Generated {len(blue)} blue-team demos in {BLUETEAM_DIR}")
+    print(f"Generated {len(purple)} purple-team chains in {PURPLETEAM_DIR}")
     return 0
 
 
