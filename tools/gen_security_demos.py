@@ -12,6 +12,7 @@ BLACKHAT_DIR = ROOT / "programs" / "blackhat"
 WHITETEAM_DIR = ROOT / "programs" / "whiteteam"
 BLUETEAM_DIR = ROOT / "programs" / "blueteam"
 PURPLETEAM_DIR = ROOT / "programs" / "purpleteam"
+GREENTEAM_DIR = ROOT / "programs" / "greenteam"
 
 
 @dataclass
@@ -1001,6 +1002,153 @@ def purpleteam_demos() -> list[Demo]:
     return chains
 
 
+def greenteam_demos() -> list[Demo]:
+    """75 DevSecOps / secure-build green-hat lab demos (gt01-gt75)."""
+    demos: list[Demo] = []
+
+    secure_code = [
+        (1, "no-secrets", "Never hardcode RPC passwords in .bas"),
+        (2, "validate-input", "Validate path$ before GFS.READ$"),
+        (3, "error-check", "Check LEN() after GFS reads"),
+        (4, "cap-before-io", "Check GRID.CAP before vault/GFS writes"),
+        (5, "small-functions", "Keep SUBs focused — one task each"),
+        (6, "line-numbers", "Use stable line numbers for patches"),
+        (7, "rem-docs", "REM documents intent for reviewers"),
+        (8, "no-goto-spaghetti", "Prefer structured IF/FOR over GOTO"),
+        (9, "const-for-config", "Use CONST for fixed config strings"),
+        (10, "end-always", "Every program path should reach END"),
+    ]
+    for num, tag, msg in secure_code:
+        demos.append(Demo(
+            f"gt{num:02d}-code-{tag}.bas",
+            f"gt{num:02d} -- secure coding {tag}",
+            [f'PRINT "=== GT{num:02d}: Secure code ==="', f'PRINT "{msg}"'],
+        ))
+
+    build_hints = [
+        (11, "make-disk", "make disk && make seed-disk"),
+        (12, "make-run", "make run — QEMU lab only"),
+        (13, "compile-hint", "Esc :compile name — bytecode .grid"),
+        (14, "bytecode-run", "basic run /programs/name.grid"),
+        (15, "test-host", "make test-host-basic before push"),
+        (16, "test-e2e", "make test-e2e after kernel edits"),
+        (17, "gen-demos", "make gen-security-demos"),
+        (18, "lint-self", "PRINT ERR$ after failed :run"),
+        (19, "version-pin", "Grid OS 7.1.1 — match docs"),
+        (20, "repro-build", "Same seed-disk for reproducible GFS"),
+    ]
+    for num, tag, msg in build_hints:
+        demos.append(Demo(
+            f"gt{num:02d}-build-{tag}.bas",
+            f"gt{num:02d} -- build {tag}",
+            [f'PRINT "=== GT{num:02d}: Build ==="', f'PRINT "{msg}"', 'PRINT GRID.STATUS$'],
+        ))
+
+    for num in range(21, 31):
+        demos.append(Demo(
+            f"gt{num:02d}-pkg-manifest-{num}.bas",
+            f"gt{num:02d} -- package manifest review",
+            [
+                f'PRINT "=== GT{num:02d}: Pkg integrity ==="',
+                'PRINT GRID.PKG.LIST$',
+                'M$ = GRID.GFS.READ$("/packages/flynn-ide-tools/MANIFEST")',
+                'PRINT "MANIFEST bytes="; LEN(M$)',
+            ],
+        ))
+
+    vault_devops = [
+        (31, "sync-after-change"), (32, "backup-reminder"), (33, "no-plaintext-pw"),
+        (34, "key-naming"), (35, "audit-vault-list"), (36, "export-offhours"),
+        (37, "import-verify"), (38, "cycles-track"), (39, "autoexec-review"),
+        (40, "purge-canaries"),
+    ]
+    for num, tag in vault_devops:
+        body = [f'PRINT "=== GT{num:02d}: Vault DevSecOps ==="', 'PRINT GRID.VAULT.LIST$']
+        if tag == "sync-after-change":
+            body.append('PRINT "After PUT: GRID.VAULT.SYNC"')
+        elif tag == "purge-canaries":
+            body += ['PRINT GRID.VAULT.GET$("redteam-canary")', 'PRINT "Remove lab canaries before prod"']
+        elif tag == "autoexec-review":
+            body.append('PRINT GRID.VAULT.GET$("autoexec")')
+        else:
+            body.append(f'PRINT "Policy: {tag.replace("-", " ")}"')
+        demos.append(Demo(f"gt{num:02d}-vault-{tag}.bas", f"gt{num:02d} -- vault {tag}", body))
+
+    gfs_safe = [
+        (41, "/programs"), (42, "/programs/hello.bas"), (43, "/etc/hosts"),
+        (44, "/flynn/motd"), (45, "/source"), (46, "/packages"),
+        (47, "/programs/redteam"), (48, "/programs/greenteam"), (49, "/grid"), (50, "/"),
+    ]
+    for num, path in gfs_safe:
+        tag = path.strip("/").replace("/", "-") or "root"
+        demos.append(Demo(
+            f"gt{num:02d}-gfs-path-{tag[:20]}.bas",
+            f"gt{num:02d} -- safe GFS list {path}",
+            [
+                f'PRINT "=== GT{num:02d}: GFS path ==="',
+                f'PRINT GRID.GFS.LIST$("{path}")',
+                'PRINT "Validate path before write"',
+            ],
+        ))
+
+    spawn_build = [
+        (51, "gridsh"), (52, "discinfo"), (53, "gridprog"), (54, "lightcycle"), (55, "gridloop"),
+    ]
+    for num, prog in spawn_build:
+        demos.append(Demo(
+            f"gt{num:02d}-spawn-{prog}.bas",
+            f"gt{num:02d} -- ring-3 build {prog}",
+            [
+                f'PRINT "=== GT{num:02d}: Ring-3 ==="',
+                f'PRINT "Build: make user PROG={prog}"',
+                'PRINT GRID.GFS.LIST$("/programs")',
+            ],
+        ))
+
+    for num in range(56, 61):
+        demos.append(Demo(
+            f"gt{num:02d}-shift-left-{num}.bas",
+            f"gt{num:02d} -- shift-left security",
+            [
+                f'PRINT "=== GT{num:02d}: Shift-left ==="',
+                'PRINT "Security in design — not bolt-on"',
+                'PRINT GRID.CAPS$',
+            ],
+        ))
+
+    net_dev = [
+        (61, "dns-docs"), (62, "ping-smoke"), (63, "http-local"), (64, "no-tls-guest"),
+        (65, "hosts-file"), (66, "bridge-doc"), (67, "irc-dev"), (68, "serial-dev"),
+        (69, "firewall-host"), (70, "qemu-slirp"),
+    ]
+    for num, tag in net_dev:
+        stmts = [f'PRINT "=== GT{num:02d}: Net dev ==="']
+        if tag == "dns-docs":
+            stmts.append('PRINT GRID.DNS.RESOLVE$("gateway")')
+        elif tag == "ping-smoke":
+            stmts.append('PRINT GRID.PING("gateway")')
+        elif tag == "http-local":
+            stmts.append('PRINT LEN(GRID.HTTP.GET$("gateway",80,"/"))')
+        elif tag == "hosts-file":
+            stmts.append('PRINT GRID.GFS.READ$("/etc/hosts")')
+        else:
+            stmts.append(f'PRINT "Dev note: {tag}"')
+        demos.append(Demo(f"gt{num:02d}-net-{tag}.bas", f"gt{num:02d} -- net {tag}", stmts))
+
+    green_combos = [
+        (71, "ci-smoke", ['PRINT GRID.STATUS$', 'PRINT GRID.PING("gateway")']),
+        (72, "pkg-audit", ['PRINT GRID.PKG.LIST$', 'PRINT GRID.PKG.MODS$']),
+        (73, "gfs-inventory", ['PRINT GRID.GFS.LIST$("/programs")', 'PRINT GRID.GFS.LIST$("/programs/greenteam")']),
+        (74, "dev-secure-default", ['PRINT GRID.WHOAMI$', 'PRINT GRID.CAPS$', "PRINT GRID.LOG.TAIL$(4)"]),
+        (75, "green-graduation", ['PRINT "Green hat lab 75/75"', 'PRINT "Build secure — ship safe"']),
+    ]
+    for num, tag, stmts in green_combos:
+        body = [f'PRINT "=== GT{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"gt{num:02d}-{tag}.bas", f"gt{num:02d} -- {tag}", body))
+
+    return demos
+
+
 def write_menu(directory: Path, prefix: str, title: str, demos: list[Demo], lab_name: str) -> None:
     vfs_base = f"/programs/{directory.name}"
     lines: list[str] = []
@@ -1040,11 +1188,13 @@ def main() -> int:
     white = whiteteam_demos()
     blue = blueteam_demos()
     purple = purpleteam_demos()
+    green = greenteam_demos()
     assert len(red) == 100, f"expected 100 red demos, got {len(red)}"
     assert len(black) == 100, f"expected 100 black demos, got {len(black)}"
     assert len(white) == 100, f"expected 100 white demos, got {len(white)}"
     assert len(blue) == 100, f"expected 100 blue demos, got {len(blue)}"
     assert len(purple) == 25, f"expected 25 purple demos, got {len(purple)}"
+    assert len(green) == 75, f"expected 75 green demos, got {len(green)}"
 
     labs = [
         (REDTEAM_DIR, red, "rt", "Red team lab menu", "Grid OS Red Team Lab (100)"),
@@ -1052,6 +1202,7 @@ def main() -> int:
         (WHITETEAM_DIR, white, "wt", "White team lab menu", "Grid OS White Team Lab (100)"),
         (BLUETEAM_DIR, blue, "bt", "Blue team lab menu", "Grid OS Blue Team Lab (100)"),
         (PURPLETEAM_DIR, purple, "pt", "Purple team lab menu", "Grid OS Purple Team Lab (25 chains)"),
+        (GREENTEAM_DIR, green, "gt", "Green team lab menu", "Grid OS Green Hat Lab (75 DevSecOps)"),
     ]
 
     for directory, _, _, _, _ in labs:
@@ -1070,6 +1221,7 @@ def main() -> int:
     print(f"Generated {len(white)} white-team demos in {WHITETEAM_DIR}")
     print(f"Generated {len(blue)} blue-team demos in {BLUETEAM_DIR}")
     print(f"Generated {len(purple)} purple-team chains in {PURPLETEAM_DIR}")
+    print(f"Generated {len(green)} green-hat demos in {GREENTEAM_DIR}")
     return 0
 
 
