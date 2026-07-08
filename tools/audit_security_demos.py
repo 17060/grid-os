@@ -45,6 +45,12 @@ STATIC_SEED = {
     "/programs/grid2d.bas",
     "/programs/demo.bas",
     "/programs/btc-demo.bas",
+    "/programs/gridsh",
+    "/programs/discinfo",
+    "/programs/gridprog",
+    "/programs/lightcycle",
+    "/programs/gridloop",
+    "/programs/4k-ide-demo.bas",
 }
 
 
@@ -68,7 +74,41 @@ def seeded_paths() -> set[str]:
         if lab_dir.is_dir():
             for bas in lab_dir.glob("*.bas"):
                 paths.add(f"/programs/{lab}/{bas.name}")
+    enc_dir = PROGRAMS / "encyclopedia"
+    if enc_dir.is_dir():
+        for bas in enc_dir.glob("*.bas"):
+            paths.add(f"/programs/encyclopedia/{bas.name}")
     return paths
+
+
+def count_seed_files() -> int:
+    """Mirror gfs_seed.py slot assignment (static + packages + labs + extras)."""
+    total = 21  # slots 1-21 in gfs_seed.py
+    packages = ROOT / "packages"
+    if packages.is_dir():
+        seen: set[str] = set()
+        for manifest in packages.glob("*/MANIFEST"):
+            pkg_name = manifest.parent.name
+            seen.add(f"/packages/{pkg_name}/MANIFEST")
+            for raw in manifest.read_text(encoding="utf-8").splitlines():
+                line = raw.strip()
+                if line.startswith("file="):
+                    seen.add(line[5:].strip())
+                elif line.startswith("mod="):
+                    parts = line[4:].split(":", 2)
+                    if len(parts) >= 2:
+                        seen.add(parts[1].strip())
+        total += len(seen)
+    for lab in LABS:
+        lab_dir = PROGRAMS / lab
+        if lab_dir.is_dir():
+            total += len(list(lab_dir.glob("*.bas")))
+    if (PROGRAMS / "4k-ide-demo.bas").is_file():
+        total += 1
+    enc_dir = PROGRAMS / "encyclopedia"
+    if enc_dir.is_dir():
+        total += len(list(enc_dir.glob("*.bas")))
+    return total
 
 
 def vfs_tag(path: str) -> str:
@@ -146,20 +186,10 @@ def audit() -> int:
             warnings.append(f"orangeteam: {count} demos share gfs tag '{tag}'")
 
     # Inode budget (matches gfs_seed slot assignment)
-    slot_count = 21 + len(list((ROOT / "packages").glob("*/MANIFEST"))) * 3  # rough
     try:
         from gfs_common import GFS_INODE_MAX
 
-        demo_files = sum(
-            len(list((PROGRAMS / lab).glob("*.bas")))
-            for lab in LABS
-        )
-        # Recompute accurately: static 21 + packages + all lab bas
-        pkg_files = 0
-        for manifest in (ROOT / "packages").glob("*/MANIFEST"):
-            pkg_files += sum(1 for _ in manifest.read_text().splitlines() if _.strip().startswith(("file=", "mod=")))
-            pkg_files += 1
-        total = 21 + pkg_files + demo_files
+        total = count_seed_files()
         if total > GFS_INODE_MAX:
             errors.append(f"inode overflow: {total} files > GFS_INODE_MAX ({GFS_INODE_MAX})")
         else:

@@ -194,6 +194,10 @@ int pkg_recv_gridlink(void) { return -1; }
 int pkg_run_module(const char *n) { (void)n; return -1; }
 void pkg_format_package_list(char *o, size_t c) { if (c && o) o[0] = '\0'; }
 void pkg_format_module_list(char *o, size_t c) { if (c && o) o[0] = '\0'; }
+void pkg_format_module_list_filtered(char *o, size_t c, const char *cat) {
+    (void)cat;
+    if (c && o) o[0] = '\0';
+}
 
 int iso_evolve(int id) { (void)id; return 0; }
 

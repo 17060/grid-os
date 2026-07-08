@@ -80,9 +80,18 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
-all: $(TARGET)
+all: vbe-profile-check $(TARGET)
+
+.PHONY: vbe-profile-check
+vbe-profile-check:
+	@mkdir -p build
+	@if [ "$(GRIDOS_VBE_4K)" = "1" ]; then want=1; else want=0; fi; \
+	 if [ ! -f build/.vbe_profile ] || [ "$$(cat build/.vbe_profile)" != "$$want" ]; then \
+	   rm -f build/vbe.o build/font8x16.o build/kernel.o build/console.o build/shell.o build/grid-os.bin build/grid-os.elf; \
+	   echo $$want > build/.vbe_profile; \
+	 fi
 
 build:
 	mkdir -p build
@@ -232,7 +241,7 @@ test-host-spawn:
 	@chmod +x tools/spawn_regression.sh
 	@tools/spawn_regression.sh
 
-test-host: test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn
+test-host: build test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn
 
 test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 	@$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

@@ -888,7 +888,7 @@ def blueteam_demos() -> list[Demo]:
         (95, "align-white", ['PRINT "Pair with whiteteam wt91-wt100"']),
         (96, "align-red", ['PRINT "Compare to redteam rt24-full-recon"']),
         (97, "block-bh", ['PRINT "Detect bh-persist keys then delete"']),
-        (98, "restore-gfs", ['PRINT "gfs seed after bh23 drops"']),
+        (98, "restore-gfs", ['PRINT "gfs seed after bh21-bh30 drops"']),
         (99, "close-incident", ['GRID.LOG "BLUE: incident closed"', "PRINT GRID.LOG.TAIL$(3)"]),
         (100, "lab-complete", ['PRINT "Blue team lab 100/100"', 'PRINT GRID.STATUS$']),
     ]
@@ -1272,29 +1272,33 @@ def orangeteam_demos() -> list[Demo]:
             ],
         ))
 
-    hosts = ["gateway", "grid", "bridge", "10.0.2.2", "host", "flynn", "portal", "dns", "qemu", "flynn-grid"]
+    hosts = ["gateway", "grid", "bridge", "10.0.2.2", "host", "flynn", "portal", "dns", "qemu", "localhost"]
     for i, host in enumerate(hosts, start=11):
         demos.append(Demo(
             f"ot{i:02d}-intel-{host.replace('.', '-')}.bas",
             f"ot{i:02d} -- network intel {host}",
             [
                 f'PRINT "=== OT{i:02d}: Net intel ==="',
-                f'PRINT GRID.DNS.RESOLVE$("{host.split("-")[0]}")',
-                f'PRINT GRID.PING("{host.split("-")[0]}")',
+                f'PRINT GRID.DNS.RESOLVE$("{host}")',
+                f'PRINT GRID.PING("{host}")',
             ],
         ))
 
     intel_paths = [
-        (21, "/etc/hosts"), (22, "/flynn/motd"), (23, "/programs/redteam/menu.bas"),
-        (24, "/programs/blackhat/menu.bas"), (25, "/packages/flynn-ide-tools/MANIFEST"),
-        (26, "/grid/recognizer.log"), (27, "/programs/greenteam/menu.bas"),
-        (28, "/programs/yellowteam/menu.bas"), (29, "/programs/orangeteam/menu.bas"),
-        (30, "/programs/greyteam/menu.bas"),
+        (21, "/etc/hosts", "etc-hosts"),
+        (22, "/flynn/motd", "flynn-motd"),
+        (23, "/programs/redteam/menu.bas", "red-menu"),
+        (24, "/programs/blackhat/menu.bas", "black-menu"),
+        (25, "/packages/flynn-ide-tools/MANIFEST", "flynn-manifest"),
+        (26, "/grid/recognizer.log", "recognizer-log"),
+        (27, "/programs/greenteam/menu.bas", "green-menu"),
+        (28, "/programs/yellowteam/menu.bas", "yellow-menu"),
+        (29, "/programs/orangeteam/menu.bas", "orange-menu"),
+        (30, "/programs/greyteam/menu.bas", "grey-menu"),
     ]
-    for num, path in intel_paths:
-        tag = path.strip("/").replace("/", "-").replace(".", "-")
+    for num, path, slug in intel_paths:
         demos.append(Demo(
-            f"ot{num:02d}-intel-gfs-{tag}.bas",
+            f"ot{num:02d}-intel-{slug}.bas",
             f"ot{num:02d} -- GFS intel {path}",
             [
                 f'PRINT "=== OT{num:02d}: GFS intel ==="',
