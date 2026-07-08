@@ -29,7 +29,7 @@ LIBGCC := $(shell $(CC) -print-libgcc-file-name)
 
 DISK_IMAGE = build/grid.img
 DISK_TEST_IMAGE = build/grid-test.img
-DISK_MB    = 16
+DISK_MB    = 128
 
 BOOT_OBJS = build/boot.o build/gdt_load.o build/interrupts.o
 USER_PROGS = gridprog discinfo gridsh lightcycle gridloop
@@ -71,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -83,7 +83,13 @@ $(DISK_IMAGE): | build
 
 disk: $(DISK_IMAGE)
 
-seed-disk: $(TARGET) $(DISK_IMAGE)
+gen-security-demos:
+	python3 tools/gen_security_demos.py
+
+audit-security-demos:
+	python3 tools/audit_security_demos.py
+
+seed-disk: gen-security-demos audit-security-demos $(TARGET) $(DISK_IMAGE)
 	python3 tools/gfs_seed.py
 
 sync-basic-wiki:
@@ -227,6 +233,11 @@ test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 # exit it cleanly, then poweroff (isa-debug-exit -> 3).
 test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	@(sleep 5; printf '\033'; sleep 1; printf 'basictest\n'; sleep 3; printf '\n'; \
+	  sleep 1; printf '10 PRINT "IDE-RUN-OK"\n20 END\n'; sleep 2; \
+	  printf '\033'; sleep 2; printf ':run\n'; sleep 5; printf '\n'; \
+	  sleep 2; printf '\033'; sleep 1; printf ':new\n'; sleep 1; printf '\n'; \
+	  sleep 1; printf '10 PRINT "hello grid"\n20 END\n'; sleep 2; \
+	  printf '\033'; sleep 2; printf ':run\n'; sleep 5; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'net ping gateway\n'; sleep 4; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'pkg mods\n'; sleep 3; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'spawn gridsh\n'; sleep 2; \
@@ -238,6 +249,9 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 		> build/test-e2e.log 2>&1; \
 	rc=$$?; \
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
+	grep -q '=== GridBASIC run ===' build/test-e2e.log || { echo "IDE :run banner missing"; exit 1; }; \
+	grep -q 'IDE-RUN-OK' build/test-e2e.log || { echo "IDE buffer :run output missing"; exit 1; }; \
+	grep -Eq 'hello grid|GridBASIC 7\.(0|1\.1) online|grid line ' build/test-e2e.log || { echo "IDE buffer hello output missing"; exit 1; }; \
 	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
 	grep -q 'Reply received' build/test-e2e.log || { echo "net ping output missing"; exit 1; }; \
 	grep -q 'disc-status' build/test-e2e.log || { echo "pkg mods output missing"; exit 1; }; \

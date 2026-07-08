@@ -1,0 +1,5 @@
+10 REM ot41 -- ioc-pack
+20 PRINT "=== OT41: ioc-pack ==="
+30 PRINT GRID.VAULT.LIST$
+40 PRINT GRID.LOG.TAIL$(10)
+50 END

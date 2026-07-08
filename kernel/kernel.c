@@ -42,20 +42,21 @@ void kernel_main(void) {
     sched_init();
     pci_init();
     mouse_init();
-    storage_init();
     disc_init();
     speaker_init();
     recognizer_init();
-    net_init();
-    dns_init();
-    tcp_init();
 
     log_event("Grid OS 7.1.1 boot");
 
+    disk_init();
+    storage_init();
+    gfs_init();
+
     __asm__ volatile("sti");
 
-    disk_init();
-    gfs_init();
+    net_init();
+    dns_init();
+    tcp_init();
     pkg_init();
 
     shell_run();

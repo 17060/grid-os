@@ -1,0 +1,5 @@
+10 REM yt45 -- bridge-audit
+20 PRINT "=== YT45: bridge-audit ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.IRC.STATUS$
+50 END

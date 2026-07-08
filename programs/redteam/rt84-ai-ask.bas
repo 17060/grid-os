@@ -1,0 +1,4 @@
+10 REM rt84 -- AI ask
+20 PRINT "=== RT84 ==="
+30 PRINT GRID.AI.ASK$("What is GRID.PING?", "EXPLAIN")
+40 END

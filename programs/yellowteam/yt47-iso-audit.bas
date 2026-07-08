@@ -1,0 +1,5 @@
+10 REM yt47 -- iso-audit
+20 PRINT "=== YT47: iso-audit ==="
+30 PRINT GRID.ISO.LIST$
+40 PRINT GRID.LOG.TAIL$(6)
+50 END

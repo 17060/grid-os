@@ -12,7 +12,7 @@ static uint64_t kernel_extra_pt[8][512] __attribute__((aligned(PAGE_SIZE)));
 static int kernel_extra_pd_used = 0;
 static int kernel_extra_pt_used = 0;
 
-static uint8_t dma_pool[65536] __attribute__((aligned(PAGE_SIZE)));
+static uint8_t dma_pool[131072] __attribute__((aligned(PAGE_SIZE)));
 static size_t dma_pool_used = 0;
 
 static uint64_t *active_pml4 = kernel_pml4;

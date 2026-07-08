@@ -1,0 +1,5 @@
+10 REM yt41 -- audit-pack
+20 PRINT "=== YT41: audit-pack ==="
+30 PRINT GRID.LOG.TAIL$(12)
+40 PRINT GRID.VAULT.LIST$
+50 END

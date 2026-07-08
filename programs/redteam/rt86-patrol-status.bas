@@ -1,0 +1,4 @@
+10 REM rt86 -- patrol status
+20 PRINT "=== RT86 ==="
+30 PRINT GRID.RECOGNIZER.STATUS$
+40 END

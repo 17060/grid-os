@@ -2,6 +2,18 @@
 
 Practical recipes for Flynn's Grid — modules, packages, bytecode, and duels.
 
+## Security lab campaign
+
+700 hat-color demos ship on the Flynn disk. From shell:
+
+```text
+grid> whiteteam
+grid> basic run /programs/purpleteam/pt01-vault-canary.bas
+grid> basic run /programs/greyteam/gy94-disclose.bas
+```
+
+See [SECURITY_LABS.md](../SECURITY_LABS.md) for hat colors, suggested campaigns, and developer workflow (`make audit-security-demos`).
+
 ## Run a seeded IDE module
 
 From the Flynn shell:

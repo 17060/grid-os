@@ -1,0 +1,4 @@
+10 REM rt78 -- IDE modules
+20 PRINT "=== RT78 ==="
+30 PRINT GRID.PKG.MODS$
+40 END

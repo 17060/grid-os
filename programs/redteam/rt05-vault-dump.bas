@@ -1,0 +1,5 @@
+10 REM rt05 -- vault dump
+20 PRINT "=== RT05: Vault ==="
+30 PRINT GRID.VAULT.LIST$
+40 PRINT GRID.VAULT.GET$("motd")
+50 END

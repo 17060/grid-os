@@ -163,6 +163,15 @@ static void cmd_help(void) {
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
     console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
+    console_write_line("  redteam           Red team lab — 100 demos (/programs/redteam/)");
+    console_write_line("  blackhat          Black hat lab — 100 demos (/programs/blackhat/)");
+    console_write_line("  whiteteam         White team lab — 100 demos (/programs/whiteteam/)");
+    console_write_line("  blueteam          Blue team lab — 100 demos (/programs/blueteam/)");
+    console_write_line("  purpleteam        Purple team lab — 25 attack/detect/fix chains");
+    console_write_line("  greenteam         Green hat lab — 75 DevSecOps demos (/programs/greenteam/)");
+    console_write_line("  yellowteam        Yellow hat lab — 50 audit/compliance demos");
+    console_write_line("  orangeteam        Orange hat lab — 50 threat intel demos");
+    console_write_line("  greyteam          Grey hat lab — 100 gray-ethics demos");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1198,6 +1207,79 @@ static int path_ends_with(const char *path, const char *suffix) {
     return equals(path + plen - slen, suffix);
 }
 
+static void cmd_security_lab(const char *vfs_prefix, const char *title) {
+    char paths[128][GFS_PATH_MAX];
+    int n = gfs_list_paths(vfs_prefix, paths, 128);
+    int shown = 0;
+
+    console_set_color(GRID_COL_TITLE);
+    console_write_line(title);
+    console_set_color(GRID_COL_DEFAULT);
+    console_write("Run: basic run ");
+    console_write_line(vfs_prefix);
+    console_write("Menu: basic run ");
+    console_write(vfs_prefix);
+    console_write_line("menu.bas");
+    console_write_line("");
+
+    for (int i = 0; i < n; ++i) {
+        if (!path_ends_with(paths[i], ".bas")) {
+            continue;
+        }
+        if (path_ends_with(paths[i], "menu.bas")) {
+            continue;
+        }
+        shown++;
+        console_write("  ");
+        console_write_line(paths[i]);
+    }
+    if (shown == 0) {
+        console_set_color(GRID_COL_DIM);
+        console_write_line("  (no demos — run: make seed-disk)");
+        console_set_color(GRID_COL_DEFAULT);
+    } else {
+        console_write_line("");
+        console_write_line("  Demos listed above. QEMU lab only.");
+    }
+    console_write_line("Host bridges: make btc-bridge ai-bridge (testnet/lab)");
+}
+
+static void cmd_redteam(void) {
+    cmd_security_lab("/programs/redteam/", "=== Grid OS Red Team Lab (100 demos) ===");
+}
+
+static void cmd_blackhat(void) {
+    cmd_security_lab("/programs/blackhat/", "=== Grid OS Black Hat Lab (100 demos) ===");
+}
+
+static void cmd_whiteteam(void) {
+    cmd_security_lab("/programs/whiteteam/", "=== Grid OS White Team Lab (100 demos) ===");
+}
+
+static void cmd_blueteam(void) {
+    cmd_security_lab("/programs/blueteam/", "=== Grid OS Blue Team Lab (100 demos) ===");
+}
+
+static void cmd_purpleteam(void) {
+    cmd_security_lab("/programs/purpleteam/", "=== Grid OS Purple Team Lab (25 chains) ===");
+}
+
+static void cmd_greenteam(void) {
+    cmd_security_lab("/programs/greenteam/", "=== Grid OS Green Hat Lab (75 DevSecOps demos) ===");
+}
+
+static void cmd_yellowteam(void) {
+    cmd_security_lab("/programs/yellowteam/", "=== Grid OS Yellow Hat Lab (50 audit demos) ===");
+}
+
+static void cmd_orangeteam(void) {
+    cmd_security_lab("/programs/orangeteam/", "=== Grid OS Orange Hat Lab (50 intel demos) ===");
+}
+
+static void cmd_greyteam(void) {
+    cmd_security_lab("/programs/greyteam/", "=== Grid OS Grey Hat Lab (100 gray demos) ===");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -1233,7 +1315,7 @@ static void cmd_samples(void) {
     console_write_line("  subdemo.bas    SUB / FUNCTION / CALL");
     console_write_line("  grid2d.bas     2D DIM arrays");
     console_write_line("  advancedemo.bas CONST / DATA / SELECT CASE");
-    console_write_line("  netdemo.bas vaultdemo.bas aidemo.bas httpdemo.bas");
+    console_write_line("  netdemo.bas vaultdemo.bas aidemo.bas httpdemo.bas btc-demo.bas");
     console_write_line("");
     console_write_line("Run: basic run /programs/hello.bas   or   Esc :load hello");
 }
@@ -2016,6 +2098,24 @@ void shell_dispatch_line(char *line) {
         cmd_tutorial();
     } else if (equals(argv[0], "samples")) {
         cmd_samples();
+    } else if (equals(argv[0], "redteam")) {
+        cmd_redteam();
+    } else if (equals(argv[0], "blackhat")) {
+        cmd_blackhat();
+    } else if (equals(argv[0], "whiteteam")) {
+        cmd_whiteteam();
+    } else if (equals(argv[0], "blueteam")) {
+        cmd_blueteam();
+    } else if (equals(argv[0], "purpleteam")) {
+        cmd_purpleteam();
+    } else if (equals(argv[0], "greenteam")) {
+        cmd_greenteam();
+    } else if (equals(argv[0], "yellowteam")) {
+        cmd_yellowteam();
+    } else if (equals(argv[0], "orangeteam")) {
+        cmd_orangeteam();
+    } else if (equals(argv[0], "greyteam")) {
+        cmd_greyteam();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {

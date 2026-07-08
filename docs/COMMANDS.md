@@ -119,6 +119,22 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `samples` | List GridBASIC sample programs on Flynn disk |
 | `basictest` | Deterministic interpreter self-test |
 
+### Security labs (QEMU only)
+
+| Command | Description |
+|---------|-------------|
+| `redteam` | Red team lab — 100 offensive recon demos |
+| `blackhat` | Black hat lab — 100 malicious-pattern demos |
+| `whiteteam` | White team lab — 100 ethical/defensive demos |
+| `blueteam` | Blue team lab — 100 SOC detection demos |
+| `purpleteam` | Purple team — 25 attack/detect/fix chains |
+| `greenteam` | Green hat — 75 DevSecOps demos |
+| `yellowteam` | Yellow hat — 50 audit/compliance demos |
+| `orangeteam` | Orange hat — 50 threat intel demos |
+| `greyteam` | Grey hat — 100 gray-ethics demos |
+
+Full guide: [docs/SECURITY_LABS.md](SECURITY_LABS.md)
+
 ### Grid AI
 
 | Command | Description |

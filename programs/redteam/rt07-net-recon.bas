@@ -1,0 +1,5 @@
+10 REM rt07 -- network status
+20 PRINT "=== RT07: Net ==="
+30 PRINT GRID.NET.STATUS$
+40 PRINT GRID.STATUS$
+50 END

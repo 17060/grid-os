@@ -227,7 +227,7 @@ static int setup_queue(void) {
     blk.used = (vring_used_t *)memory_dma_alloc(sizeof(vring_used_t), PAGE_SIZE);
     blk.req_hdr = (virtio_blk_req_hdr_t *)memory_dma_alloc(sizeof(virtio_blk_req_hdr_t), PAGE_SIZE);
     blk.data_buf = (uint8_t *)memory_dma_alloc(VIRTIO_SECTOR_SIZE, PAGE_SIZE);
-    blk.req_status = (uint8_t *)memory_dma_alloc(1, 1);
+    blk.req_status = (uint8_t *)memory_dma_alloc(PAGE_SIZE, PAGE_SIZE);
 
     if (!blk.desc || !blk.avail || !blk.used || !blk.req_hdr || !blk.data_buf || !blk.req_status) {
         return -1;
@@ -261,11 +261,13 @@ static int setup_queue(void) {
 }
 
 static int wait_used(uint16_t desc_idx) {
+    volatile vring_used_t *used = (volatile vring_used_t *)blk.used;
     uint16_t target = (uint16_t)(blk.last_used_idx + 1);
 
-    for (int spin = 0; spin < 100000; ++spin) {
-        if (blk.used->idx >= target) {
-            vring_used_elem_t elem = blk.used->ring[blk.last_used_idx % VIRTIO_RING_SIZE];
+    for (int spin = 0; spin < 25000; ++spin) {
+        __asm__ volatile("" ::: "memory");
+        if (used->idx >= target) {
+            vring_used_elem_t elem = used->ring[blk.last_used_idx % VIRTIO_RING_SIZE];
             blk.last_used_idx++;
             if (elem.id != desc_idx) {
                 return -1;
@@ -308,10 +310,21 @@ static int submit_request(uint32_t type, uint32_t lba, void *buffer, int write) 
     blk.desc[2].next = 0;
 
     blk.avail->ring[blk.avail->idx % VIRTIO_RING_SIZE] = 0;
+    __asm__ volatile("" ::: "memory");
     blk.avail->idx++;
+    __asm__ volatile("" ::: "memory");
 
     notify_queue();
-    return wait_used(0);
+    if (wait_used(0) != 0) {
+        return -1;
+    }
+
+    if (!write) {
+        for (size_t i = 0; i < VIRTIO_SECTOR_SIZE; ++i) {
+            ((uint8_t *)buffer)[i] = blk.data_buf[i];
+        }
+    }
+    return 0;
 }
 
 static int probe_modern(const pci_device_t *dev) {
@@ -368,7 +381,6 @@ static int probe_legacy(const pci_device_t *dev) {
 
 void virtio_blk_init(void) {
     pci_device_t dev;
-    uint8_t test_sector[VIRTIO_SECTOR_SIZE];
 
     blk.present = 0;
     blk.modern = 0;
@@ -403,11 +415,6 @@ setup:
     set_status((uint8_t)(VIRTIO_STATUS_ACK | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK |
                          VIRTIO_STATUS_DRIVER_OK));
     if ((read_status() & VIRTIO_STATUS_DRIVER_OK) == 0) {
-        device_reset();
-        return;
-    }
-
-    if (submit_request(VIRTIO_BLK_T_IN, 0, test_sector, 0) != 0) {
         device_reset();
         return;
     }

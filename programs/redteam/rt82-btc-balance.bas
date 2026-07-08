@@ -1,0 +1,4 @@
+10 REM rt82 -- BTC balance
+20 PRINT "=== RT82 ==="
+30 PRINT GRID.BTC.BALANCE$
+40 END

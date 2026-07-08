@@ -71,6 +71,15 @@ HTTPDEMO_BAS = (
     b"40 END\n"
 )
 
+BTCDEMO_BAS = (
+    b"10 REM Bitcoin demo -- host: make btc-bridge (testnet/regtest)\n"
+    b"20 PRINT \"=== Grid BTC ===\"\n"
+    b"30 PRINT GRID.BTC.STATUS$\n"
+    b"40 PRINT \"Balance: \"; GRID.BTC.BALANCE$\n"
+    b"50 GRID.BTC.PRINT \"getblockchaininfo\"\n"
+    b"60 END\n"
+)
+
 ADVANCEDEMO_BAS = (
     b"10 REM Advanced GridBASIC features\n"
     b"20 CONST MAX=10\n"
@@ -152,6 +161,60 @@ DEMO_BAS = (
 )
 
 PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
+REDTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "redteam"
+BLACKHAT_ROOT = Path(__file__).resolve().parent.parent / "programs" / "blackhat"
+WHITETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "whiteteam"
+BLUETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "blueteam"
+PURPLETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "purpleteam"
+GREENTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "greenteam"
+YELLOWTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "yellowteam"
+ORANGETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "orangeteam"
+GREYTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "greyteam"
+
+
+def lab_seed_files(root: Path, vfs_dir: str) -> list[tuple[str, bytes]]:
+    out: list[tuple[str, bytes]] = []
+    if not root.is_dir():
+        return out
+    for path in sorted(root.glob("*.bas")):
+        out.append((f"{vfs_dir}/{path.name}", path.read_bytes()))
+    return out
+
+
+def redteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(REDTEAM_ROOT, "/programs/redteam")
+
+
+def blackhat_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(BLACKHAT_ROOT, "/programs/blackhat")
+
+
+def whiteteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(WHITETEAM_ROOT, "/programs/whiteteam")
+
+
+def blueteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(BLUETEAM_ROOT, "/programs/blueteam")
+
+
+def purpleteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(PURPLETEAM_ROOT, "/programs/purpleteam")
+
+
+def greenteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(GREENTEAM_ROOT, "/programs/greenteam")
+
+
+def yellowteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(YELLOWTEAM_ROOT, "/programs/yellowteam")
+
+
+def orangeteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(ORANGETEAM_ROOT, "/programs/orangeteam")
+
+
+def greyteam_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(GREYTEAM_ROOT, "/programs/greyteam")
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
@@ -245,10 +308,47 @@ def main() -> int:
         (18, "/programs/subdemo.bas", SUBDEMO_BAS),
         (19, "/programs/grid2d.bas", GRID2D_BAS),
         (20, "/programs/demo.bas", DEMO_BAS),
+        (21, "/programs/btc-demo.bas", BTCDEMO_BAS),
     ]
 
-    slot = 21
+    slot = 22
     for path, payload in package_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in redteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in blackhat_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in whiteteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in blueteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in purpleteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in greenteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in yellowteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in orangeteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in greyteam_seed_files():
         files.append((slot, path, payload))
         slot += 1
 

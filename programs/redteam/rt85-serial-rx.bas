@@ -1,0 +1,4 @@
+10 REM rt85 -- serial RX
+20 PRINT "=== RT85 ==="
+30 PRINT GRID.SERIAL.READ$
+40 END

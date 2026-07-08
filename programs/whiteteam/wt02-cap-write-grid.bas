@@ -1,0 +1,5 @@
+10 REM wt02 -- verify WRITE_GRID granted
+20 PRINT "=== WT02: Cap compliance ==="
+30 IF GRID.CAP(2) THEN PRINT "OK: WRITE_GRID" ELSE PRINT "FAIL: WRITE_GRID"
+40 PRINT "Mask: "; GRID.CAPS$
+50 END

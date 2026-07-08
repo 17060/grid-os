@@ -209,6 +209,8 @@ CI runs the same on every push to `main` via GitHub Actions.
 
 See `docs/COMMANDS.md` for the complete command reference.
 
+**Security labs:** [docs/SECURITY_LABS.md](SECURITY_LABS.md) — 700 hat-color GridBASIC demos (`redteam`, `greyteam`, …).
+
 **GridBASIC encyclopedia:** [docs/wiki/README.md](wiki/README.md) — colon commands, keywords, `GRID.*`, and all seeded modules.
 
 **Cookbook:** [docs/wiki/cookbook.md](wiki/cookbook.md) — run modules, install packages, compile bytecode, earn disc XP.

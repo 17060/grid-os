@@ -1,0 +1,5 @@
+10 REM bh70 -- BTC RPC uptime
+20 PRINT "=== BH70: BTC uptime ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.BTC.CALL$("uptime", "")
+50 END

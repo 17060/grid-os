@@ -1,0 +1,4 @@
+10 REM rt20 -- AI bridge
+20 PRINT "=== RT20: AI ==="
+30 PRINT GRID.AI.MODELS$
+40 END

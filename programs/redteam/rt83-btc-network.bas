@@ -1,0 +1,4 @@
+10 REM rt83 -- BTC network
+20 PRINT "=== RT83 ==="
+30 PRINT GRID.BTC.NETWORK$
+40 END

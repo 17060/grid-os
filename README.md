@@ -20,6 +20,8 @@
 
 **Cookbook?** See [docs/wiki/cookbook.md](docs/wiki/cookbook.md) — modules, packages, bytecode, duels.
 
+**Security labs?** See [docs/SECURITY_LABS.md](docs/SECURITY_LABS.md) — 700 hat-color demos (red/black/white/blue/purple/green/yellow/orange/grey).
+
 ## What's new in 7.1.1
 
 Module **categories** (`pkg mods network`), second package **`flynn-net-tools`**, IDE **`:pkg`**, **`:find`/`:goto`**, **`:run` .grid** paths, identity disc XP for modules and duels, **`gridctl portal-pkg-publish`**, CI wiki sync + e2e pkg test. See [CHANGELOG.md](CHANGELOG.md) and [docs/wiki/cookbook.md](docs/wiki/cookbook.md).

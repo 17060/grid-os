@@ -1,0 +1,4 @@
+10 REM rt81 -- IRC session
+20 PRINT "=== RT81 ==="
+30 PRINT GRID.IRC.STATUS$
+40 END
