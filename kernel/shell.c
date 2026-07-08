@@ -169,6 +169,9 @@ static void cmd_help(void) {
     console_write_line("  blueteam          Blue team lab — 100 demos (/programs/blueteam/)");
     console_write_line("  purpleteam        Purple team lab — 25 attack/detect/fix chains");
     console_write_line("  greenteam         Green hat lab — 75 DevSecOps demos (/programs/greenteam/)");
+    console_write_line("  yellowteam        Yellow hat lab — 50 audit/compliance demos");
+    console_write_line("  orangeteam        Orange hat lab — 50 threat intel demos");
+    console_write_line("  greyteam          Grey hat lab — 100 gray-ethics demos");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1265,6 +1268,18 @@ static void cmd_greenteam(void) {
     cmd_security_lab("/programs/greenteam/", "=== Grid OS Green Hat Lab (75 DevSecOps demos) ===");
 }
 
+static void cmd_yellowteam(void) {
+    cmd_security_lab("/programs/yellowteam/", "=== Grid OS Yellow Hat Lab (50 audit demos) ===");
+}
+
+static void cmd_orangeteam(void) {
+    cmd_security_lab("/programs/orangeteam/", "=== Grid OS Orange Hat Lab (50 intel demos) ===");
+}
+
+static void cmd_greyteam(void) {
+    cmd_security_lab("/programs/greyteam/", "=== Grid OS Grey Hat Lab (100 gray demos) ===");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -2095,6 +2110,12 @@ void shell_dispatch_line(char *line) {
         cmd_purpleteam();
     } else if (equals(argv[0], "greenteam")) {
         cmd_greenteam();
+    } else if (equals(argv[0], "yellowteam")) {
+        cmd_yellowteam();
+    } else if (equals(argv[0], "orangeteam")) {
+        cmd_orangeteam();
+    } else if (equals(argv[0], "greyteam")) {
+        cmd_greyteam();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {

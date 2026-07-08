@@ -29,7 +29,7 @@ LIBGCC := $(shell $(CC) -print-libgcc-file-name)
 
 DISK_IMAGE = build/grid.img
 DISK_TEST_IMAGE = build/grid-test.img
-DISK_MB    = 64
+DISK_MB    = 128
 
 BOOT_OBJS = build/boot.o build/gdt_load.o build/interrupts.o
 USER_PROGS = gridprog discinfo gridsh lightcycle gridloop

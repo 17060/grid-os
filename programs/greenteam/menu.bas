@@ -45,7 +45,7 @@
 450 PRINT "039 gt39-vault-autoexec-review  vault autoexec-review"
 460 PRINT "040 gt40-vault-purge-canaries  vault purge-canaries"
 470 PRINT "041 gt41-gfs-path-programs  safe GFS list /programs"
-480 PRINT "042 gt42-gfs-path-programs-hello  safe GFS list /programs/hello.bas"
+480 PRINT "042 gt42-gfs-path-programs-hello-bas  safe GFS list /programs/hello.bas"
 490 PRINT "043 gt43-gfs-path-etc-hosts  safe GFS list /etc/hosts"
 500 PRINT "044 gt44-gfs-path-flynn-motd  safe GFS list /flynn/motd"
 510 PRINT "045 gt45-gfs-path-source  safe GFS list /source"

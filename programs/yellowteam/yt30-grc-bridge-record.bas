@@ -1,0 +1,5 @@
+10 REM yt30 -- GRC bridge-record
+20 PRINT "=== YT30: GRC bridge-record ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.AI.MODELS$
+50 END

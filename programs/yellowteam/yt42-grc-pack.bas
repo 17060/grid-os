@@ -1,0 +1,5 @@
+10 REM yt42 -- grc-pack
+20 PRINT "=== YT42: grc-pack ==="
+30 PRINT GRID.WHOAMI$
+40 PRINT GRID.CAPS$
+50 END

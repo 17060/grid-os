@@ -1,0 +1,5 @@
+10 REM ot44 -- bridge-pack
+20 PRINT "=== OT44: bridge-pack ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.AI.MODELS$
+50 END

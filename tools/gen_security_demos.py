@@ -13,6 +13,9 @@ WHITETEAM_DIR = ROOT / "programs" / "whiteteam"
 BLUETEAM_DIR = ROOT / "programs" / "blueteam"
 PURPLETEAM_DIR = ROOT / "programs" / "purpleteam"
 GREENTEAM_DIR = ROOT / "programs" / "greenteam"
+YELLOWTEAM_DIR = ROOT / "programs" / "yellowteam"
+ORANGETEAM_DIR = ROOT / "programs" / "orangeteam"
+GREYTEAM_DIR = ROOT / "programs" / "greyteam"
 
 
 @dataclass
@@ -1149,6 +1152,325 @@ def greenteam_demos() -> list[Demo]:
     return demos
 
 
+def yellowteam_demos() -> list[Demo]:
+    """50 audit / compliance / observer yellow-hat demos (yt01-yt50)."""
+    demos: list[Demo] = []
+
+    policies = [
+        (1, "read-only-audit", "Yellow team observes — does not attack"),
+        (2, "change-control", "Document vault/GFS changes"),
+        (3, "separation-duties", "Builder != auditor != operator"),
+        (4, "retention", "Retain audit logs per Flynn policy"),
+        (5, "access-review", "Review GRID.CAPS$ quarterly"),
+        (6, "vendor-packages", "Audit /packages MANIFEST imports"),
+        (7, "lab-boundary", "Compliance tests run in QEMU only"),
+        (8, "bridge-governance", "Host bridges require approval"),
+        (9, "iso-governance", "ISO zone under research charter"),
+        (10, "reporting", "File yellow report after each audit"),
+    ]
+    for num, tag, msg in policies:
+        demos.append(Demo(
+            f"yt{num:02d}-policy-{tag}.bas",
+            f"yt{num:02d} -- compliance {tag}",
+            [f'PRINT "=== YT{num:02d}: Compliance ==="', f'PRINT "{msg}"'],
+        ))
+
+    for num in range(11, 21):
+        demos.append(Demo(
+            f"yt{num:02d}-audit-observe-{num}.bas",
+            f"yt{num:02d} -- audit observer {num}",
+            [
+                f'PRINT "=== YT{num:02d}: Audit observe ==="',
+                f"PRINT GRID.LOG.TAIL$({num})",
+                'PRINT "Observer: no modifications"',
+            ],
+        ))
+
+    grc = [
+        (21, "caps-record"), (22, "whoami-record"), (23, "disc-record"),
+        (24, "vault-inventory"), (25, "gfs-inventory"), (26, "pkg-inventory"),
+        (27, "jobs-record"), (28, "iso-record"), (29, "net-record"), (30, "bridge-record"),
+    ]
+    for num, tag in grc:
+        body = [f'PRINT "=== YT{num:02d}: GRC {tag} ==="']
+        if tag == "caps-record":
+            body.append('PRINT GRID.CAPS$')
+        elif tag == "whoami-record":
+            body.append('PRINT GRID.WHOAMI$')
+        elif tag == "disc-record":
+            body.append("PRINT GRID.DISC.STATUS$")
+        elif tag == "vault-inventory":
+            body.append('PRINT GRID.VAULT.LIST$')
+        elif tag == "gfs-inventory":
+            body.append('PRINT GRID.GFS.LIST$("/programs")')
+        elif tag == "pkg-inventory":
+            body += ['PRINT GRID.PKG.LIST$', 'PRINT GRID.PKG.MODS$']
+        elif tag == "jobs-record":
+            body.append("PRINT GRID.JOBS.LIST$")
+        elif tag == "iso-record":
+            body.append("PRINT GRID.ISO.LIST$")
+        elif tag == "net-record":
+            body.append("PRINT GRID.NET.STATUS$")
+        else:
+            body += ["PRINT GRID.BTC.STATUS$", "PRINT GRID.AI.MODELS$"]
+        demos.append(Demo(f"yt{num:02d}-grc-{tag}.bas", f"yt{num:02d} -- GRC {tag}", body))
+
+    for num in range(31, 41):
+        demos.append(Demo(
+            f"yt{num:02d}-vault-review-{num}.bas",
+            f"yt{num:02d} -- vault compliance review",
+            [
+                f'PRINT "=== YT{num:02d}: Vault review ==="',
+                'PRINT GRID.VAULT.LIST$',
+                'PRINT GRID.VAULT.GET$("autoexec")',
+            ],
+        ))
+
+    yt_combos = [
+        (41, "audit-pack", ["PRINT GRID.LOG.TAIL$(12)", 'PRINT GRID.VAULT.LIST$']),
+        (42, "grc-pack", ['PRINT GRID.WHOAMI$', 'PRINT GRID.CAPS$']),
+        (43, "package-audit", ['PRINT GRID.PKG.LIST$', 'PRINT GRID.GFS.LIST$("/packages")']),
+        (44, "network-audit", ["PRINT GRID.NET.STATUS$", 'PRINT GRID.PING("gateway")']),
+        (45, "bridge-audit", ["PRINT GRID.BTC.STATUS$", "PRINT GRID.IRC.STATUS$"]),
+        (46, "spawn-audit", ["PRINT GRID.JOBS.LIST$", 'PRINT GRID.GFS.LIST$("/programs")']),
+        (47, "iso-audit", ["PRINT GRID.ISO.LIST$", "PRINT GRID.LOG.TAIL$(6)"]),
+        (48, "full-compliance", ['PRINT GRID.CAPS$', 'PRINT GRID.VAULT.LIST$', "PRINT GRID.LOG.TAIL$(8)"]),
+        (49, "sign-off", ['PRINT "Yellow audit sign-off: lab only"']),
+        (50, "graduation", ['PRINT "Yellow hat lab 50/50"', 'PRINT GRID.STATUS$']),
+    ]
+    for num, tag, stmts in yt_combos:
+        body = [f'PRINT "=== YT{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"yt{num:02d}-{tag}.bas", f"yt{num:02d} -- {tag}", body))
+
+    return demos
+
+
+def orangeteam_demos() -> list[Demo]:
+    """50 threat-intel orange-hat demos (ot01-ot50)."""
+    demos: list[Demo] = []
+
+    for num in range(1, 11):
+        demos.append(Demo(
+            f"ot{num:02d}-ioc-log-{num}.bas",
+            f"ot{num:02d} -- IOC from audit log",
+            [
+                f'PRINT "=== OT{num:02d}: IOC log ==="',
+                f"PRINT GRID.LOG.TAIL$({num + 2})",
+                'PRINT "Intel: tag REDTEAM/BH markers"',
+            ],
+        ))
+
+    hosts = ["gateway", "grid", "bridge", "10.0.2.2", "host", "flynn", "portal", "dns", "qemu", "flynn-grid"]
+    for i, host in enumerate(hosts, start=11):
+        demos.append(Demo(
+            f"ot{i:02d}-intel-{host.replace('.', '-')}.bas",
+            f"ot{i:02d} -- network intel {host}",
+            [
+                f'PRINT "=== OT{i:02d}: Net intel ==="',
+                f'PRINT GRID.DNS.RESOLVE$("{host.split("-")[0]}")',
+                f'PRINT GRID.PING("{host.split("-")[0]}")',
+            ],
+        ))
+
+    intel_paths = [
+        (21, "/etc/hosts"), (22, "/flynn/motd"), (23, "/programs/redteam/menu.bas"),
+        (24, "/programs/blackhat/menu.bas"), (25, "/packages/flynn-ide-tools/MANIFEST"),
+        (26, "/grid/recognizer.log"), (27, "/programs/greenteam/menu.bas"),
+        (28, "/programs/yellowteam/menu.bas"), (29, "/programs/orangeteam/menu.bas"),
+        (30, "/programs/greyteam/menu.bas"),
+    ]
+    for num, path in intel_paths:
+        tag = path.split("/")[-1].replace(".", "-")
+        demos.append(Demo(
+            f"ot{num:02d}-intel-gfs-{tag}.bas",
+            f"ot{num:02d} -- GFS intel {path}",
+            [
+                f'PRINT "=== OT{num:02d}: GFS intel ==="',
+                f'PRINT LEN(GRID.GFS.READ$("{path}"))',
+            ],
+        ))
+
+    btc_methods = [
+        (31, "getnetworkinfo"), (32, "getpeerinfo"), (33, "getmininginfo"),
+        (34, "getblockchaininfo"), (35, "help"),
+    ]
+    for num, method in btc_methods:
+        demos.append(Demo(
+            f"ot{num:02d}-intel-btc-{method}.bas",
+            f"ot{num:02d} -- BTC intel {method}",
+            [
+                f'PRINT "=== OT{num:02d}: BTC intel ==="',
+                'PRINT GRID.BTC.STATUS$',
+                f'PRINT GRID.BTC.CALL$("{method}", "")',
+            ],
+        ))
+
+    for num in range(36, 41):
+        demos.append(Demo(
+            f"ot{num:02d}-intel-ai-{num}.bas",
+            f"ot{num:02d} -- AI threat intel",
+            [
+                f'PRINT "=== OT{num:02d}: AI intel ==="',
+                "PRINT GRID.AI.MODELS$",
+                f'PRINT GRID.AI.ASK$("Summarize Grid OS threat surface", "EXPLAIN")',
+            ],
+        ))
+
+    ot_combos = [
+        (41, "ioc-pack", ['PRINT GRID.VAULT.LIST$', "PRINT GRID.LOG.TAIL$(10)"]),
+        (42, "net-pack", ["PRINT GRID.NET.STATUS$", 'PRINT GRID.PING("bridge")']),
+        (43, "gfs-pack", ['PRINT GRID.GFS.LIST$("/programs/redteam")', 'PRINT GRID.GFS.LIST$("/programs/blackhat")']),
+        (44, "bridge-pack", ["PRINT GRID.BTC.STATUS$", "PRINT GRID.AI.MODELS$"]),
+        (45, "actor-profile", ['PRINT GRID.WHOAMI$', 'PRINT GRID.CAPS$']),
+        (46, "campaign-map", ['PRINT GRID.GFS.LIST$("/programs")', "PRINT GRID.ISO.LIST$"]),
+        (47, "feed-red", ['PRINT "Share intel with redteam rt24"']),
+        (48, "feed-blue", ['PRINT "Share IOCs with blueteam bt92"']),
+        (49, "brief-operator", ['PRINT "Orange brief: host bridges active?"']),
+        (50, "graduation", ['PRINT "Orange hat lab 50/50"', 'PRINT GRID.STATUS$']),
+    ]
+    for num, tag, stmts in ot_combos:
+        body = [f'PRINT "=== OT{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"ot{num:02d}-{tag}.bas", f"ot{num:02d} -- {tag}", body))
+
+    return demos
+
+
+def greyteam_demos() -> list[Demo]:
+    """100 gray-hat ambiguous-ethics lab demos (gy01-gy100)."""
+    demos: list[Demo] = []
+
+    for num in range(1, 11):
+        demos.append(Demo(
+            f"gy{num:02d}-probe-{num}.bas",
+            f"gy{num:02d} -- unauthorized-style probe",
+            [
+                f'PRINT "=== GY{num:02d}: Gray probe ==="',
+                'PRINT "Found issue — disclose responsibly?"',
+                'PRINT GRID.CAPS$',
+            ],
+        ))
+
+    for num in range(11, 21):
+        demos.append(Demo(
+            f"gy{num:02d}-vault-gray-{num}.bas",
+            f"gy{num:02d} -- vault gray read",
+            [
+                f'PRINT "=== GY{num:02d}: Vault gray ==="',
+                'PRINT GRID.VAULT.LIST$',
+                'PRINT GRID.VAULT.GET$("motd")',
+            ],
+        ))
+
+    gfs_paths = [
+        (21, "/etc/hosts"), (22, "/flynn/motd"), (23, "/programs/hello.bas"),
+        (24, "/programs/tutorial.bas"), (25, "/packages/flynn-ide-tools/MANIFEST"),
+        (26, "/programs/redteam/rt01-caps.bas"), (27, "/programs/blackhat/bh01-exfil-1.bas"),
+        (28, "/programs/whiteteam/wt01-cap-read-grid.bas"), (29, "/programs/blueteam/bt01-audit-watch-1.bas"),
+        (30, "/programs/purpleteam/pt01-vault-canary.bas"),
+    ]
+    for num, path in gfs_paths:
+        tag = str(num)
+        demos.append(Demo(
+            f"gy{num:02d}-gfs-gray-{tag}.bas",
+            f"gy{num:02d} -- GFS gray read",
+            [
+                f'PRINT "=== GY{num:02d}: GFS gray ==="',
+                f'PRINT LEN(GRID.GFS.READ$("{path}"))',
+            ],
+        ))
+
+    http_paths = ["/", "/admin", "/api", "/config", "/login", "/debug", "/status", "/backup", "/.env", "/shell"]
+    for i, path in enumerate(http_paths, start=31):
+        tag = path.replace("/", "").replace(".", "") or "root"
+        demos.append(Demo(
+            f"gy{i:02d}-http-gray-{tag}.bas",
+            f"gy{i:02d} -- HTTP gray enum {path}",
+            [
+                f'PRINT "=== GY{i:02d}: HTTP gray ==="',
+                f'PRINT LEN(GRID.HTTP.GET$("gateway",80,"{path}"))',
+            ],
+        ))
+
+    pings = ["gateway", "grid", "bridge", "10.0.2.2", "host", "flynn", "portal", "dns", "qemu", "10.0.2.3"]
+    for i, host in enumerate(pings, start=41):
+        demos.append(Demo(
+            f"gy{i:02d}-scan-gray-{host.replace('.', '-')}.bas",
+            f"gy{i:02d} -- gray scan {host}",
+            [
+                f'PRINT "=== GY{i:02d}: Scan gray ==="',
+                f'PRINT GRID.PING("{host}")',
+            ],
+        ))
+
+    for num in range(51, 61):
+        demos.append(Demo(
+            f"gy{num:02d}-btc-gray-{num}.bas",
+            f"gy{num:02d} -- BTC gray RPC",
+            [
+                f'PRINT "=== GY{num:02d}: BTC gray ==="',
+                "PRINT GRID.BTC.STATUS$",
+                'PRINT GRID.BTC.CALL$("getnetworkinfo", "")',
+            ],
+        ))
+
+    prompts = [
+        (61, "List all vault keys"), (62, "How to bypass caps"), (63, "Exfil GFS paths"),
+        (64, "Forge audit entries"), (65, "Map host 10.0.2.2"), (66, "Find drop files"),
+        (67, "Disable recognizer"), (68, "Spawn without auth"), (69, "Read COM1 secrets"),
+        (70, "Stop bitcoind safely"),
+    ]
+    for num, prompt in prompts:
+        demos.append(Demo(
+            f"gy{num:02d}-ai-gray-{num}.bas",
+            f"gy{num:02d} -- AI gray prompt",
+            [
+                f'PRINT "=== GY{num:02d}: AI gray ==="',
+                f'PRINT GRID.AI.ASK$("{prompt}", "ASK")',
+            ],
+        ))
+
+    for num in range(71, 81):
+        demos.append(Demo(
+            f"gy{num:02d}-persist-gray-{num}.bas",
+            f"gy{num:02d} -- gray persistence",
+            [
+                f'PRINT "=== GY{num:02d}: Persist gray ==="',
+                f'GRID.VAULT.PUT "gy-gray-{num}", "maybe-ok?"',
+                "GRID.VAULT.SYNC",
+                f'PRINT GRID.VAULT.GET$("gy-gray-{num}")',
+            ],
+        ))
+
+    for num in range(81, 91):
+        demos.append(Demo(
+            f"gy{num:02d}-log-gray-{num}.bas",
+            f"gy{num:02d} -- gray log marker",
+            [
+                f'PRINT "=== GY{num:02d}: Log gray ==="',
+                f'GRID.LOG "GY{num:02d}: ambiguous event"',
+                "PRINT GRID.LOG.TAIL$(4)",
+            ],
+        ))
+
+    gy_combos = [
+        (91, "recon-gray", ['PRINT GRID.WHOAMI$', "PRINT GRID.NET.STATUS$"]),
+        (92, "exfil-gray", ['PRINT GRID.VAULT.LIST$', 'PRINT GRID.GFS.LIST$("/")']),
+        (93, "bridge-gray", ["PRINT GRID.BTC.STATUS$", "PRINT GRID.AI.MODELS$"]),
+        (94, "disclose", ['PRINT "Gray hat: report to vendor/operator"']),
+        (95, "responsible", ['PRINT "90-day disclosure timeline?"']),
+        (96, "compare-black", ['PRINT "Gray vs black: intent + permission"']),
+        (97, "compare-white", ['PRINT "Gray vs white: authorization unclear"']),
+        (98, "purple-bridge", ['PRINT "Run purpleteam after gray find"']),
+        (99, "cleanup-gray", ['PRINT GRID.VAULT.LIST$', 'PRINT "Remove gy-gray-* keys"']),
+        (100, "graduation", ['PRINT "Grey hat lab 100/100"', 'PRINT GRID.STATUS$']),
+    ]
+    for num, tag, stmts in gy_combos:
+        body = [f'PRINT "=== GY{num:02d}: {tag} ==="'] + stmts
+        demos.append(Demo(f"gy{num:02d}-{tag}.bas", f"gy{num:02d} -- {tag}", body))
+
+    return demos
+
+
 def write_menu(directory: Path, prefix: str, title: str, demos: list[Demo], lab_name: str) -> None:
     vfs_base = f"/programs/{directory.name}"
     lines: list[str] = []
@@ -1189,12 +1511,18 @@ def main() -> int:
     blue = blueteam_demos()
     purple = purpleteam_demos()
     green = greenteam_demos()
+    yellow = yellowteam_demos()
+    orange = orangeteam_demos()
+    grey = greyteam_demos()
     assert len(red) == 100, f"expected 100 red demos, got {len(red)}"
     assert len(black) == 100, f"expected 100 black demos, got {len(black)}"
     assert len(white) == 100, f"expected 100 white demos, got {len(white)}"
     assert len(blue) == 100, f"expected 100 blue demos, got {len(blue)}"
     assert len(purple) == 25, f"expected 25 purple demos, got {len(purple)}"
     assert len(green) == 75, f"expected 75 green demos, got {len(green)}"
+    assert len(yellow) == 50, f"expected 50 yellow demos, got {len(yellow)}"
+    assert len(orange) == 50, f"expected 50 orange demos, got {len(orange)}"
+    assert len(grey) == 100, f"expected 100 grey demos, got {len(grey)}"
 
     labs = [
         (REDTEAM_DIR, red, "rt", "Red team lab menu", "Grid OS Red Team Lab (100)"),
@@ -1203,6 +1531,9 @@ def main() -> int:
         (BLUETEAM_DIR, blue, "bt", "Blue team lab menu", "Grid OS Blue Team Lab (100)"),
         (PURPLETEAM_DIR, purple, "pt", "Purple team lab menu", "Grid OS Purple Team Lab (25 chains)"),
         (GREENTEAM_DIR, green, "gt", "Green team lab menu", "Grid OS Green Hat Lab (75 DevSecOps)"),
+        (YELLOWTEAM_DIR, yellow, "yt", "Yellow team lab menu", "Grid OS Yellow Hat Lab (50 audit)"),
+        (ORANGETEAM_DIR, orange, "ot", "Orange team lab menu", "Grid OS Orange Hat Lab (50 intel)"),
+        (GREYTEAM_DIR, grey, "gy", "Grey team lab menu", "Grid OS Grey Hat Lab (100 gray ethics)"),
     ]
 
     for directory, _, _, _, _ in labs:
@@ -1222,6 +1553,9 @@ def main() -> int:
     print(f"Generated {len(blue)} blue-team demos in {BLUETEAM_DIR}")
     print(f"Generated {len(purple)} purple-team chains in {PURPLETEAM_DIR}")
     print(f"Generated {len(green)} green-hat demos in {GREENTEAM_DIR}")
+    print(f"Generated {len(yellow)} yellow-hat demos in {YELLOWTEAM_DIR}")
+    print(f"Generated {len(orange)} orange-hat demos in {ORANGETEAM_DIR}")
+    print(f"Generated {len(grey)} grey-hat demos in {GREYTEAM_DIR}")
     return 0
 
 

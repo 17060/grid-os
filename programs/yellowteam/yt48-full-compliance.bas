@@ -1,0 +1,6 @@
+10 REM yt48 -- full-compliance
+20 PRINT "=== YT48: full-compliance ==="
+30 PRINT GRID.CAPS$
+40 PRINT GRID.VAULT.LIST$
+50 PRINT GRID.LOG.TAIL$(8)
+60 END
