@@ -71,6 +71,15 @@ HTTPDEMO_BAS = (
     b"40 END\n"
 )
 
+BTCDEMO_BAS = (
+    b"10 REM Bitcoin demo -- host: make btc-bridge (testnet/regtest)\n"
+    b"20 PRINT \"=== Grid BTC ===\"\n"
+    b"30 PRINT GRID.BTC.STATUS$\n"
+    b"40 PRINT \"Balance: \"; GRID.BTC.BALANCE$\n"
+    b"50 GRID.BTC.PRINT \"getblockchaininfo\"\n"
+    b"60 END\n"
+)
+
 ADVANCEDEMO_BAS = (
     b"10 REM Advanced GridBASIC features\n"
     b"20 CONST MAX=10\n"
@@ -245,9 +254,10 @@ def main() -> int:
         (18, "/programs/subdemo.bas", SUBDEMO_BAS),
         (19, "/programs/grid2d.bas", GRID2D_BAS),
         (20, "/programs/demo.bas", DEMO_BAS),
+        (21, "/programs/btc-demo.bas", BTCDEMO_BAS),
     ]
 
-    slot = 21
+    slot = 22
     for path, payload in package_seed_files():
         files.append((slot, path, payload))
         slot += 1

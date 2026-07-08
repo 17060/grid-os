@@ -656,6 +656,15 @@ int gfs_seed_defaults(void) {
              "90 END\n",
              158);
 
+    seed_one("/programs/btc-demo.bas",
+             "10 REM Bitcoin demo -- host: make btc-bridge (testnet/regtest)\n"
+             "20 PRINT \"=== Grid BTC ===\"\n"
+             "30 PRINT GRID.BTC.STATUS$\n"
+             "40 PRINT \"Balance: \"; GRID.BTC.BALANCE$\n"
+             "50 GRID.BTC.PRINT \"getblockchaininfo\"\n"
+             "60 END\n",
+             202);
+
     seed_one("/packages/flynn-ide-tools/MANIFEST",
              "name=flynn-ide-tools\n"
              "version=2.1\n"
@@ -869,11 +878,11 @@ int gfs_seed_defaults(void) {
              "10 REM IDE module: sample-menu\n"
              "20 PRINT \"=== GridBASIC Samples ===\"\n"
              "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
-             "40 PRINT \"Try: tutorial, hello, subdemo, grid2d, demo\"\n"
+             "40 PRINT \"Try: tutorial, hello, subdemo, grid2d, demo, btc-demo\"\n"
              "50 PRINT \"IDE: Esc :load tutorial   :run demo.grid\"\n"
              "60 END\n"
              "\n",
-             219);
+             230);
 
     seed_one("/packages/flynn-ide-tools/modules/ide-cheatsheet.bas",
              "10 REM IDE module: ide-cheatsheet\n"
