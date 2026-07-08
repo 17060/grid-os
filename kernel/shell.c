@@ -22,6 +22,9 @@
 #include "serial.h"
 #include "storage.h"
 #include "timer.h"
+#ifdef GRIDOS_VBE_4K
+#include "vbe.h"
+#endif
 
 #include <stddef.h>
 #include <stdint.h>
@@ -2167,6 +2170,13 @@ void shell_run(void) {
     console_set_serial_mirror(1);
     print_banner();
     if (shell_run_autoexec()) {
+#ifdef GRIDOS_VBE_4K
+        if (vbe_is_active()) {
+            basic_ide_set_boot_hint("4K HDMI 3840x2160 — Esc :run | :load 4k-ide-demo | :help");
+            basic_ide("/programs/4k-ide-demo.bas");
+            return;
+        }
+#endif
         basic_ide_set_boot_hint("Welcome — Esc: grid> tutorial | :load tutorial | :samples");
     }
     basic_ide(0);

@@ -6,6 +6,9 @@
 #include "sched.h"
 #include "security.h"
 #include "serial.h"
+#ifdef GRIDOS_VBE_4K
+#include "vbe.h"
+#endif
 
 #define VGA_WIDTH  80
 #define VGA_HEIGHT 25
@@ -24,6 +27,15 @@ static uint16_t make_entry(char c, uint8_t attr) {
 }
 
 static void scroll(void) {
+#ifdef GRIDOS_VBE_4K
+    if (vbe_is_active()) {
+        vbe_scroll_up();
+        if (row > 0) {
+            row--;
+        }
+        return;
+    }
+#endif
     for (size_t y = 1; y < VGA_HEIGHT; ++y) {
         for (size_t x = 0; x < VGA_WIDTH; ++x) {
             VGA_MEMORY[(y - 1) * VGA_WIDTH + x] = VGA_MEMORY[y * VGA_WIDTH + x];
@@ -40,6 +52,12 @@ static void scroll(void) {
 }
 
 static void put_at(char c, uint8_t attr, size_t x, size_t y) {
+#ifdef GRIDOS_VBE_4K
+    if (vbe_is_active()) {
+        vbe_put_cell(x, y, c, attr);
+        return;
+    }
+#endif
     VGA_MEMORY[y * VGA_WIDTH + x] = make_entry(c, attr);
 }
 
@@ -65,6 +83,13 @@ void console_clear(void) {
     row = 0;
     col = 0;
     color = GRID_COL_DEFAULT;
+
+#ifdef GRIDOS_VBE_4K
+    if (vbe_is_active()) {
+        vbe_clear(color);
+        return;
+    }
+#endif
 
     for (size_t y = 0; y < VGA_HEIGHT; ++y) {
         for (size_t x = 0; x < VGA_WIDTH; ++x) {
