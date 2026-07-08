@@ -16,6 +16,7 @@ extern syscall_handler
 extern program_check_return
 extern sched_should_preempt
 extern program_save_context
+extern kernel_cr3_phys
 
 section .bss
 align 16
@@ -117,6 +118,13 @@ isr_syscall:
     push r15
     sub rsp, 8                ; 14 pushes + 8 keeps the call 16-byte aligned
 
+    ; NOTE: syscalls deliberately run on the USER page tables — handlers
+    ; dereference user pointers (SYS_WRITE strings, copy_to_user targets),
+    ; which only resolve under user CR3. The kernel data a syscall touches
+    ; must therefore live below 4 MB (the supervisor identity map in the
+    ; user tables). Periodic work is different: isr_timer switches to the
+    ; kernel tables because its callees touch late-BSS globals.
+
     ; syscall_handler(number, arg1, arg2, arg3) — order avoids clobbering
     mov rcx, rdx
     mov rdx, rsi
@@ -144,10 +152,17 @@ isr_syscall:
     iretq
 
 ; Vectors 13/14 push a CPU error code — drop it before iretq.
+; Handlers run on the kernel page tables (see isr_syscall).
 isr_gp_fault:
     push rax
+    mov rax, cr3
+    push rax
+    mov rax, [rel kernel_cr3_phys]
+    mov cr3, rax
     extern idt_handle_gp_fault
     call idt_handle_gp_fault
+    pop rax                   ; saved CR3
+    mov cr3, rax
     pop rax
     add rsp, 8
     call program_check_return
@@ -155,8 +170,14 @@ isr_gp_fault:
 
 isr_page_fault:
     push rax
+    mov rax, cr3
+    push rax
+    mov rax, [rel kernel_cr3_phys]
+    mov cr3, rax
     extern idt_handle_page_fault
     call idt_handle_page_fault
+    pop rax                   ; saved CR3
+    mov cr3, rax
     pop rax
     add rsp, 8
     call program_check_return
@@ -181,12 +202,23 @@ isr_timer:
     push r14
     push r15
 
+    ; Run periodic work on the kernel page tables: the tick can arrive while
+    ; user CR3 is active (ring 3, or ring 0 inside a syscall handler), and
+    ; user tables only map the first 4 MB of kernel memory. A 16-byte slot
+    ; keeps the calls 16-byte aligned.
+    mov rbp, cr3
+    sub rsp, 16
+    mov [rsp], rbp
+    mov rbp, [rel kernel_cr3_phys]
+    mov cr3, rbp
+
     ; Always advance the tick counter and run periodic work.
     call timer_on_irq
 
     ; Did the interrupt arrive while in user mode? Check saved CS.
-    ; Stack layout now: r15(0) ... rax(112), rip(120), cs(128), rflags(136), rsp(144), ss(152)
-    mov ax, [rsp + 128]
+    ; Stack layout now: cr3(0), pad(8), r15(16) ... rax(128), rip(136),
+    ; cs(144), rflags(152), rsp(160), ss(168)
+    mov ax, [rsp + 144]
     cmp ax, USER_CS
     jne .from_kernel
 
@@ -196,8 +228,9 @@ isr_timer:
     jz .restore_user
 
     ; Preempt: hand the saved register frame + iret frame to the kernel,
-    ; which stores it into the running program's user_ctx_t.
-    mov rdi, rsp
+    ; which stores it into the running program's user_ctx_t. The kernel
+    ; CR3 stays loaded — we are abandoning the user-mode iret.
+    lea rdi, [rsp + 16]
     call program_save_context
 
     ; Abandon the user-mode iret and return to the kernel caller
@@ -213,6 +246,9 @@ isr_timer:
     ret
 
 .restore_user:
+    mov rbp, [rsp]            ; saved user CR3
+    mov cr3, rbp
+    add rsp, 16
     pop r15
     pop r14
     pop r13
@@ -231,7 +267,11 @@ isr_timer:
     iretq
 
 .from_kernel:
-    ; Timer fired in kernel mode — periodic tick only, then return.
+    ; Timer fired in kernel mode — periodic tick only, then return with
+    ; the interrupted context's CR3 (may be user CR3 inside a syscall).
+    mov rbp, [rsp]
+    mov cr3, rbp
+    add rsp, 16
     pop r15
     pop r14
     pop r13

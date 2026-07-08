@@ -22,8 +22,13 @@ static uint64_t *active_pml4 = kernel_pml4;
 
 static uint64_t user_pt_pool[MAX_USER_PT][512] __attribute__((aligned(PAGE_SIZE)));
 static uint64_t user_data_pool[MAX_USER_DATA][512] __attribute__((aligned(PAGE_SIZE)));
-static int user_pt_used = 0;
-static int user_data_used = 0;
+/* Owner tag per pool page: 0 = free, otherwise the program id (slot + 1)
+ * set via memory_user_set_owner. Pages are reclaimed by memory_release_user
+ * when a program slot is released, so repeated spawns do not exhaust the
+ * pools. -1 marks an allocation made with no owner configured. */
+static int user_pt_owner[MAX_USER_PT];
+static int user_data_owner[MAX_USER_DATA];
+static int user_alloc_owner = 0;
 
 static inline void load_cr3(uint64_t value) {
     __asm__ volatile("mov %0, %%cr3" : : "r"(value) : "memory");
@@ -148,12 +153,20 @@ void *memory_dma_alloc(size_t size, size_t align) {
     return ptr;
 }
 
+/* Physical address of the kernel PML4, read by the interrupt entry stubs
+ * (interrupts.s). Handlers must switch to the full kernel mapping on entry:
+ * user page tables only identity-map 0-4 MB of kernel memory, and kernel
+ * globals above that (e.g. late BSS) are unreachable while user CR3 is
+ * active. Set before idt_init()/sti, so it is valid for every interrupt. */
+uint64_t kernel_cr3_phys;
+
 void memory_init(void) {
     enable_nxe();
     memory_map_kernel();
     memory_map_low_ram();
     load_cr3((uint64_t)kernel_pml4);
     active_pml4 = kernel_pml4;
+    kernel_cr3_phys = (uint64_t)kernel_pml4;
 }
 
 uint64_t *memory_kernel_tables(void) {
@@ -170,21 +183,45 @@ void memory_switch_tables(uint64_t *pml4) {
 }
 
 static uint64_t *alloc_user_pt(void) {
-    if (user_pt_used >= MAX_USER_PT) {
-        return 0;
+    for (int i = 0; i < MAX_USER_PT; ++i) {
+        if (user_pt_owner[i] == 0) {
+            user_pt_owner[i] = user_alloc_owner ? user_alloc_owner : -1;
+            zero_page(user_pt_pool[i]);
+            return user_pt_pool[i];
+        }
     }
-    uint64_t *page = user_pt_pool[user_pt_used++];
-    zero_page(page);
-    return page;
+    return 0;
 }
 
 static uint64_t *alloc_user_data(void) {
-    if (user_data_used >= MAX_USER_DATA) {
-        return 0;
+    for (int i = 0; i < MAX_USER_DATA; ++i) {
+        if (user_data_owner[i] == 0) {
+            user_data_owner[i] = user_alloc_owner ? user_alloc_owner : -1;
+            zero_page(user_data_pool[i]);
+            return user_data_pool[i];
+        }
     }
-    uint64_t *page = user_data_pool[user_data_used++];
-    zero_page(page);
-    return page;
+    return 0;
+}
+
+void memory_user_set_owner(int owner) {
+    user_alloc_owner = owner;
+}
+
+void memory_release_user(int owner) {
+    if (owner == 0) {
+        return;
+    }
+    for (int i = 0; i < MAX_USER_PT; ++i) {
+        if (user_pt_owner[i] == owner) {
+            user_pt_owner[i] = 0;
+        }
+    }
+    for (int i = 0; i < MAX_USER_DATA; ++i) {
+        if (user_data_owner[i] == owner) {
+            user_data_owner[i] = 0;
+        }
+    }
 }
 
 uint64_t *memory_create_user_tables(void) {

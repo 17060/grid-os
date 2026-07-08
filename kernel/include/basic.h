@@ -12,6 +12,9 @@
 
 #define BASIC_LINE_MAX   256
 #define BASIC_PROGRAM_LINES 512
+/* Program memory: max source size (bytes) held by the IDE buffer and the
+ * interpreter's source/preprocessor buffers. */
+#define BASIC_SRC_MAX    65536
 
 /* Run a GridBASIC program from a NUL-terminated source string.
  * Returns 0 on normal END/STOP, non-zero on error. */

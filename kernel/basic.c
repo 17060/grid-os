@@ -65,8 +65,10 @@ typedef struct {
     int line_no;     /* source line number this token starts on */
 } token_t;
 
-#define MAX_TOKENS 4096
-#define MAX_LINES  512
+/* Sized so a full BASIC_SRC_MAX (64 KB) program tokenizes without hitting
+ * the limit (~2 source bytes per token, same headroom as the old 8 KB/4096). */
+#define MAX_TOKENS 32768
+#define MAX_LINES  4096
 #define MAX_VARS   128
 #define MAX_FRAMES 64
 #define MAX_DEF_FN 32
@@ -2677,8 +2679,8 @@ static void join_source(const char *src, char *out, size_t cap) {
 }
 
 int basic_run_source(const char *source) {
-    static char src_buf[8192];
-    static char pp_buf[8192];
+    static char src_buf[BASIC_SRC_MAX];
+    static char pp_buf[BASIC_SRC_MAX];
     join_source(source, src_buf, sizeof(src_buf));
     if (basic_preprocess(src_buf, pp_buf, sizeof(pp_buf)) != 0) {
         return -1;
@@ -2754,8 +2756,8 @@ static int basic_run_bytecode(const void *data, size_t len) {
 }
 
 int basic_compile_source(const char *source, void *out, size_t cap, size_t *out_len) {
-    static char src_buf[8192];
-    static char pp_buf[8192];
+    static char src_buf[BASIC_SRC_MAX];
+    static char pp_buf[BASIC_SRC_MAX];
     if (!source || !out || !out_len) {
         return -1;
     }
@@ -2785,7 +2787,7 @@ int basic_compile_source(const char *source, void *out, size_t cap, size_t *out_
 }
 
 int basic_compile_file(const char *path, const char *out_path) {
-    static char buf[8192];
+    static char buf[BASIC_SRC_MAX];
     static char bc[16384];
     size_t got = 0;
     size_t blen = 0;
@@ -2800,7 +2802,7 @@ int basic_compile_file(const char *path, const char *out_path) {
 }
 
 int basic_run_file(const char *path) {
-    static char buf[8192];
+    static char buf[BASIC_SRC_MAX];
     static char pathbuf[128];
     size_t got = 0;
     size_t k = 0;

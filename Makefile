@@ -71,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -196,6 +196,10 @@ test-host-vault-disk: $(DISK_IMAGE)
 	@python3 tools/prepare_vault_v5_disk.py build/grid-test.img
 	@build/v5load build/grid-test.img
 
+test-host-pp:
+	@cc -std=c11 -Ikernel/include -O2 -o build/pp_host tools/pp_host_test.c kernel/basic_pp.c
+	@build/pp_host
+
 test-host-tcp:
 	@cc -std=c11 -Ikernel/include -O2 -o build/tcp_host tools/tcp_host_test.c kernel/tcp.c
 	@build/tcp_host
@@ -208,7 +212,7 @@ test-host-spawn:
 	@chmod +x tools/spawn_regression.sh
 	@tools/spawn_regression.sh
 
-test-host: test-host-basic test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn
+test-host: test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn
 
 test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 	@$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

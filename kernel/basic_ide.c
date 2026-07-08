@@ -36,7 +36,7 @@
  *   grid> :btc balance  same as btc balance (fullscreen shell output)
  * ========================================================================== */
 
-#define IDE_MAX_LINES  400
+#define IDE_MAX_LINES  2048
 #define IDE_LINE_LEN   200
 #define IDE_HEADER_ROW 0
 #define IDE_BODY_TOP   2
@@ -520,7 +520,7 @@ static void run_buffer(ide_t *e, const char *file_path) {
             return;
         }
     } else {
-        static char src[8192];
+        static char src[BASIC_SRC_MAX];
         serialize(e, src, sizeof(src));
         basic_run_source(src);
     }
@@ -534,7 +534,7 @@ static void run_buffer(ide_t *e, const char *file_path) {
 static void cmd_save(ide_t *e, const char *name) {
     if (!name[0]) { ide_status(e, "usage: save <name>", GRID_COL_ERROR); return; }
     char path[80]; make_path(name, path, sizeof(path));
-    static char src[8192]; serialize(e, src, sizeof(src));
+    static char src[BASIC_SRC_MAX]; serialize(e, src, sizeof(src));
     if (gfs_write_file(path, src, slen(src)) != 0) {
         ide_status(e, "save failed (GFS write denied)", GRID_COL_ERROR); return;
     }
@@ -571,7 +571,7 @@ static void cmd_compile(ide_t *e, const char *name) {
         }
         path[p] = '\0';
     }
-    static char src[8192];
+    static char src[BASIC_SRC_MAX];
     static char bc[16384];
     size_t blen = 0;
     serialize(e, src, sizeof(src));
@@ -613,7 +613,7 @@ static void cmd_tutorial_steps(ide_t *e) {
 }
 
 static int load_path_into(ide_t *e, const char *path) {
-    static char buf[8192];
+    static char buf[BASIC_SRC_MAX];
     size_t got = 0;
     if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
         return -1;
@@ -842,7 +842,7 @@ static void cmd_goto(ide_t *e, const char *num_text) {
 static void cmd_load(ide_t *e, const char *name) {
     if (!name[0]) { ide_status(e, "usage: load <name>", GRID_COL_ERROR); return; }
     char path[80]; make_path(name, path, sizeof(path));
-    static char buf[8192]; size_t got = 0;
+    static char buf[BASIC_SRC_MAX]; size_t got = 0;
     if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
         ide_status(e, "load failed (not found)", GRID_COL_ERROR); return;
     }
@@ -1320,7 +1320,8 @@ int basic_ide(const char *path) {
         g_boot_hint[0] = '\0';
     }
     if (path && path[0]) {
-        char buf[8192]; size_t got = 0;
+        /* static: BASIC_SRC_MAX is far too large for the kernel stack */
+        static char buf[BASIC_SRC_MAX]; size_t got = 0;
         if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) == 0) {
             buf[got] = '\0';
             size_t i = 0; int row = 0; size_t col = 0;

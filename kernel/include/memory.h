@@ -21,6 +21,12 @@ void memory_map_kernel(void);
 uint64_t *memory_create_user_tables(void);
 void memory_destroy_user_tables(uint64_t *pml4);
 
+/* Tag subsequent user page/table allocations with a program id (slot + 1);
+ * memory_release_user reclaims every pool page tagged with that id when
+ * the program slot is released. Pass 0 to clear the tag. */
+void memory_user_set_owner(int owner);
+void memory_release_user(int owner);
+
 int memory_map_user_rx(uint64_t *pml4, uint64_t vaddr, const void *src, size_t len);
 int memory_map_user_rw(uint64_t *pml4, uint64_t vaddr, size_t len, int zero_fill);
 int memory_map_user_segment(uint64_t *pml4, uint64_t vaddr, const void *src,

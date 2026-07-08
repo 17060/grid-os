@@ -84,6 +84,14 @@ static int find_slot(void) {
             return i;
         }
     }
+    /* No free slot: lazily reclaim a finished program (its slot stays
+     * `used` after return so `programs` can still list it). */
+    for (int i = 0; i < PROGRAM_SLOTS; ++i) {
+        if (programs[i].state == PROGRAM_EXITED || programs[i].state == PROGRAM_FAULT) {
+            program_release(i + 1);
+            return i;
+        }
+    }
     return -1;
 }
 
@@ -231,8 +239,10 @@ int program_spawn(const char *name, const void *image, size_t image_size, uint64
     }
 
     grid_program_t *program = &programs[slot];
+    memory_user_set_owner(slot + 1);
     uint64_t *tables = memory_create_user_tables();
     if (!tables) {
+        memory_release_user(slot + 1);
         return -1;
     }
 
@@ -298,6 +308,10 @@ static int program_enter(grid_program_t *program, uint64_t entry) {
         program->state = PROGRAM_FAULT;
         program->has_ctx = 0;
         program->preempted = 0;
+        /* The program can never run again — reclaim its pool pages now
+         * (the slot stays `used` so `programs` can still list it). */
+        program->page_tables = 0;
+        memory_release_user((int)(program - programs) + 1);
         return -1;
     }
 
@@ -305,6 +319,8 @@ static int program_enter(grid_program_t *program, uint64_t entry) {
         /* SYS_EXIT already set the state via the syscall handler. */
         program->has_ctx = 0;
         program->preempted = 0;
+        program->page_tables = 0;
+        memory_release_user((int)(program - programs) + 1);
         return 0;
     }
 
@@ -340,7 +356,9 @@ static int program_load_image(int slot, const char *name, const void *image, siz
     grid_program_t *program = &programs[slot];
     uint64_t entry = 0;
 
+    memory_user_set_owner(slot + 1);
     if (program_setup_elf(program, image, image_size, &entry) != 0) {
+        memory_release_user(slot + 1);
         return -1;
     }
 
@@ -614,4 +632,5 @@ void program_release(int id) {
     program->page_tables = 0;
     program->has_ctx = 0;
     program->preempted = 0;
+    memory_release_user(id);
 }
