@@ -62,6 +62,9 @@ static void run_shell_line(ide_t *e, const char *line);
 
 static ide_t ide;
 static char g_boot_hint[96];
+/* One shared IDE source buffer (load/save/run/compile). Separate from basic.c g_src_buf for :run. */
+static char g_ide_io_buf[BASIC_SRC_MAX];
+static char g_ide_bc_buf[16384];
 
 static size_t slen(const char *s) { size_t n = 0; while (s[n]) n++; return n; }
 static void scopy(char *d, size_t cap, const char *s) {
@@ -460,16 +463,52 @@ static void read_cmd(char *out, size_t cap, const char *prompt) {
     }
 }
 
-/* serialize buffer into a single source string */
-static void serialize(ide_t *e, char *out, size_t cap) {
+/* Serialize buffer into a single source string. Returns 0, or -1 if truncated. */
+static int serialize(ide_t *e, char *out, size_t cap) {
     size_t p = 0;
-    for (int i = 0; i < e->n && p + 2 < cap; ++i) {
+    for (int i = 0; i < e->n; ++i) {
         const char *l = e->lines[i];
         size_t len = slen(l);
-        for (size_t j = 0; j < len && p + 2 < cap; ++j) out[p++] = l[j];
-        if (p + 1 < cap) out[p++] = '\n';
+        for (size_t j = 0; j < len; ++j) {
+            if (p + 2 >= cap) {
+                out[p < cap ? p : cap - 1] = '\0';
+                return -1;
+            }
+            out[p++] = l[j];
+        }
+        if (p + 1 >= cap) {
+            out[p < cap ? p : cap - 1] = '\0';
+            return -1;
+        }
+        out[p++] = '\n';
     }
     out[p] = '\0';
+    return 0;
+}
+
+static size_t source_bytes(ide_t *e) {
+    size_t total = 0;
+    for (int i = 0; i < e->n; ++i) {
+        total += slen(e->lines[i]) + 1;
+    }
+    return total;
+}
+
+static int source_over_limit(ide_t *e) {
+    return source_bytes(e) >= BASIC_SRC_MAX;
+}
+
+static void run_finish(ide_t *e, int rc) {
+    console_set_color(GRID_COL_DIM);
+    console_write_line("--- press any key to return to IDE ---");
+    console_set_color(GRID_COL_DEFAULT);
+    (void)console_read_key();
+    if (rc != 0) {
+        ide_status(e, "run failed — see error above", GRID_COL_ERROR);
+    } else {
+        ide_status(e, "run OK", GRID_COL_OK);
+    }
+    ide_redraw(e);
 }
 
 static void make_path(const char *name, char *out, size_t cap) {
@@ -499,6 +538,13 @@ static int path_ends_grid(const char *path) {
 }
 
 static void run_buffer(ide_t *e, const char *file_path) {
+    int rc = 0;
+    if (!(file_path && file_path[0]) &&
+        !(e->path[0] && path_ends_grid(e->path)) &&
+        source_over_limit(e)) {
+        ide_status(e, "run blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
     console_clear();
     console_set_color(GRID_COL_TITLE);
     console_write_line("=== GridBASIC run ===");
@@ -510,32 +556,31 @@ static void run_buffer(ide_t *e, const char *file_path) {
         } else {
             make_path(file_path, path, sizeof(path));
         }
-        if (basic_run_file(path) != 0) {
-            ide_status(e, "run failed (file not found)", GRID_COL_ERROR);
-            return;
-        }
+        rc = basic_run_file(path);
     } else if (e->path[0] && path_ends_grid(e->path)) {
-        if (basic_run_file(e->path) != 0) {
-            ide_status(e, "run failed (.grid read error)", GRID_COL_ERROR);
+        rc = basic_run_file(e->path);
+    } else {
+        if (serialize(e, g_ide_io_buf, sizeof(g_ide_io_buf)) != 0) {
+            ide_status(e, "run blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
             return;
         }
-    } else {
-        static char src[BASIC_SRC_MAX];
-        serialize(e, src, sizeof(src));
-        basic_run_source(src);
+        rc = basic_run_source(g_ide_io_buf);
     }
-    console_set_color(GRID_COL_DIM);
-    console_write_line("--- press any key to return to IDE ---");
-    console_set_color(GRID_COL_DEFAULT);
-    (void)console_read_key();
-    ide_redraw(e);
+    run_finish(e, rc);
 }
 
 static void cmd_save(ide_t *e, const char *name) {
     if (!name[0]) { ide_status(e, "usage: save <name>", GRID_COL_ERROR); return; }
+    if (source_over_limit(e)) {
+        ide_status(e, "save blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
     char path[80]; make_path(name, path, sizeof(path));
-    static char src[BASIC_SRC_MAX]; serialize(e, src, sizeof(src));
-    if (gfs_write_file(path, src, slen(src)) != 0) {
+    if (serialize(e, g_ide_io_buf, sizeof(g_ide_io_buf)) != 0) {
+        ide_status(e, "save blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
+    if (gfs_write_file(path, g_ide_io_buf, slen(g_ide_io_buf)) != 0) {
         ide_status(e, "save failed (GFS write denied)", GRID_COL_ERROR); return;
     }
     scopy(e->path, sizeof(e->path), path);
@@ -571,15 +616,20 @@ static void cmd_compile(ide_t *e, const char *name) {
         }
         path[p] = '\0';
     }
-    static char src[BASIC_SRC_MAX];
-    static char bc[16384];
+    if (source_over_limit(e)) {
+        ide_status(e, "compile blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
     size_t blen = 0;
-    serialize(e, src, sizeof(src));
-    if (basic_compile_source(src, bc, sizeof(bc), &blen) != 0) {
+    if (serialize(e, g_ide_io_buf, sizeof(g_ide_io_buf)) != 0) {
+        ide_status(e, "compile blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
+    if (basic_compile_source(g_ide_io_buf, g_ide_bc_buf, sizeof(g_ide_bc_buf), &blen) != 0) {
         ide_status(e, "compile failed", GRID_COL_ERROR);
         return;
     }
-    if (gfs_write_file(path, bc, blen) != 0) {
+    if (gfs_write_file(path, g_ide_bc_buf, blen) != 0) {
         ide_status(e, "compile write failed", GRID_COL_ERROR);
         return;
     }
@@ -612,13 +662,7 @@ static void cmd_tutorial_steps(ide_t *e) {
     ide_status(e, "Tutorial complete — :load tutorial", GRID_COL_OK);
 }
 
-static int load_path_into(ide_t *e, const char *path) {
-    static char buf[BASIC_SRC_MAX];
-    size_t got = 0;
-    if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
-        return -1;
-    }
-    buf[got] = '\0';
+static int parse_source_into(ide_t *e, const char *path, const char *src, size_t got) {
     e->n = 0;
     e->row = 0;
     e->col = 0;
@@ -627,8 +671,8 @@ static int load_path_into(ide_t *e, const char *path) {
     int row = 0;
     size_t col = 0;
     e->lines[0][0] = '\0';
-    while (buf[i] && row < IDE_MAX_LINES) {
-        char c = buf[i++];
+    while (src[i] && row < IDE_MAX_LINES) {
+        char c = src[i++];
         if (c == '\n') {
             row++;
             col = 0;
@@ -651,7 +695,19 @@ static int load_path_into(ide_t *e, const char *path) {
     }
     scopy(e->path, sizeof(e->path), path);
     e->dirty = 0;
+    if (got >= BASIC_SRC_MAX - 1 || src[i]) {
+        return 2;
+    }
     return 0;
+}
+
+static int load_path_into(ide_t *e, const char *path) {
+    size_t got = 0;
+    if (gfs_read_file(path, g_ide_io_buf, sizeof(g_ide_io_buf) - 1, &got) != 0) {
+        return -1;
+    }
+    g_ide_io_buf[got] = '\0';
+    return parse_source_into(e, path, g_ide_io_buf, got);
 }
 
 int basic_ide_load_module(const char *path) {
@@ -692,13 +748,19 @@ static void cmd_mod_load(ide_t *e, const char *name) {
         ide_status(e, "module not found", GRID_COL_ERROR);
         return;
     }
-    if (load_path_into(e, path) != 0) {
+    int lrc = load_path_into(e, path);
+    if (lrc < 0) {
         ide_status(e, "module load failed", GRID_COL_ERROR);
         return;
     }
     char msg[80];
     scopy(msg, sizeof(msg), "mod ");
     scopy(msg + 4, sizeof(msg) - 4, name);
+    if (lrc == 2) {
+        scopy(msg + slen(msg), sizeof(msg) - slen(msg), " (truncated 65536)");
+        ide_status(e, msg, GRID_COL_WARN);
+        return;
+    }
     ide_status(e, msg, GRID_COL_OK);
 }
 
@@ -842,28 +904,18 @@ static void cmd_goto(ide_t *e, const char *num_text) {
 static void cmd_load(ide_t *e, const char *name) {
     if (!name[0]) { ide_status(e, "usage: load <name>", GRID_COL_ERROR); return; }
     char path[80]; make_path(name, path, sizeof(path));
-    static char buf[BASIC_SRC_MAX]; size_t got = 0;
-    if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
-        ide_status(e, "load failed (not found)", GRID_COL_ERROR); return;
+    int lrc = load_path_into(e, path);
+    if (lrc < 0) {
+        ide_status(e, "load failed (not found)", GRID_COL_ERROR);
+        return;
     }
-    buf[got] = '\0';
-    e->n = 0; e->row = 0; e->col = 0; e->top = 0;
-    size_t i = 0;
-    int row = 0;
-    size_t col = 0;
-    e->lines[0][0] = '\0';
-    while (buf[i] && row < IDE_MAX_LINES) {
-        char c = buf[i++];
-        if (c == '\n') { row++; col = 0; if (row < IDE_MAX_LINES) e->lines[row][0] = '\0'; }
-        else if (c == '\r') { /* skip */ }
-        else if (col + 1 < IDE_LINE_LEN) { e->lines[row][col++] = c; e->lines[row][col] = '\0'; }
+    char msg[80]; scopy(msg, sizeof(msg), "loaded ");
+    scopy(msg + 7, sizeof(msg) - 7, path);
+    if (lrc == 2) {
+        scopy(msg + slen(msg), sizeof(msg) - slen(msg), " (truncated 65536)");
+        ide_status(e, msg, GRID_COL_WARN);
+        return;
     }
-    if (row >= IDE_MAX_LINES) row = IDE_MAX_LINES - 1;
-    e->n = row + 1;
-    if (e->n == 0) { e->n = 1; e->lines[0][0] = '\0'; }
-    scopy(e->path, sizeof(e->path), path);
-    e->dirty = 0;
-    char msg[80]; scopy(msg, sizeof(msg), "loaded "); scopy(msg + 7, sizeof(msg) - 7, path);
     ide_status(e, msg, GRID_COL_OK);
 }
 
@@ -940,8 +992,9 @@ static void cmd_ai(ide_t *e, const char *args) {
         return;
     }
     if (sequal(args, "complete")) {
+        (void)serialize(e, g_ide_io_buf, sizeof(g_ide_io_buf));
         char src[4096];
-        serialize(e, src, sizeof(src));
+        scopy(src, sizeof(src), g_ide_io_buf);
         ai_complete(src, resp, sizeof(resp));
         show_ai_panel("=== AI complete ===", resp);
         return;
@@ -1191,6 +1244,7 @@ static void cmd_help(void) {
     console_write_line("  :samples              list /programs/*.bas samples");
     console_write_line("  :tutorial             interactive GridBASIC walkthrough");
     console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
+    console_write_line("  Programs are limited to 65535 bytes for :run/:save/:compile");
     console_write_line("  :help                 this IDE help");
     console_write_line("  :ai ask <prompt>      AI help (host bridge or offline)");
     console_write_line("  :ai explain           explain current line");
@@ -1320,20 +1374,11 @@ int basic_ide(const char *path) {
         g_boot_hint[0] = '\0';
     }
     if (path && path[0]) {
-        /* static: BASIC_SRC_MAX is far too large for the kernel stack */
-        static char buf[BASIC_SRC_MAX]; size_t got = 0;
-        if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) == 0) {
-            buf[got] = '\0';
-            size_t i = 0; int row = 0; size_t col = 0;
-            while (buf[i] && row < IDE_MAX_LINES) {
-                char c = buf[i++];
-                if (c == '\n') { row++; col = 0; if (row < IDE_MAX_LINES) ide.lines[row][0] = '\0'; }
-                else if (c == '\r') {}
-                else if (col + 1 < IDE_LINE_LEN) { ide.lines[row][col++] = c; ide.lines[row][col] = '\0'; }
-            }
-            ide.n = row + 1;
-            scopy(ide.path, sizeof(ide.path), path);
-        } else {
+        int lrc = load_path_into(&ide, path);
+        if (lrc == 2) {
+            scopy(ide.status, sizeof(ide.status), "load truncated at 65536 bytes");
+            ide.status_attr = GRID_COL_WARN;
+        } else if (lrc < 0) {
             scopy(ide.path, sizeof(ide.path), path);
         }
     }

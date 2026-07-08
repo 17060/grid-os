@@ -124,7 +124,10 @@ static int ide_transfer(uint32_t lba, void *buffer, int write) {
 }
 
 void disk_init(void) {
-    backend = DISK_BACKEND_NONE;
+    if (backend != DISK_BACKEND_NONE) {
+        return;
+    }
+
     ide_present = 0;
 
     virtio_blk_init();

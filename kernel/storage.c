@@ -181,7 +181,6 @@ static uint8_t hex_nibble(char c) {
 }
 
 void storage_init(void) {
-    disk_init();
     if (storage_load_disk() == 0) {
         storage_restore();
         return;

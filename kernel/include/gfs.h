@@ -6,6 +6,8 @@
 
 #define GFS_PATH_MAX 56
 
+#define GFS_FILE_MAX 65536u
+
 void gfs_init(void);
 int gfs_present(void);
 int gfs_format(void);

@@ -15,14 +15,14 @@
 #define GFS_MAGIC6 'Y'
 #define GFS_MAGIC7 'N'
 
-#define GFS_VERSION 2u
+#define GFS_VERSION 3u
 #define GFS_SUPER_LBA 64u
 #define GFS_INODE_TABLE_LBA 65u
 #define GFS_INODE_TABLE_SECTORS 8u
 #define GFS_INODE_MAX 64u
-#define GFS_SECTORS_PER_FILE 32u
+#define GFS_SECTORS_PER_FILE 128u
 #define GFS_DATA_BASE_LBA 128u
-#define GFS_FILE_CAP (GFS_SECTORS_PER_FILE * 512u)
+#define GFS_FILE_CAP GFS_FILE_MAX
 
 #define GFS_INODE_MAGIC 0x46494C45u
 
@@ -283,12 +283,23 @@ void gfs_init(void) {
     mounted = 1;
 }
 
+static void gfs_try_mount(void) {
+    if (mounted) {
+        return;
+    }
+    if (!disk_present()) {
+        return;
+    }
+    gfs_init();
+}
+
 int gfs_read_file(const char *path, void *out, size_t out_cap, size_t *out_len) {
     int slot;
     uint32_t lba;
     size_t total = 0;
     uint8_t sector[512];
 
+    gfs_try_mount();
     if (!mounted || !path || !out) {
         return -1;
     }
@@ -334,6 +345,7 @@ int gfs_write_file(const char *path, const void *data, size_t size) {
     uint8_t sector[512];
     const uint8_t *bytes = (const uint8_t *)data;
 
+    gfs_try_mount();
     if (!mounted || !path || !data || size == 0 || size > GFS_FILE_CAP) {
         return -1;
     }
@@ -381,6 +393,7 @@ int gfs_write_file(const char *path, const void *data, size_t size) {
 int gfs_delete_file(const char *path) {
     int slot;
 
+    gfs_try_mount();
     if (!mounted || !path) {
         return -1;
     }
@@ -399,6 +412,7 @@ int gfs_delete_file(const char *path) {
 void gfs_list(const char *prefix) {
     int found = 0;
 
+    gfs_try_mount();
     if (!mounted) {
         console_set_color(GRID_COL_ERROR);
         console_write_line("GFS: arcade disk not mounted.");
@@ -457,6 +471,7 @@ void gfs_list(const char *prefix) {
 int gfs_list_paths(const char *prefix, char paths[][GFS_PATH_MAX], int max_paths) {
     int count = 0;
 
+    gfs_try_mount();
     if (!mounted || max_paths <= 0) {
         return 0;
     }
@@ -482,6 +497,7 @@ int gfs_list_paths(const char *prefix, char paths[][GFS_PATH_MAX], int max_paths
 void gfs_print_status(void) {
     int used = 0;
 
+    gfs_try_mount();
     if (!mounted) {
         console_write_line("GFS: not mounted (no Flynn arcade disk)");
         return;
@@ -522,7 +538,7 @@ void gfs_print_status(void) {
     console_write_char((char)('0' + (GFS_INODE_MAX / 10) % 10));
     console_write_char((char)('0' + (GFS_INODE_MAX % 10)));
     console_write_line(" files");
-    console_write_line("  Max file:  16384 B");
+    console_write_line("  Max file:  65536 B");
     console_write_line("  Paths: /programs/*  /source/*  /flynn/*  /grid/*");
 }
 

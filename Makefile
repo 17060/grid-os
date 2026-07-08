@@ -227,6 +227,11 @@ test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 # exit it cleanly, then poweroff (isa-debug-exit -> 3).
 test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	@(sleep 5; printf '\033'; sleep 1; printf 'basictest\n'; sleep 3; printf '\n'; \
+	  sleep 1; printf '10 PRINT "IDE-RUN-OK"\n20 END\n'; sleep 2; \
+	  printf '\033'; sleep 2; printf ':run\n'; sleep 5; printf '\n'; \
+	  sleep 2; printf '\033'; sleep 1; printf ':new\n'; sleep 1; printf '\n'; \
+	  sleep 1; printf '10 PRINT "hello grid"\n20 END\n'; sleep 2; \
+	  printf '\033'; sleep 2; printf ':run\n'; sleep 5; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'net ping gateway\n'; sleep 4; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'pkg mods\n'; sleep 3; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'spawn gridsh\n'; sleep 2; \
@@ -238,6 +243,9 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 		> build/test-e2e.log 2>&1; \
 	rc=$$?; \
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
+	grep -q '=== GridBASIC run ===' build/test-e2e.log || { echo "IDE :run banner missing"; exit 1; }; \
+	grep -q 'IDE-RUN-OK' build/test-e2e.log || { echo "IDE buffer :run output missing"; exit 1; }; \
+	grep -Eq 'hello grid|GridBASIC 7\.(0|1\.1) online|grid line ' build/test-e2e.log || { echo "IDE buffer hello output missing"; exit 1; }; \
 	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
 	grep -q 'Reply received' build/test-e2e.log || { echo "net ping output missing"; exit 1; }; \
 	grep -q 'disc-status' build/test-e2e.log || { echo "pkg mods output missing"; exit 1; }; \
