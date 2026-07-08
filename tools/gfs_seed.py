@@ -161,6 +161,17 @@ DEMO_BAS = (
 )
 
 PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
+REDTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "redteam"
+
+
+def redteam_seed_files() -> list[tuple[str, bytes]]:
+    """Return (vfs_path, payload) for /programs/redteam/*.bas lab demos."""
+    out: list[tuple[str, bytes]] = []
+    if not REDTEAM_ROOT.is_dir():
+        return out
+    for path in sorted(REDTEAM_ROOT.glob("*.bas")):
+        out.append((f"/programs/redteam/{path.name}", path.read_bytes()))
+    return out
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
@@ -259,6 +270,10 @@ def main() -> int:
 
     slot = 22
     for path, payload in package_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in redteam_seed_files():
         files.append((slot, path, payload))
         slot += 1
 

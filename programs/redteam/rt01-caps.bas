@@ -1,0 +1,11 @@
+10 REM rt01 -- capability probe (fail-closed checks)
+20 PRINT "=== RT01: Capabilities ==="
+30 PRINT "Entity: "; GRID.WHOAMI$
+40 PRINT "Mask:   "; GRID.CAPS$
+50 PRINT "READ_GRID:    "; GRID.CAP(1)
+60 PRINT "WRITE_GRID:   "; GRID.CAP(2)
+70 PRINT "SPAWN:        "; GRID.CAP(4)
+80 PRINT "COMMUNICATE:  "; GRID.CAP(8)
+90 PRINT "ISO_RESEARCH: "; GRID.CAP(32)
+100 PRINT "STORAGE:      "; GRID.CAP(64)
+110 END

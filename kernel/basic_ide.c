@@ -1242,6 +1242,7 @@ static void cmd_help(void) {
     console_write_line("  :find <text>          search buffer from cursor");
     console_write_line("  :goto <line>          jump to line number");
     console_write_line("  :samples              list /programs/*.bas samples");
+    console_write_line("  :redteam              red team lab (25 security demos)");
     console_write_line("  :tutorial             interactive GridBASIC walkthrough");
     console_write_line("  :compile <name>       compile buffer to /programs/<name>.grid");
     console_write_line("  Programs are limited to 65535 bytes for :run/:save/:compile");
@@ -1301,6 +1302,7 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "mod run ")) { cmd_mod_run(e, cmd + 8); return 1; }
     if (starts_with(cmd, "mod load ")) { cmd_mod_load(e, cmd + 9); return 1; }
     if (sequal(cmd, "samples")) { run_shell_line(e, "samples"); return 1; }
+    if (sequal(cmd, "redteam")) { run_shell_line(e, "redteam"); return 1; }
     if (sequal(cmd, "tutorial") || sequal(cmd, "t")) { cmd_tutorial_steps(e); return 1; }
     if (starts_with(cmd, "compile ")) { cmd_compile(e, cmd + 8); return 1; }
     if (starts_with(cmd, "compile")) { cmd_compile(e, cmd + 7); return 1; }

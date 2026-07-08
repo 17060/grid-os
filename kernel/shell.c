@@ -163,6 +163,7 @@ static void cmd_help(void) {
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
     console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
+    console_write_line("  redteam           Red team lab — 25 security demos (/programs/redteam/)");
     console_write_line("  ai [ask|explain|fix|models]  Grid AI (host bridge or offline)");
     console_write_line("  btc [info|balance|send|call|...]  Bitcoin node (host bridge)");
     console_write_line("  iso               ISO research zone commands");
@@ -1198,6 +1199,42 @@ static int path_ends_with(const char *path, const char *suffix) {
     return equals(path + plen - slen, suffix);
 }
 
+static void cmd_redteam(void) {
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("=== Grid OS Red Team Lab (25 demos) ===");
+    console_set_color(GRID_COL_DEFAULT);
+    console_write_line("Run: basic run /programs/redteam/rtNN-name.bas");
+    console_write_line("Menu: basic run /programs/redteam/menu.bas");
+    console_write_line("");
+    console_write_line(" 01 rt01-caps        capability bitmask probe");
+    console_write_line(" 02 rt02-identity    identity disc + WHOAMI");
+    console_write_line(" 03 rt03-gfs-enum    Flynn disk path enumeration");
+    console_write_line(" 04 rt04-gfs-read    read /etc/hosts + motd");
+    console_write_line(" 05 rt05-vault-dump  vault key list + values");
+    console_write_line(" 06 rt06-vault-canary write persistence canary");
+    console_write_line(" 07 rt07-net-recon   network stack status");
+    console_write_line(" 08 rt08-dns-scan    DNS resolve Flynn hosts");
+    console_write_line(" 09 rt09-ping-sweep  ICMP ping common targets");
+    console_write_line(" 10 rt10-http-get    HTTP GET gateway probe");
+    console_write_line(" 11 rt11-http-post   HTTP POST body probe");
+    console_write_line(" 12 rt12-audit-exfil tail audit log");
+    console_write_line(" 13 rt13-log-forge   inject audit event");
+    console_write_line(" 14 rt14-iso-recon   ISO research zone list");
+    console_write_line(" 15 rt15-jobs-recon  background sandbox jobs");
+    console_write_line(" 16 rt16-spawn-recon ring-3 program inventory");
+    console_write_line(" 17 rt17-pkg-recon   package + module list");
+    console_write_line(" 18 rt18-irc-recon   IRC bridge status");
+    console_write_line(" 19 rt19-btc-recon   Bitcoin host bridge probe");
+    console_write_line(" 20 rt20-ai-recon    AI host bridge probe");
+    console_write_line(" 21 rt21-serial-sniff COM1 line read");
+    console_write_line(" 22 rt22-patrol-recon recognizer patrol control");
+    console_write_line(" 23 rt23-gfs-drop     write canary file to GFS");
+    console_write_line(" 24 rt24-full-recon   combined quick sweep");
+    console_write_line(" 25 rt25-bridge-map   multi-service bridge map");
+    console_write_line("");
+    console_write_line("QEMU lab only. Host bridges: make btc-bridge ai-bridge");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -2016,6 +2053,8 @@ void shell_dispatch_line(char *line) {
         cmd_tutorial();
     } else if (equals(argv[0], "samples")) {
         cmd_samples();
+    } else if (equals(argv[0], "redteam")) {
+        cmd_redteam();
     } else if (equals(argv[0], "basictest")) {
         cmd_basictest();
     } else if (equals(argv[0], "ai")) {
