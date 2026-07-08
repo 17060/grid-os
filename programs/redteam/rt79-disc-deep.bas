@@ -1,0 +1,4 @@
+10 REM rt79 -- disc record
+20 PRINT "=== RT79 ==="
+30 PRINT GRID.DISC.STATUS$
+40 END

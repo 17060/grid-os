@@ -29,7 +29,7 @@ LIBGCC := $(shell $(CC) -print-libgcc-file-name)
 
 DISK_IMAGE = build/grid.img
 DISK_TEST_IMAGE = build/grid-test.img
-DISK_MB    = 16
+DISK_MB    = 32
 
 BOOT_OBJS = build/boot.o build/gdt_load.o build/interrupts.o
 USER_PROGS = gridprog discinfo gridsh lightcycle gridloop
@@ -71,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk gen-security-demos sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -83,7 +83,10 @@ $(DISK_IMAGE): | build
 
 disk: $(DISK_IMAGE)
 
-seed-disk: $(TARGET) $(DISK_IMAGE)
+gen-security-demos:
+	python3 tools/gen_security_demos.py
+
+seed-disk: gen-security-demos $(TARGET) $(DISK_IMAGE)
 	python3 tools/gfs_seed.py
 
 sync-basic-wiki:

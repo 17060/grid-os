@@ -1,7 +1,6 @@
-10 REM rt09 -- ICMP ping sweep
-20 PRINT "=== RT09: Ping Sweep ==="
-30 PRINT "gateway: "; GRID.PING("gateway")
-40 PRINT "grid:    "; GRID.PING("grid")
-50 PRINT "bridge:  "; GRID.PING("bridge")
-60 PRINT "10.0.2.2:"; GRID.PING("10.0.2.2")
-70 END
+10 REM rt09 -- ping sweep
+20 PRINT "=== RT09: Ping ==="
+30 PRINT GRID.PING("gateway")
+40 PRINT GRID.PING("bridge")
+50 PRINT GRID.PING("10.0.2.2")
+60 END

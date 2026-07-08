@@ -1,0 +1,4 @@
+10 REM rt77 -- job table
+20 PRINT "=== RT77 ==="
+30 PRINT GRID.JOBS.LIST$
+40 END

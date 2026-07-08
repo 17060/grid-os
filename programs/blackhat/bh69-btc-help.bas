@@ -1,0 +1,5 @@
+10 REM bh69 -- BTC RPC help
+20 PRINT "=== BH69: BTC help ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.BTC.CALL$("help", "")
+50 END

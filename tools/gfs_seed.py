@@ -162,16 +162,24 @@ DEMO_BAS = (
 
 PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
 REDTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "redteam"
+BLACKHAT_ROOT = Path(__file__).resolve().parent.parent / "programs" / "blackhat"
+
+
+def lab_seed_files(root: Path, vfs_dir: str) -> list[tuple[str, bytes]]:
+    out: list[tuple[str, bytes]] = []
+    if not root.is_dir():
+        return out
+    for path in sorted(root.glob("*.bas")):
+        out.append((f"{vfs_dir}/{path.name}", path.read_bytes()))
+    return out
 
 
 def redteam_seed_files() -> list[tuple[str, bytes]]:
-    """Return (vfs_path, payload) for /programs/redteam/*.bas lab demos."""
-    out: list[tuple[str, bytes]] = []
-    if not REDTEAM_ROOT.is_dir():
-        return out
-    for path in sorted(REDTEAM_ROOT.glob("*.bas")):
-        out.append((f"/programs/redteam/{path.name}", path.read_bytes()))
-    return out
+    return lab_seed_files(REDTEAM_ROOT, "/programs/redteam")
+
+
+def blackhat_seed_files() -> list[tuple[str, bytes]]:
+    return lab_seed_files(BLACKHAT_ROOT, "/programs/blackhat")
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
@@ -274,6 +282,10 @@ def main() -> int:
         slot += 1
 
     for path, payload in redteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in blackhat_seed_files():
         files.append((slot, path, payload))
         slot += 1
 

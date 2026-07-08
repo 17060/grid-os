@@ -1,0 +1,5 @@
+10 REM rt26 -- probe READ_GRID
+20 PRINT "=== RT26: READ_GRID ==="
+30 PRINT "CAP(1)="; GRID.CAP(1)
+40 PRINT "Mask: "; GRID.CAPS$
+50 END

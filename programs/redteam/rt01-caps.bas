@@ -1,4 +1,4 @@
-10 REM rt01 -- capability probe (fail-closed checks)
+10 REM rt01 -- capability probe
 20 PRINT "=== RT01: Capabilities ==="
 30 PRINT "Entity: "; GRID.WHOAMI$
 40 PRINT "Mask:   "; GRID.CAPS$
