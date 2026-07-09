@@ -17,6 +17,8 @@ static sched_job_t jobs[SCHED_JOBS_MAX];
 static int job_count = 0;
 static int preempt_armed = 0;
 static volatile int quantum_expired = 0;
+static int next_run = 0;   /* round-robin cursor: slot to resume scanning from */
+static volatile int running_slot = -1;  /* slot currently executing, or -1 */
 
 void sched_init(void) {
     for (int i = 0; i < SCHED_JOBS_MAX; ++i) {
@@ -242,15 +244,16 @@ void sched_on_timer(void) {
         return;
     }
 
-    uint32_t now = timer_ticks();
-    for (int i = 0; i < SCHED_JOBS_MAX; ++i) {
-        if (!jobs[i].active) {
-            continue;
-        }
-        if (now - jobs[i].slice_start >= SCHED_QUANTUM) {
-            quantum_expired = 1;
-            return;
-        }
+    /* Only the currently-running job's quantum matters. Checking every active
+     * job (as this used to) preempted on the OLDEST job's stale slice_start —
+     * an idle job's clock keeps aging, so the running job was cut short on the
+     * wrong timer, producing wildly unfair slices. */
+    int slot = running_slot;
+    if (slot < 0 || !jobs[slot].active) {
+        return;
+    }
+    if (timer_ticks() - jobs[slot].slice_start >= SCHED_QUANTUM) {
+        quantum_expired = 1;
     }
 }
 
@@ -260,7 +263,11 @@ void sched_run_pending(void) {
 }
 
 void sched_service(void) {
-    for (int i = 0; i < SCHED_JOBS_MAX; ++i) {
+    /* Round-robin: resume the scan just past the slot run last time so ready
+     * jobs take turns. A flat 0..MAX scan always re-selected the lowest-index
+     * active job, starving every higher slot until it exited. */
+    for (int k = 0; k < SCHED_JOBS_MAX; ++k) {
+        int i = (next_run + k) % SCHED_JOBS_MAX;
         const grid_program_t *program;
 
         if (!jobs[i].active) {
@@ -282,7 +289,10 @@ void sched_service(void) {
 
         jobs[i].slice_start = timer_ticks();
         quantum_expired = 0;
+        next_run = (i + 1) % SCHED_JOBS_MAX;
+        running_slot = i;
         program_run(jobs[i].program_id);
+        running_slot = -1;
         return;
     }
 

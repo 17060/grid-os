@@ -353,7 +353,9 @@ int btc_block(const char *hash_or_height, char *out, size_t cap) {
     p = 0;
     params[p++] = '[';
     params[p++] = '"';
-    for (size_t i = 0; hash_or_height[i] && p + 4 < sizeof(params); ++i) {
+    /* Reserve 5 bytes for the 4-char suffix ("," 1 ]) plus the NUL below;
+     * a 4-byte reservation let params[p]='\0' write one past params[128]. */
+    for (size_t i = 0; hash_or_height[i] && p + 5 < sizeof(params); ++i) {
         params[p++] = hash_or_height[i];
     }
     params[p++] = '"';

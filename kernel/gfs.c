@@ -211,7 +211,10 @@ int gfs_present(void) {
 }
 
 int gfs_format(void) {
-    gfs_super_t sb;
+    /* disk_read/disk_write transfer a full 512-byte sector, so the superblock
+     * must live in a sector-sized, aligned buffer — writing from a bare
+     * gfs_super_t (28 bytes) would read 484 bytes past it. */
+    union { gfs_super_t sb; uint8_t raw[512]; } super;
     uint8_t zero[512];
 
     if (!disk_present()) {
@@ -221,9 +224,12 @@ int gfs_format(void) {
     for (size_t i = 0; i < sizeof(zero); ++i) {
         zero[i] = 0;
     }
+    for (size_t i = 0; i < sizeof(super.raw); ++i) {
+        super.raw[i] = 0;
+    }
 
-    build_superblock(&sb);
-    if (disk_write(GFS_SUPER_LBA, &sb) != 0) {
+    build_superblock(&super.sb);
+    if (disk_write(GFS_SUPER_LBA, super.raw) != 0) {
         return -1;
     }
 
@@ -251,7 +257,10 @@ int gfs_format(void) {
 }
 
 void gfs_init(void) {
-    gfs_super_t sb;
+    /* Sector-sized, aligned buffer: disk_read fills a full 512 bytes, so
+     * reading the superblock into a bare 28-byte gfs_super_t would overflow
+     * the stack (smashing this function's return address). */
+    union { gfs_super_t sb; uint8_t raw[512]; } super;
 
     mounted = 0;
     for (int i = 0; i < (int)GFS_INODE_MAX; ++i) {
@@ -264,11 +273,18 @@ void gfs_init(void) {
         return;
     }
 
-    if (disk_read(GFS_SUPER_LBA, &sb) != 0) {
-        return;
+    /* Retry the superblock read before concluding the disk is unformatted.
+     * A single transient glitch must never trigger the reformat path below —
+     * that would destroy a perfectly good filesystem over one bad read. */
+    int have_super = 0;
+    for (int attempt = 0; attempt < 5 && !have_super; ++attempt) {
+        if (disk_read(GFS_SUPER_LBA, super.raw) == 0 && super_valid(&super.sb)) {
+            have_super = 1;
+        }
     }
 
-    if (!super_valid(&sb)) {
+    if (!have_super) {
+        /* Genuinely no valid superblock after several tries: format + seed. */
         if (gfs_format() != 0) {
             return;
         }
@@ -276,7 +292,15 @@ void gfs_init(void) {
         return;
     }
 
-    if (load_inodes() != 0) {
+    /* Retry inode-table load too, so a transient read error doesn't leave the
+     * disk unmounted (and thus invisible) for the rest of the session. */
+    int loaded = 0;
+    for (int attempt = 0; attempt < 5 && !loaded; ++attempt) {
+        if (load_inodes() == 0) {
+            loaded = 1;
+        }
+    }
+    if (!loaded) {
         return;
     }
 

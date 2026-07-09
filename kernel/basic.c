@@ -73,6 +73,13 @@ typedef struct {
 #define MAX_FRAMES 64
 #define MAX_DEF_FN 32
 #define MAX_SUBS   16
+/* Bound on nested-expression recursion (parentheses, function-call arguments,
+ * array indices, unary-prefix chains). Each level costs ~18 KB of kernel stack
+ * because value_t (a 1 KB string buffer) is returned by value through the eval
+ * chain. The boot stack (boot/boot.s) is sized to hold MAX_EVAL_DEPTH levels
+ * with margin; exceeding this raises a clean BASIC error instead of silently
+ * overrunning the guard-page-less kernel stack into adjacent BSS. */
+#define MAX_EVAL_DEPTH 32
 
 /* GridBASIC numbers are stored as signed 64-bit fixed-point with 6 decimal
  * places: a value V is represented as V * SCALE. This avoids all hardware
@@ -179,6 +186,7 @@ static gosub_frame_t g_gosub_stack[MAX_FRAMES];
 static int g_gosub_sp;
 static sub_frame_t g_sub_stack[MAX_FRAMES];
 static int g_sub_sp;
+static int g_eval_depth;   /* current nested-expression recursion depth */
 
 #define MAX_DATA 512
 static value_t g_data[MAX_DATA];
@@ -394,9 +402,12 @@ static int parse_number(const char *src, size_t *i, num_t *out) {
         int neg = 0;
         if (src[k] == '+') k++; else if (src[k] == '-') { neg = 1; k++; }
         int e = 0;
-        while (k < *i && is_digit(src[k])) { e = e * 10 + (src[k] - '0'); k++; }
+        /* Cap the exponent: an unbounded literal like 1E2000000000 would spin
+         * the multiply loop ~2e9 times (hang) and overflow num_t (signed UB).
+         * Fixed-point num_t spans well under 10^19, so 100 is far past useful. */
+        while (k < *i && is_digit(src[k])) { if (e < 100) e = e * 10 + (src[k] - '0'); k++; }
         num_t m = BASIC_SCALE;
-        for (int j = 0; j < e; ++j) m *= 10;
+        for (int j = 0; j < e && m <= (num_t)900000000000000000LL; ++j) m *= 10;
         val = neg ? (num_t)((__int128)val * BASIC_SCALE / m) : (num_t)((__int128)val * m / BASIC_SCALE);
     }
     *out = val;
@@ -591,6 +602,7 @@ static void reset_state(void) {
     g_for_sp = 0;
     g_gosub_sp = 0;
     g_sub_sp = 0;
+    g_eval_depth = 0;
     g_pool_used = 0;
     g_ndata = 0;
     g_data_read = 0;
@@ -930,13 +942,15 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "LOWER$"))  { if(!(argc>0&&argv[0].is_str)) return make_str(""); char b[160]; size_t k=0; const char*s=argv[0].s; while(*s&&k<sizeof(b)-1){b[k++]=(*s>='A'&&*s<='Z')?*s+32:*s;s++;} b[k]='\0'; return make_str(b); }
     if (strequal(name, "LEFT$"))   { if(!(argc>0&&argv[0].is_str)) return make_str(""); int n=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:0); if(n<0)n=0; char b[160]; size_t k=0; const char*s=argv[0].s; while(*s&&k<(size_t)n&&k<sizeof(b)-1){b[k++]=*s++;} b[k]='\0'; return make_str(b); }
     if (strequal(name, "RIGHT$"))  { if(!(argc>0&&argv[0].is_str)) return make_str(""); int n=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:0); int len=str_len(argv[0].s); if(n>len)n=len; if(n<0)n=0; const char*s=argv[0].s+len-n; return make_str(s); }
-    if (strequal(name, "MID$"))    { if(!(argc>0&&argv[0].is_str)) return make_str(""); int start=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:1); int n=(int)(argc>2?to_num(&argv[2])/BASIC_SCALE:32000); if(start<1)start=1; const char*s=argv[0].s+start-1; if(s<argv[0].s)s=argv[0].s; char b[160]; size_t k=0; while(*s&&k<(size_t)n&&k<sizeof(b)-1){b[k++]=*s++;} b[k]='\0'; return make_str(b); }
+    if (strequal(name, "MID$"))    { if(!(argc>0&&argv[0].is_str)) return make_str(""); int start=(int)(argc>1?to_num(&argv[1])/BASIC_SCALE:1); int n=(int)(argc>2?to_num(&argv[2])/BASIC_SCALE:32000); if(start<1)start=1; int slen=str_len(argv[0].s); if(start>slen+1)start=slen+1; const char*s=argv[0].s+start-1; char b[160]; size_t k=0; while(*s&&k<(size_t)n&&k<sizeof(b)-1){b[k++]=*s++;} b[k]='\0'; return make_str(b); }
     if (strequal(name, "INSTR$"))  {
         if (!(argc > 0 && argv[0].is_str)) return make_num(0);
         const char *hay = argv[0].s;
         const char *needle = (argc > 1 && argv[1].is_str) ? argv[1].s : "";
         int start = (int)(argc > 2 ? to_num(&argv[2]) / BASIC_SCALE : 1);
         if (start < 1) start = 1;
+        int hlen = str_len(hay);
+        if (start > hlen + 1) start = hlen + 1;  /* keep hay within the string */
         hay += start - 1;
         if (!needle[0]) return make_num((num_t)start * BASIC_SCALE);
         const char *p = hay;
@@ -1260,7 +1274,24 @@ static int is_builtin_name(const char *name) {
     return 0;
 }
 
+static value_t eval_primary_inner(void);
+
+/* Depth-guarded entry to the expression evaluator's leaf level. Every
+ * recursive path — parenthesised sub-expressions, function-call arguments,
+ * array-index expressions, and unary-prefix chains — funnels through
+ * eval_primary, so bounding it here bounds total kernel-stack consumption. */
 static value_t eval_primary(void) {
+    if (g_eval_depth >= MAX_EVAL_DEPTH) {
+        set_error("EXPR: nesting too deep");
+        return make_num(0);
+    }
+    g_eval_depth++;
+    value_t v = eval_primary_inner();
+    g_eval_depth--;
+    return v;
+}
+
+static value_t eval_primary_inner(void) {
     token_t *t = cur();
     if (t->type == T_NUM) { advance(); return make_num(t->num); }
     if (t->type == T_STR) { advance(); return make_str(t->text); }
@@ -1548,12 +1579,20 @@ static void exec_dim(void) {
         }
         var_t *v = get_var(name, want_str);
         if (v) {
-            v->is_array = 1; v->dim = dim; v->dim2 = dim2;
-            if (dim2 >= 0) {
-                v->cells = alloc_cells((dim + 1) * (dim2 + 1));
-            } else {
-                v->cells = alloc_cells(dim + 1);
+            /* Compute the cell count in 64-bit: (dim+1)*(dim2+1) overflows a
+             * 32-bit int for large dimensions (e.g. DIM A(65535,65535) wraps
+             * to 0), which would allocate a tiny buffer while v->dim/dim2 keep
+             * huge bounds -> massive out-of-bounds writes via var_cell(). */
+            long long count = (dim2 >= 0)
+                ? ((long long)dim + 1) * ((long long)dim2 + 1)
+                : ((long long)dim + 1);
+            long long pool = (long long)(sizeof(g_array_pool) / sizeof(g_array_pool[0]));
+            if (count < 1 || count > pool) {
+                set_error("DIM: array too large");
+                return;
             }
+            v->is_array = 1; v->dim = dim; v->dim2 = dim2;
+            v->cells = alloc_cells((int)count);
         }
         if (!match_op(',')) break;
     }
@@ -2466,6 +2505,10 @@ static void exec_statement(void) {
         case KW_NEXT: advance(); {
             if (g_for_sp <= 0) { set_error("NEXT: without FOR"); return; }
             for_frame_t *f = &g_for_stack[g_for_sp - 1];
+            /* WHILE frames use var_index -1 and REPEAT frames -2; only a real
+             * FOR frame has a valid variable. Without this check, NEXT on a
+             * WHILE/REPEAT frame writes g_vars[-1]/g_vars[-2] (OOB). */
+            if (f->var_index < 0) { set_error("NEXT: without FOR"); return; }
             var_t *v = &g_vars[f->var_index];
             if (cur()->type == T_ID) { advance(); }
             v->scalar.n += f->step_val;

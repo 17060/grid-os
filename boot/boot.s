@@ -33,7 +33,13 @@ boot_pd:
     resb 4096
 align 16
 stack_bottom:
-    resb 16384
+    ; 2 MiB kernel stack. GridBASIC's recursive-descent evaluator returns
+    ; value_t (a ~1 KB string buffer) by value through ~9 frames per nested
+    ; expression level (~18 KB/level); MAX_EVAL_DEPTH (32) in kernel/basic.c
+    ; caps nesting so worst-case eval stack (~0.6 MiB) fits here with margin.
+    ; Bare metal has no stack guard page, so undersizing corrupts adjacent BSS
+    ; silently. Region lives within the 1 GiB identity map set up above.
+    resb 2097152
 global stack_top
 stack_top:
 

@@ -112,6 +112,9 @@ static void merge_up(ide_t *e, int row) {
     size_t clen = slen(cur);
     if (plen + clen + 1 >= IDE_LINE_LEN) {
         /* join what fits; keep cursor at join */
+        if (plen + 2 >= IDE_LINE_LEN) return;   /* prev already full: nothing
+                                                 * fits; avoids size_t underflow
+                                                 * of `room` below (OOB write) */
         size_t room = IDE_LINE_LEN - 2 - plen;
         for (size_t i = 0; i <= room && i < clen; ++i) prev[plen + i] = cur[i];
         prev[plen + (room < clen ? room : clen)] = '\0';
@@ -1331,6 +1334,8 @@ int basic_ide(const char *path) {
                 else if (c == '\r') {}
                 else if (col + 1 < IDE_LINE_LEN) { ide.lines[row][col++] = c; ide.lines[row][col] = '\0'; }
             }
+            if (row >= IDE_MAX_LINES) row = IDE_MAX_LINES - 1;  /* clamp: file
+                * with >=2048 newlines would set ide.n past lines[2048] */
             ide.n = row + 1;
             scopy(ide.path, sizeof(ide.path), path);
         } else {

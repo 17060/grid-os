@@ -141,7 +141,9 @@ void *memory_dma_alloc(size_t size, size_t align) {
     }
 
     size_t aligned = (dma_pool_used + align - 1) & ~(align - 1);
-    if (aligned + size > sizeof(dma_pool)) {
+    /* Overflow-safe bounds check: a huge `size` would make `aligned + size`
+     * wrap below sizeof(dma_pool) and slip past the guard. */
+    if (aligned > sizeof(dma_pool) || size > sizeof(dma_pool) - aligned) {
         return 0;
     }
 

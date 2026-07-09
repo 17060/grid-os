@@ -410,6 +410,9 @@ void net_poll(void) {
         vring_used_elem_t elem = net.rx_used->ring[slot];
         uint8_t *buf = net.rx_buf[slot];
         size_t len = (size_t)elem.len;
+        if (len > NET_BUF_SIZE) len = NET_BUF_SIZE;  /* clamp device-reported
+            * length to the DMA buffer size before parsing (defensive vs. a
+            * malfunctioning/hostile virtio backend) */
         if (buf && len > NET_HDR_SIZE) {
             handle_packet(buf + NET_HDR_SIZE, len - NET_HDR_SIZE);
             net.rx_pkts++;
@@ -821,6 +824,15 @@ void net_init(void) {
 
     net.pci = dev;
     net.io_base = (uint16_t)bar;
+
+    /* Polled driver (net_poll) with no interrupt handler: set the PCI
+     * Interrupt Disable bit (command register bit 10) so this device never
+     * asserts INTx. An unacknowledged, always-asserted line storms the CPU and
+     * intermittently disrupts unrelated boot activity (e.g. the disk mount). */
+    {
+        uint16_t cmd = pci_read16(&dev, 0x04);
+        pci_write16(&dev, 0x04, (uint16_t)(cmd | (1u << 10)));
+    }
 
     set_status(0);
     set_status(VIRTIO_STATUS_ACK);

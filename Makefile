@@ -71,7 +71,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched test-qemu-smoke test-e2e disk seed-disk sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: $(TARGET)
 
@@ -183,6 +183,13 @@ test-host-basic:
 	@printf '10 SUB GREET(N$$)\n20 PRINT "Hello, "; N$$\n30 END SUB\n40 CALL GREET("Flynn")\n50 END\n' | build/basic_host | grep -qx 'Hello, Flynn'
 	@printf '10 DIM M(3,3)\n20 M(2,3)=23\n30 PRINT M(2,3)\n40 END\n' | build/basic_host | grep -qx '23'
 	@printf '10 IF 0 THEN PRINT 1 ELSEIF 1 THEN PRINT 2 ELSE PRINT 3\n20 END\n' | build/basic_host | grep -qx '2'
+	@printf '10 PRINT ((((2*3))))\n20 END\n' | build/basic_host | grep -qx '6'
+	@sh -c 'p=`awk "BEGIN{for(i=0;i<400;i++)printf\"(\"}"`; q=`awk "BEGIN{for(i=0;i<400;i++)printf\")\"}"`; printf "10 PRINT %s1%s\n20 END\n" "$$p" "$$q" | build/basic_host | grep -q "nesting too deep"'
+	@printf '10 DIM A(65535,65535)\n20 A(2,0)=1\n30 END\n' | build/basic_host | grep -q 'too large'
+	@printf '10 DIM A(2147483647)\n20 END\n' | build/basic_host | grep -q 'too large'
+	@printf '10 WHILE 1\n20 NEXT\n30 END\n' | build/basic_host | grep -q 'without FOR'
+	@printf '10 PRINT MID$$("hi",2000000000)\n20 PRINT "end"\n30 END\n' | build/basic_host | grep -qx 'end'
+	@printf '10 PRINT 1E2000000000\n20 END\n' | build/basic_host | grep -qx '1000000000000'
 
 test-host-vault:
 	@cc -std=c11 -Ikernel/include -O2 -o build/vault_host tools/vault_host_test.c
@@ -212,7 +219,11 @@ test-host-spawn:
 	@chmod +x tools/spawn_regression.sh
 	@tools/spawn_regression.sh
 
-test-host: test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn
+test-host-sched:
+	@cc -std=c11 -Ikernel/include -O2 -o build/sched_host tools/sched_host_test.c kernel/sched.c
+	@build/sched_host
+
+test-host: test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched
 
 test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 	@$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

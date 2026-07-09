@@ -546,6 +546,12 @@ void irc_poll(void) {
     int n = tcp_recv(&g_irc.conn, 2);
     if (n > 0) {
         process_rx_bytes(g_irc.conn.rx_buf, (size_t)n);
+        /* Drain the buffer after consuming it. tcp_recv() returns the current
+         * rx_len without clearing it, so without this the same bytes are
+         * re-parsed every poll (duplicate lines) and no new segments are read
+         * until rx_buf fills and tcp_input drops the connection. Matches
+         * http.c, which clears rx_len after use. */
+        g_irc.conn.rx_len = 0;
     }
     if (g_irc.conn.closed || g_irc.conn.error) {
         enqueue_line("IRC: disconnected");

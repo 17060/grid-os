@@ -24,8 +24,14 @@ typedef struct {
     uint32_t e_version;
     uint64_t e_entry;
     uint64_t e_phoff;
+    uint64_t e_shoff;       /* these three were missing, so e_phentsize/e_phnum */
+    uint32_t e_flags;       /* were read 14 bytes too early (landing in e_shoff) */
+    uint16_t e_ehsize;      /* -> e_phnum read as 0 -> no segments ever mapped.  */
     uint16_t e_phentsize;
     uint16_t e_phnum;
+    uint16_t e_shentsize;
+    uint16_t e_shnum;
+    uint16_t e_shstrndx;
 } elf64_ehdr_t;
 
 typedef struct {
@@ -91,9 +97,15 @@ int elf_load(uint64_t *pml4, const void *image, size_t size, uint64_t *entry_out
     const elf64_ehdr_t *hdr = (const elf64_ehdr_t *)image;
     const uint8_t *base = (const uint8_t *)image;
 
+    /* e_phoff/e_phentsize come from an untrusted file; keep all bounds checks
+     * overflow-safe (subtract instead of add) so a crafted header cannot wrap
+     * past `size` and slip an out-of-bounds read through. */
+    if (hdr->e_phoff > size) {
+        return -1;
+    }
     for (uint16_t i = 0; i < hdr->e_phnum; ++i) {
         size_t off = (size_t)hdr->e_phoff + (size_t)i * (size_t)hdr->e_phentsize;
-        if (off + sizeof(elf64_phdr_t) > size) {
+        if (off > size || size - off < sizeof(elf64_phdr_t)) {
             return -1;
         }
 
@@ -102,7 +114,7 @@ int elf_load(uint64_t *pml4, const void *image, size_t size, uint64_t *entry_out
             continue;
         }
 
-        if (ph->p_offset + ph->p_filesz > size) {
+        if (ph->p_offset > size || ph->p_filesz > (uint64_t)size - ph->p_offset) {
             return -1;
         }
 
