@@ -3,6 +3,7 @@
 #include "shell.h"
 #include "ai.h"
 #include "btc.h"
+#include "disc.h"
 #include "disk.h"
 #include "grid.h"
 #include "gfs.h"
@@ -138,6 +139,7 @@ static void cmd_help(void) {
     console_write_line("  cycles            Show elapsed grid cycles");
     console_write_line("  meminfo           Kernel memory pools (DMA + user pages)");
     console_write_line("  syscalls          Recent ring-3 -> kernel calls (per program)");
+    console_write_line("  labs [done <n>]   OS internals labs — learn the kernel, earn disc XP");
     console_write_line("  vision            Flynn's founding principles");
     console_write_line("  clear             Clear the screen");
     console_write_line("  echo <text>       Write text to the grid");
@@ -823,6 +825,104 @@ static void cmd_syscalls(void) {
         console_write(" -> sys_");
         console_write_line(syscall_trace_name(i));
     }
+}
+
+/* ---- OS-internals labs: learn the kernel by reading/breaking/fixing it ----
+ * Each lab (see docs/labs/) teaches a real concept using real code, verified on
+ * the host with `make lab-check LAB=<n>`. Claiming a lab in the OS with
+ * `labs done <n>` grants disc XP — persisted in the vault — so learning the
+ * internals advances your Grid identity. */
+static const struct { const char *n; const char *title; const char *concept; } g_labs[] = {
+    { "1", "Scheduler: round-robin & fairness", "preemption, quanta, starvation" },
+    { "2", "Memory safety: bounded DIM arrays", "integer overflow -> OOB write" },
+    { "3", "The ELF program loader",            "program headers, W^X, entry" },
+    { "4", "The virtio-blk disk driver",        "vrings, DMA, async completion" },
+};
+#define GRID_NLABS ((int)(sizeof(g_labs) / sizeof(g_labs[0])))
+
+static void lab_key(char *buf, size_t cap, const char *n) {
+    size_t k = 0;
+    const char *p = "lab";
+    while (*p && k + 1 < cap) { buf[k++] = *p++; }
+    while (*n && k + 1 < cap) { buf[k++] = *n++; }
+    buf[k] = '\0';
+}
+
+static void labs_print_rank(void) {
+    console_write("  Rank: ");
+    console_set_color(GRID_COL_OK);
+    console_write(disc_entity());
+    console_set_color(GRID_COL_DEFAULT);
+    console_write(" — level ");
+    shell_write_uint((unsigned long)disc_level());
+    console_write(", ");
+    shell_write_uint((unsigned long)disc_xp());
+    console_write_line(" XP");
+}
+
+static void cmd_labs(int argc, char *argv[]) {
+    if (argc >= 3 && equals(argv[1], "done")) {
+        int found = -1;
+        for (int i = 0; i < GRID_NLABS; ++i) {
+            if (equals(argv[2], g_labs[i].n)) { found = i; break; }
+        }
+        if (found < 0) {
+            console_set_color(GRID_COL_ERROR);
+            console_write_line("No such lab. Run 'labs' to list them.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        char key[12];
+        lab_key(key, sizeof(key), g_labs[found].n);
+        const char *cur = storage_get(key);
+        if (cur && cur[0]) {
+            console_set_color(GRID_COL_DIM);
+            console_write("Lab ");
+            console_write(g_labs[found].n);
+            console_write_line(" already claimed.");
+            console_set_color(GRID_COL_DEFAULT);
+            return;
+        }
+        storage_put(key, "done");
+        disc_on_lab_complete();
+        storage_sync_disk();
+        console_set_color(GRID_COL_OK);
+        console_write("Lab ");
+        console_write(g_labs[found].n);
+        console_write_line(" complete!  +40 disc XP");
+        console_set_color(GRID_COL_DEFAULT);
+        labs_print_rank();
+        return;
+    }
+
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("Grid OS — OS internals labs");
+    console_set_color(GRID_COL_DIM);
+    console_write_line("  Read docs/labs/, break & fix real kernel code, then verify:");
+    console_write_line("    make lab-check LAB=<n>     and claim:  labs done <n>");
+    console_set_color(GRID_COL_DEFAULT);
+    for (int i = 0; i < GRID_NLABS; ++i) {
+        char key[12];
+        lab_key(key, sizeof(key), g_labs[i].n);
+        const char *done = storage_get(key);
+        console_write("  [");
+        if (done && done[0]) {
+            console_set_color(GRID_COL_OK);
+            console_write_char('x');
+            console_set_color(GRID_COL_DEFAULT);
+        } else {
+            console_write_char(' ');
+        }
+        console_write("] ");
+        console_write(g_labs[i].n);
+        console_write(". ");
+        console_write_line(g_labs[i].title);
+        console_set_color(GRID_COL_DIM);
+        console_write("         ");
+        console_write_line(g_labs[i].concept);
+        console_set_color(GRID_COL_DEFAULT);
+    }
+    labs_print_rank();
 }
 
 static void shell_push_history(const char *line) {
@@ -2152,6 +2252,8 @@ void shell_dispatch_line(char *line) {
         cmd_meminfo();
     } else if (equals(argv[0], "syscalls")) {
         cmd_syscalls();
+    } else if (equals(argv[0], "labs")) {
+        cmd_labs(argc, argv);
     } else if (equals(argv[0], "vision")) {
         cmd_vision();
     } else if (equals(argv[0], "clear")) {

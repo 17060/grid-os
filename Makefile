@@ -89,7 +89,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched lab-check test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: vbe-profile-check $(TARGET)
 
@@ -262,6 +262,18 @@ test-host-sched:
 	@build/sched_host
 
 test-host: build test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched
+
+# OS-internals labs (see docs/labs/). `make lab-check LAB=<n>` runs the test that
+# verifies the lab's subsystem; when it passes, claim it in the OS with
+# `labs done <n>` to earn disc XP.
+lab-check:
+	@case "$(LAB)" in \
+	  1) $(MAKE) --no-print-directory test-host-sched && echo "" && echo "Lab 1 (scheduler) verified. Claim it in the OS:  labs done 1" ;; \
+	  2) $(MAKE) --no-print-directory test-host-basic && echo "" && echo "Lab 2 (memory safety) verified. Claim it in the OS:  labs done 2" ;; \
+	  3) $(MAKE) --no-print-directory test-e2e && echo "" && echo "Lab 3 (ELF loader) verified. Claim it in the OS:  labs done 3" ;; \
+	  4) $(MAKE) --no-print-directory test-e2e && echo "" && echo "Lab 4 (virtio-blk) verified. Claim it in the OS:  labs done 4" ;; \
+	  *) echo "Usage: make lab-check LAB=<1-4>   (see docs/labs/)"; exit 1 ;; \
+	esac
 
 test-qemu-smoke: $(TARGET) $(DISK_TEST_IMAGE)
 	@$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \

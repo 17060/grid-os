@@ -8,6 +8,8 @@
 
 **Want to understand how it works?** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — a guided tour of the kernel from power-on to shell (boot, memory, scheduler, syscalls, filesystem, the virtio driver, GridBASIC), written to be read alongside the code.
 
+**Want to learn by doing?** See [docs/labs/](docs/labs/) — hands-on OS-internals labs where you break and fix real kernel code, verify with `make lab-check LAB=<n>`, and earn disc XP (`labs` in the shell).
+
 **Linux?** See [docs/LINUX.md](docs/LINUX.md) — `make release-linux` for distributable tarballs.
 
 **Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.

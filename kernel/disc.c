@@ -119,6 +119,12 @@ void disc_on_duel(void) {
     disc_add_xp(10);
 }
 
+void disc_on_lab_complete(void) {
+    /* OS-internals labs are the hardest achievement on the Grid — implementing
+     * and understanding kernel internals — so they grant the most disc XP. */
+    disc_add_xp(40);
+}
+
 int disc_level(void) {
     return disc_level_val;
 }
