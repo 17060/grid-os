@@ -1,64 +1,82 @@
 # IRC Hive Mind
 
-Collective intelligence over IRC — **iOS client** + **Grid OS bot**.
+Collective intelligence over IRC — **iOS client** + **Grid OS bot** + **host bridges**.
 
 ## Concept
 
 Many IRC participants contribute fragments; the hive ingests channel traffic, builds rolling memory, and synthesizes summaries (optionally via AI). Grid OS runs a companion bot on Flynn's Grid; the iOS app is your pocket window into the swarm.
 
 ```
-  IRC channels (#grid, #swift, …)
+  IRC channels (#grid, …)
         │
-        ├─► iOS IRCHiveMind app  (ingest → memory → Ask / Synthesize)
+        ├─► iOS IRCHiveMind app   (ZNC/direct, push alerts, hive memory)
         │
-        └─► Grid OS hivemind bot (vault memory → GRID.AI.ASK$ → IRC.SAY)
+        ├─► Host make irc-bridge  (gateway:6667 → local #grid or relay)
+        │
+        └─► Grid OS hivemind bot  (vault memory → GRID.AI.ASK$ → IRC.SAY)
 ```
 
 ---
 
-## Grid OS (Flynn's Grid)
+## Quick start (full stack)
 
-### Run the hive bot
-
-Prerequisites on the **host**:
+**Terminal 1 — Grid OS**
 
 ```bash
-# Terminal 1: Grid OS
 make run
-
-# Terminal 2: AI bridge (optional, for summaries)
-make ai-bridge
-
-# Terminal 3: IRC server reachable as gateway:6667 from the guest
-# (any IRC daemon bound for QEMU user-net forwarding)
 ```
 
-From the Flynn shell:
+**Terminal 2 — IRC bridge (local #grid hive server)**
+
+```bash
+make irc-bridge
+```
+
+**Terminal 3 — AI summaries (optional)**
+
+```bash
+make ai-bridge
+```
+
+**Terminal 4 — Push relay for iOS (optional)**
+
+```bash
+make hive-push-relay
+```
+
+**Grid OS shell**
 
 ```text
 grid> basic run /programs/irc-hive-mind.bas
 ```
 
-Or use the IDE module guide:
+**iOS app** — Settings → host `127.0.0.1` (or Mac LAN IP), port `6667`, channel `#grid`, mode **Direct IRC**.
+
+---
+
+## Grid OS (Flynn's Grid)
+
+### IRC host bridge
+
+| Mode | Command | Use case |
+|------|---------|----------|
+| **local** (default) | `make irc-bridge` | Offline demos; built-in `#grid` + `hivebot` |
+| **relay** | `GRIDIRC_MODE=relay make irc-bridge` | Proxy to `irc.libera.chat:6667` |
+| **znc** | `GRIDIRC_MODE=znc GRIDIRC_UPSTREAM=127.0.0.1:6697 GRIDIRC_ZNC_PASS=secret make irc-bridge` | Proxy through ZNC (injects PASS for Grid clients) |
+
+Guest address: `gateway:6667` (QEMU user-net → host `0.0.0.0:6667`).
+
+### Hive bot
 
 ```text
+grid> basic run /programs/irc-hive-mind.bas
 grid> basic mod run irc-hive-mind
 ```
 
-### What the bot does
-
-1. Connects to `gateway:6667` as `hivemind`
-2. Joins `#grid` and announces itself
-3. Polls IRC for 10 ticks, ingesting lines into vault key `hive_memory`
-4. Calls `GRID.AI.ASK$` to summarize (falls back if no AI bridge)
-5. Posts a short summary to `#grid` and stores `hive_summary` in the vault
-
-### Vault keys
-
-| Key | Contents |
-|-----|----------|
-| `hive_memory` | Rolling IRC transcript (last ~900 chars) |
-| `hive_summary` | Latest AI synthesis |
+1. Connects as `hivemind`, joins `#grid`
+2. Ingests IRC into vault `hive_memory`
+3. Summarizes via `GRID.AI.ASK$`
+4. Posts summary to `#grid`, stores `hive_summary`
 
 ---
 
@@ -66,56 +84,66 @@ grid> basic mod run irc-hive-mind
 
 ### Requirements
 
-- Xcode 15+
-- iOS 17+ (SwiftUI, `@Observable`)
-- An IRC server (Libera, ergo, local ZNC, or Grid OS `gateway:6667` via tunnel)
+- Xcode 15+, iOS 17+
+- IRC server, `make irc-bridge`, or ZNC bouncer
 
-### Setup in Xcode
+### Xcode setup
 
-1. **File → New → Project → iOS App**
-   - Product name: `IRCHiveMind`
-   - Interface: SwiftUI
-   - Language: Swift
-2. Delete the template `ContentView.swift` and `IRCHiveMindApp.swift`.
-3. Drag the entire `ios/IRCHiveMind/` folder into the project (copy items if needed).
-4. Add **Outgoing Connections (Client)** capability if you use a custom network entitlement profile.
-5. Build and run on simulator or device.
+1. New iOS SwiftUI project `IRCHiveMind`
+2. Add all files from `ios/IRCHiveMind/`
+3. Enable **Push Notifications** capability (for remote token)
+4. Merge `Info.plist` background modes and notification usage string
+5. Build on device for APNs; simulator works for local notifications
+
+### Connection modes
+
+| Mode | Settings | When to use |
+|------|----------|-------------|
+| **Direct IRC** | Host + port | `make irc-bridge`, Libera, etc. |
+| **ZNC bouncer** | ZNC host, password, optional `nick/network` | Always-on phone; ZNC holds backlog |
+
+ZNC flow: `PASS` → `NICK nick/network` → `USER` → auto-join configured channels.
+
+### Push notifications
+
+**Local notifications** (no server required):
+
+- @mentions of your nick
+- Configurable keywords (`!hive`, `consensus`, …)
+- Hive synthesis / consensus summaries
+- New open questions detected in channel
+
+**Remote push relay** (dev/lab):
+
+```bash
+make hive-push-relay   # http://0.0.0.0:8770
+```
+
+iOS Settings → Push relay URL → `http://<your-mac-lan-ip>:8770`
+
+The app registers its APNs device token with `POST /register`. Notifications also call `POST /notify`. Production deployments should forward to Apple Push Notification service.
 
 ### App tabs
 
 | Tab | Purpose |
 |-----|---------|
 | **Channels** | Connect, chat, channel picker |
-| **Hive** | Collective memory, open questions, manual Synthesize |
-| **Ask** | Query the hive memory with AI |
-| **Settings** | Server, nick, channels, AI endpoint + API key |
-
-### AI (optional)
-
-Enable **AI synthesis** in Settings and provide an OpenAI-compatible API key + endpoint. The hive uses `chat/completions` to:
-
-- **Synthesize** — bullet summary of channel memory
-- **Ask** — answer questions grounded in memory
-
-Works with OpenAI, local LM Studio, Ollama OpenAI shim, etc.
+| **Hive** | Memory, open questions, Synthesize |
+| **Ask** | AI query against hive memory |
+| **Settings** | IRC/ZNC, notifications, push relay, AI |
 
 ### Pairing with Grid OS
 
-Point the iOS app at the same IRC server and channels the Grid bot uses (e.g. `#grid`). Both nodes feed the same channel organism — one from your phone, one from Flynn's Grid.
+Use the same IRC server and `#grid`. Run `make irc-bridge` locally; iOS points at the Mac's IP. Both nodes feed one hive.
 
 ---
 
 ## Files
 
-### Grid OS
-
-- `programs/irc-hive-mind.bas` — hive bot
-- `packages/flynn-ide-tools/modules/irc-hive-mind.bas` — IDE guide module
-
-### iOS
-
-- `ios/IRCHiveMind/` — SwiftUI source
-- `ios/IRCHiveMind/IRCHiveMindApp.swift` — entry point
-- `ios/IRCHiveMind/Services/IRCClient.swift` — TCP IRC client
-- `ios/IRCHiveMind/Services/HiveBrain.swift` — memory + open questions
-- `ios/IRCHiveMind/Services/AIService.swift` — OpenAI-compatible synthesis
+| Path | Role |
+|------|------|
+| `tools/gridirc_bridge.py` | Host IRC bridge (`make irc-bridge`) |
+| `tools/hive_push_relay.py` | Push token relay (`make hive-push-relay`) |
+| `programs/irc-hive-mind.bas` | Grid OS hive bot |
+| `ios/IRCHiveMind/` | SwiftUI iOS app |
+| `docs/NETWORKING.md` | Bridge ports and workflow |

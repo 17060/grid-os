@@ -1,10 +1,10 @@
 10 REM IRC Hive Mind -- Flynn Grid collective intelligence
-20 REM Prereq: IRC server on gateway:6667 (host bridge) + make ai-bridge
+20 REM Host: make irc-bridge (local #grid) + make ai-bridge (summaries)
 30 PRINT "=== IRC Hive Mind ==="
 40 PRINT GRID.IRC.STATUS$
 50 R$ = GRID.IRC.CONNECT$("gateway", 6667, "hivemind")
 60 PRINT "Connect: "; R$
-70 IF R$ <> "ok" THEN PRINT "Start IRC on gateway:6667 first.": END
+70 IF R$ <> "ok" THEN PRINT "Run: make irc-bridge on host first.": END
 80 GRID.IRC.JOIN "#grid"
 90 GRID.IRC.SAY "#grid", "hivemind online -- collective memory active"
 100 GRID.WAIT 8

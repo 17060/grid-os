@@ -89,7 +89,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge irc-bridge hive-push-relay ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: vbe-profile-check $(TARGET)
 
@@ -316,6 +316,12 @@ btc-bridge:
 
 https-bridge:
 	python3 tools/gridhttps_bridge.py
+
+irc-bridge:
+	python3 tools/gridirc_bridge.py
+
+hive-push-relay:
+	python3 tools/hive_push_relay.py
 
 save-macos-arm64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh

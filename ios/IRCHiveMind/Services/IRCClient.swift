@@ -7,14 +7,18 @@ final class IRCClient {
     private(set) var state: IRCConnectionState = .disconnected
     private(set) var messages: [IRCMessage] = []
 
+    var onMessage: ((IRCMessage) -> Void)?
+
     private var connection: NWConnection?
     private var buffer = ""
     private var settings = AppSettings.default
     private var registered = false
+    private var handshakeSent = false
 
     func connect(settings: AppSettings) {
         disconnect()
         self.settings = settings
+        self.handshakeSent = false
         state = .connecting
 
         let host = NWEndpoint.Host(settings.serverHost)
@@ -27,8 +31,7 @@ final class IRCClient {
                 guard let self else { return }
                 switch newState {
                 case .ready:
-                    self.sendRaw("NICK \(self.settings.nickname)")
-                    self.sendRaw("USER \(self.settings.username) 0 * :\(self.settings.realName)")
+                    self.sendHandshake()
                     self.state = .connected
                 case .failed(let error):
                     self.state = .error(error.localizedDescription)
@@ -45,6 +48,18 @@ final class IRCClient {
         receiveLoop()
     }
 
+    private func sendHandshake() {
+        guard !handshakeSent else { return }
+        handshakeSent = true
+
+        if settings.connectionMode == .znc, !settings.zncPassword.isEmpty {
+            sendRaw("PASS \(settings.zncPassword)")
+        }
+
+        sendRaw("NICK \(settings.effectiveNickname)")
+        sendRaw("USER \(settings.username) 0 * :\(settings.realName)")
+    }
+
     func disconnect() {
         if case .connected = state {
             sendRaw("QUIT :hivemind signing off")
@@ -52,6 +67,7 @@ final class IRCClient {
         connection?.cancel()
         connection = nil
         registered = false
+        handshakeSent = false
         state = .disconnected
     }
 
@@ -102,28 +118,43 @@ final class IRCClient {
     private func handleServerLine(_ line: String) {
         guard !line.isEmpty else { return }
 
-        if line.hasPrefix("PING ") {
-            let token = String(line.dropFirst(5))
-            sendRaw("PONG :\(token)")
+        if line.hasPrefix("PING ") || line.hasPrefix(":") && line.contains(" PING ") {
+            let token: String
+            if let ping = line.range(of: " PING ") {
+                token = String(line[ping.upperBound...]).trimmingCharacters(in: .whitespaces)
+            } else {
+                token = String(line.dropFirst(5))
+            }
+            sendRaw("PONG :\(token.trimmingCharacters(in: CharacterSet(charactersIn: ":")))")
             return
         }
 
-        if line.contains(" 001 ") || line.contains(" 376 ") {
-            registered = true
-            for channel in settings.channels {
-                join(channel)
+        if settings.connectionMode == .znc,
+           line.localizedCaseInsensitiveContains("znc") && line.contains("***") {
+            appendSystem("ZNC bouncer connected.")
+        }
+
+        if line.contains(" 001 ") || line.contains(" 376 ") || line.contains(" 905 ") {
+            if !registered {
+                registered = true
+                for channel in settings.channels {
+                    join(channel)
+                }
+                let modeLabel = settings.connectionMode == .znc ? "ZNC bouncer" : "IRC"
+                appendSystem("Joined hive channels via \(modeLabel).")
             }
-            appendSystem("Joined hive channels.")
             return
         }
 
         if let priv = parsePrivmsg(line) {
-            appendMessage(channel: priv.channel, sender: priv.sender, text: priv.text)
+            let message = IRCMessage(channel: priv.channel, sender: priv.sender, text: priv.text)
+            appendMessage(message)
+            onMessage?(message)
         }
     }
 
     private func parsePrivmsg(_ line: String) -> (sender: String, channel: String, text: String)? {
-        guard let privRange = line.range(of: " PRIVMSG ") else { return nil }
+        guard let privRange = line.range(of: " PRIVMSG ") ?? line.range(of: " NOTICE ") else { return nil }
         let prefix = String(line[..<privRange.lowerBound])
         let rest = String(line[privRange.upperBound...])
 
@@ -142,18 +173,20 @@ final class IRCClient {
         return (sender, target, text)
     }
 
-    private func appendMessage(channel: String, sender: String, text: String) {
-        messages.append(IRCMessage(channel: channel, sender: sender, text: text))
+    private func appendMessage(_ message: IRCMessage) {
+        messages.append(message)
         if messages.count > 500 {
             messages.removeFirst(messages.count - 500)
         }
     }
 
     private func appendLocalMessage(channel: String, sender: String, text: String) {
-        appendMessage(channel: channel, sender: sender, text: text)
+        let message = IRCMessage(channel: channel, sender: sender, text: text)
+        appendMessage(message)
+        onMessage?(message)
     }
 
     private func appendSystem(_ text: String) {
-        messages.append(IRCMessage(channel: "system", sender: "hive", text: text, isSystem: true))
+        appendMessage(IRCMessage(channel: "system", sender: "hive", text: text, isSystem: true))
     }
 }

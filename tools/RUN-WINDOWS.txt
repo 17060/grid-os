@@ -21,5 +21,7 @@ Host bridges (run in a separate terminal with Python 3):
   python tools/gridai_bridge.py
   python tools/gridbtc_bridge.py
   python tools/gridhttps_bridge.py
+  python tools/gridirc_bridge.py
+  python tools/hive_push_relay.py
 
 Read WINDOWS.md for full details.

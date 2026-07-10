@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppViewModel.self) private var viewModel
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -21,6 +22,9 @@ struct ContentView: View {
         }
         .onChange(of: viewModel.irc.messages.count) { _, _ in
             viewModel.syncHive()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            viewModel.setBackgrounded(phase != .active)
         }
     }
 }

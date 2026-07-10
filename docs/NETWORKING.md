@@ -77,17 +77,49 @@ From Grid OS, open a TCP connection to `gateway:8768` and send a normal HTTP/1.1
 
 Typical workflow:
 
-1. `make ai-bridge`, `make btc-bridge`, and/or `make https-bridge` on the host
+1. `make irc-bridge`, `make ai-bridge`, `make btc-bridge`, and/or `make https-bridge` on the host
 2. `make run` in another terminal
 3. In Grid OS:
    ```text
    grid> irc connect gateway 6667 mynick
+   grid> irc join #grid
+   grid> basic run /programs/irc-hive-mind.bas
    grid> http get gateway /
    grid> ai ask hello
    grid> btc status
    ```
 
 Each service uses its own TCP slot.
+
+## IRC host bridge (7.1+)
+
+Grid OS has no in-guest IRC daemon. Use the host bridge so `gateway:6667` reaches a real or local IRC server:
+
+```bash
+make irc-bridge                              # local #grid hive server (default)
+GRIDIRC_MODE=relay make irc-bridge           # relay to irc.libera.chat:6667
+GRIDIRC_MODE=znc GRIDIRC_UPSTREAM=127.0.0.1:6697 GRIDIRC_ZNC_PASS=secret make irc-bridge
+```
+
+From Grid OS:
+
+```text
+grid> irc connect gateway 6667 hivemind
+grid> irc join #grid
+grid> irc say #grid hello hive
+```
+
+See [IRC_HIVE_MIND.md](IRC_HIVE_MIND.md) for the collective-memory bot and iOS companion app.
+
+## Hive push relay (iOS companion)
+
+Optional dev relay for IRC Hive Mind push tokens:
+
+```bash
+make hive-push-relay   # http://0.0.0.0:8770
+```
+
+iOS Settings → Push relay URL → `http://<host-ip>:8770`
 
 ## ICMP
 
