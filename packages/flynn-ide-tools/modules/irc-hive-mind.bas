@@ -1,0 +1,15 @@
+10 REM IDE module: irc-hive-mind
+20 PRINT "=== IRC Hive Mind ==="
+30 PRINT "Collective IRC memory on Flynn's Grid."
+40 PRINT ""
+50 PRINT "Run full cycle:"
+60 PRINT "  basic run /programs/irc-hive-mind.bas"
+70 PRINT ""
+80 PRINT "Manual steps:"
+90 PRINT "  irc connect gateway 6667 hivemind"
+100 PRINT "  irc join #grid"
+110 PRINT "  irc read"
+120 PRINT ""
+130 PRINT "Vault keys: hive_memory, hive_summary"
+140 PRINT "AI: make ai-bridge on host, then GRID.AI.ASK$"
+150 END

@@ -1538,6 +1538,8 @@ static void cmd_samples(void) {
     console_write_line("  grid2d.bas     2D DIM arrays");
     console_write_line("  advancedemo.bas CONST / DATA / SELECT CASE");
     console_write_line("  netdemo.bas vaultdemo.bas aidemo.bas httpdemo.bas btc-demo.bas");
+    console_write_line("  galactic-empire.bas  Death Star plot + Imperial March");
+    console_write_line("  irc-hive-mind.bas    IRC collective memory + AI summary");
     console_write_line("");
     console_write_line("Run: basic run /programs/hello.bas   or   Esc :load hello");
 }
