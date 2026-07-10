@@ -1,6 +1,6 @@
 10 REM IDE module: sample-menu
 20 PRINT "=== GridBASIC Samples ==="
 30 PRINT GRID.GFS.LIST$("/programs")
-40 PRINT "Try: tutorial, hello, subdemo, grid2d, demo, btc-demo"
+40 PRINT "Try: tutorial, hello, subdemo, grid2d, demo, btc-demo, galactic-empire"
 50 PRINT "IDE: Esc :load tutorial   :run demo.grid"
 60 END

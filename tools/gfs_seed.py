@@ -160,6 +160,8 @@ DEMO_BAS = (
     b"40 END\n"
 )
 
+GALACTIC_EMPIRE_BAS = Path(__file__).resolve().parent.parent / "programs" / "galactic-empire.bas"
+
 PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
 REDTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "redteam"
 BLACKHAT_ROOT = Path(__file__).resolve().parent.parent / "programs" / "blackhat"
@@ -319,9 +321,10 @@ def main() -> int:
         (19, "/programs/grid2d.bas", GRID2D_BAS),
         (20, "/programs/demo.bas", DEMO_BAS),
         (21, "/programs/btc-demo.bas", BTCDEMO_BAS),
+        (22, "/programs/galactic-empire.bas", GALACTIC_EMPIRE_BAS.read_bytes()),
     ]
 
-    slot = 22
+    slot = 23
     for path, payload in package_seed_files():
         files.append((slot, path, payload))
         slot += 1
