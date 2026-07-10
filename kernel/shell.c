@@ -19,6 +19,7 @@
 #include "program.h"
 #include "recognizer.h"
 #include "sched.h"
+#include "syscall.h"
 #include "security.h"
 #include "serial.h"
 #include "storage.h"
@@ -136,6 +137,7 @@ static void cmd_help(void) {
     console_write_line("  status            Grid runtime status");
     console_write_line("  cycles            Show elapsed grid cycles");
     console_write_line("  meminfo           Kernel memory pools (DMA + user pages)");
+    console_write_line("  syscalls          Recent ring-3 -> kernel calls (per program)");
     console_write_line("  vision            Flynn's founding principles");
     console_write_line("  clear             Clear the screen");
     console_write_line("  echo <text>       Write text to the grid");
@@ -797,6 +799,30 @@ static void cmd_meminfo(void) {
     console_set_color(GRID_COL_DIM);
     console_write_line("  Kernel stack 2 MiB; low 1 GiB RAM identity-mapped; no guard page.");
     console_set_color(GRID_COL_DEFAULT);
+}
+
+/* Observability: the syscall boundary is where a ring-3 program asks the kernel
+ * for something. This shows the most recent calls and which program made each,
+ * so you can watch the sandbox in action (spawn a program, then run this). */
+static void cmd_syscalls(void) {
+    int n = syscall_trace_count();
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("Recent syscalls (newest first)");
+    console_set_color(GRID_COL_DEFAULT);
+    if (n == 0) {
+        console_set_color(GRID_COL_DIM);
+        console_write_line("  (none yet — spawn a ring-3 program, e.g. 'spawn gridsh')");
+        console_set_color(GRID_COL_DEFAULT);
+        return;
+    }
+    for (int i = 0; i < n; ++i) {
+        console_write("  ");
+        console_set_color(GRID_COL_OK);
+        console_write(syscall_trace_prog(i));
+        console_set_color(GRID_COL_DEFAULT);
+        console_write(" -> sys_");
+        console_write_line(syscall_trace_name(i));
+    }
 }
 
 static void shell_push_history(const char *line) {
@@ -2124,6 +2150,8 @@ void shell_dispatch_line(char *line) {
         cmd_cycles();
     } else if (equals(argv[0], "meminfo")) {
         cmd_meminfo();
+    } else if (equals(argv[0], "syscalls")) {
+        cmd_syscalls();
     } else if (equals(argv[0], "vision")) {
         cmd_vision();
     } else if (equals(argv[0], "clear")) {

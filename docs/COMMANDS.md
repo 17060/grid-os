@@ -17,6 +17,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `status` | Grid runtime status |
 | `cycles` | Same as `status` (elapsed cycles) |
 | `meminfo` | Kernel memory pools — DMA + user page pools, used vs total |
+| `syscalls` | Recent ring-3 → kernel calls and which program made each |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
 | `about` | About Grid OS 7.1.1 |
