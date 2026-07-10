@@ -35,7 +35,7 @@ DISK_TEST_IMAGE = build/grid-test.img
 DISK_MB    = 128
 
 BOOT_OBJS = build/boot.o build/gdt_load.o build/interrupts.o
-USER_PROGS = gridprog discinfo gridsh lightcycle gridloop
+USER_PROGS = gridprog discinfo gridsh lightcycle gridloop escape
 USER_EMBED = $(USER_PROGS:%=build/%_embed.o)
 
 KERNEL_OBJS = build/kernel.o build/console.o build/security.o build/iso.o \

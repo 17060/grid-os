@@ -33,6 +33,8 @@ extern const uint8_t lightcycle_bin[];
 extern const uint8_t lightcycle_bin_end[];
 extern const uint8_t gridloop_bin[];
 extern const uint8_t gridloop_bin_end[];
+extern const uint8_t escape_bin[];
+extern const uint8_t escape_bin_end[];
 
 static uint32_t xorshift32(uint32_t *state) {
     uint32_t x = *state;
@@ -538,6 +540,9 @@ int program_spawn_named(const char *name) {
         } else if (names_equal(name, "gridloop")) {
             size_t size = (size_t)(gridloop_bin_end - gridloop_bin);
             id = program_spawn(name, gridloop_bin, size, 0);
+        } else if (names_equal(name, "escape")) {
+            size_t size = (size_t)(escape_bin_end - escape_bin);
+            id = program_spawn(name, escape_bin, size, 0);
         }
     }
     if (id >= 0) {
@@ -554,6 +559,7 @@ void program_print_catalog(void) {
     console_write_line("  gridprog     minimal sandbox demo");
     console_write_line("  gridloop     long-running preempt demo");
     console_write_line("  lightcycle   light cycle arena v2 (WASD)");
+    console_write_line("  escape       sandbox-escape demo (kernel stops it)");
     console_set_color(GRID_COL_DEFAULT);
     if (gfs_present()) {
         console_set_color(GRID_COL_DIM);

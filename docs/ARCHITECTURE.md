@@ -166,6 +166,12 @@ syscall interrupt with a number and arguments, and the kernel dispatches
 (`SYS_WRITE`, `SYS_READ_LINE`, `SYS_EXIT`, filesystem, vault, …). This is where
 user requests become kernel actions.
 
+**See it for yourself.** `spawn escape` runs a deliberately malicious program
+(`user/escape.c`) that tries to write to kernel memory. Kernel pages are mapped
+supervisor-only, so the write faults, the kernel kills the program, and its
+"sandbox FAILED" line never prints — memory protection, live. And `syscalls`
+shows the calls any program made across that boundary.
+
 ---
 
 ## 6. The scheduler: preemptive, round-robin, fair
