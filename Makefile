@@ -63,6 +63,15 @@ QEMU_DRIVE_TEST = -drive if=none,id=grid0,file=$(DISK_TEST_IMAGE),format=raw
 QEMU_VIRTIO   = -device virtio-blk-pci,drive=grid0
 QEMU_NET      = -netdev user,id=net0 -device virtio-net-pci,netdev=net0
 QEMU_SERIAL   = -serial stdio
+# Hard wall-clock cap for scripted QEMU tests. The e2e test drives the guest by
+# timed keypresses and waits for it to poweroff; on a slow (no-KVM) CI runner
+# that timing can drift so the guest never exits and QEMU hangs forever. This
+# wraps QEMU in coreutils `timeout` (or `gtimeout` from macOS `brew coreutils`)
+# so a stuck run is killed and fails fast instead of burning the CI job's full
+# 6-hour ceiling. Falls back to running unwrapped if no timeout tool is found.
+QEMU_TEST_TIMEOUT ?= 240
+RUN_TIMEOUT := $(shell command -v timeout 2>/dev/null || command -v gtimeout 2>/dev/null)
+QEMU_TIMED := $(if $(RUN_TIMEOUT),$(RUN_TIMEOUT) $(QEMU_TEST_TIMEOUT),)
 # zoom-to-fit lets the VGA text console scale when the window is resized (macOS cocoa)
 ifeq ($(shell uname -s 2>/dev/null),Darwin)
   QEMU_DISPLAY  = -display cocoa,zoom-to-fit=on
@@ -277,11 +286,12 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	  sleep 1; printf '\033'; sleep 1; printf 'spawn gridsh\n'; sleep 2; \
 	  printf 'disc\n'; sleep 1; printf 'exit\n'; sleep 2; printf '\n'; \
 	  sleep 1; printf '\033'; sleep 1; printf 'poweroff\n'; sleep 5) | \
-	$(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
+	$(QEMU_TIMED) $(QEMU) -machine $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_RAM) \
 		-kernel build/grid-os.elf $(QEMU_DRIVE_TEST) $(QEMU_VIRTIO) \
 		$(QEMU_NET) $(QEMU_SERIAL) -display none $(QEMU_COMMON) \
 		> build/test-e2e.log 2>&1; \
 	rc=$$?; \
+	if [ $$rc -eq 124 ]; then echo "e2e QEMU timed out (>$(QEMU_TEST_TIMEOUT)s) — see build/test-e2e.log"; exit 1; fi; \
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
 	grep -q '=== GridBASIC run ===' build/test-e2e.log || { echo "IDE :run banner missing"; exit 1; }; \
 	grep -q 'IDE-RUN-OK' build/test-e2e.log || { echo "IDE buffer :run output missing"; exit 1; }; \
