@@ -1,0 +1,5 @@
+10 REM bh88 -- IRC abuse probe 88
+20 PRINT "=== BH88: IRC ==="
+30 PRINT GRID.IRC.STATUS$
+40 PRINT GRID.IRC.CONNECT$("gateway", 6667, "bhbot")
+50 END

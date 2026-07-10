@@ -126,15 +126,11 @@ static int ide_transfer(uint32_t lba, void *buffer, int write) {
 void disk_init(void) {
     /* Idempotent: disk_init() is reached from both storage_init() and
      * kernel_main(). Re-running virtio_blk_init() would reset the device and
-     * allocate a second vring (leaking the first from the bump allocator) —
-     * wasteful and a source of device-state races. Probe only once. */
-    static int initialized = 0;
-    if (initialized) {
+     * leak a second vring from the bump allocator, so probe only once. */
+    if (backend != DISK_BACKEND_NONE) {
         return;
     }
-    initialized = 1;
 
-    backend = DISK_BACKEND_NONE;
     ide_present = 0;
 
     virtio_blk_init();

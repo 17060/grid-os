@@ -1,0 +1,6 @@
+10 REM bt81 -- soc-dashboard
+20 PRINT "=== BT81: soc-dashboard ==="
+30 PRINT GRID.NET.STATUS$
+40 PRINT GRID.LOG.TAIL$(6)
+50 PRINT GRID.JOBS.LIST$
+60 END

@@ -1,0 +1,5 @@
+10 REM rt17 -- package recon
+20 PRINT "=== RT17: Pkg ==="
+30 PRINT GRID.PKG.LIST$
+40 PRINT GRID.PKG.MODS$
+50 END

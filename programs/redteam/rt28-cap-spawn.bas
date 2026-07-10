@@ -1,0 +1,5 @@
+10 REM rt28 -- probe SPAWN
+20 PRINT "=== RT28: SPAWN ==="
+30 PRINT "CAP(4)="; GRID.CAP(4)
+40 PRINT "Mask: "; GRID.CAPS$
+50 END

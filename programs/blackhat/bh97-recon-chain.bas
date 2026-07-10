@@ -1,0 +1,6 @@
+10 REM bh97 -- attack chain recon-chain
+20 PRINT "=== BH97: recon-chain ==="
+30 PRINT GRID.WHOAMI$
+40 PRINT GRID.NET.STATUS$
+50 PRINT GRID.VAULT.LIST$
+60 END

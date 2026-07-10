@@ -1,0 +1,5 @@
+10 REM wt03 -- verify SPAWN granted
+20 PRINT "=== WT03: Cap compliance ==="
+30 IF GRID.CAP(4) THEN PRINT "OK: SPAWN" ELSE PRINT "FAIL: SPAWN"
+40 PRINT "Mask: "; GRID.CAPS$
+50 END

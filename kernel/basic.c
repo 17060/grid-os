@@ -1224,7 +1224,8 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     }
     if (strequal(name, "GRID.PKG.MODS$") || strequal(name, "GRID.PKG.MOD.LIST$")) {
         char b[256];
-        pkg_format_module_list(b, sizeof(b));
+        const char *category = (argc > 0 && argv[0].is_str) ? argv[0].s : 0;
+        pkg_format_module_list_filtered(b, sizeof(b), category);
         return make_str(b);
     }
     set_error("FUNC: unknown function");
@@ -2715,20 +2716,33 @@ static char *append_char(char *p, char *end, char c) {
 
 static void join_source(const char *src, char *out, size_t cap) {
     /* ensure program ends with a newline */
+    if (src == out) {
+        size_t k = 0;
+        while (src[k] && k < cap - 1) {
+            k++;
+        }
+        if (k > 0 && out[k - 1] != '\n' && k + 1 < cap) {
+            out[k++] = '\n';
+        }
+        out[k] = '\0';
+        return;
+    }
     size_t k = 0;
     while (src[k] && k < cap - 2) { out[k] = src[k]; k++; }
     if (k > 0 && out[k-1] != '\n') out[k++] = '\n';
     out[k] = '\0';
 }
 
+static char g_src_buf[BASIC_SRC_MAX];
+static char g_pp_buf[BASIC_SRC_MAX];
+static char g_bc_buf[16384];
+
 int basic_run_source(const char *source) {
-    static char src_buf[BASIC_SRC_MAX];
-    static char pp_buf[BASIC_SRC_MAX];
-    join_source(source, src_buf, sizeof(src_buf));
-    if (basic_preprocess(src_buf, pp_buf, sizeof(pp_buf)) != 0) {
+    join_source(source, g_src_buf, sizeof(g_src_buf));
+    if (basic_preprocess(g_src_buf, g_pp_buf, sizeof(g_pp_buf)) != 0) {
         return -1;
     }
-    if (tokenize(pp_buf) != 0) {
+    if (tokenize(g_pp_buf) != 0) {
         console_set_color(GRID_COL_ERROR);
         console_write_line("GridBASIC: token limit exceeded (program too large)");
         console_set_color(GRID_COL_DEFAULT);
@@ -2799,16 +2813,14 @@ static int basic_run_bytecode(const void *data, size_t len) {
 }
 
 int basic_compile_source(const char *source, void *out, size_t cap, size_t *out_len) {
-    static char src_buf[BASIC_SRC_MAX];
-    static char pp_buf[BASIC_SRC_MAX];
     if (!source || !out || !out_len) {
         return -1;
     }
-    join_source(source, src_buf, sizeof(src_buf));
-    if (basic_preprocess(src_buf, pp_buf, sizeof(pp_buf)) != 0) {
+    join_source(source, g_src_buf, sizeof(g_src_buf));
+    if (basic_preprocess(g_src_buf, g_pp_buf, sizeof(g_pp_buf)) != 0) {
         return -1;
     }
-    if (tokenize(pp_buf) != 0) {
+    if (tokenize(g_pp_buf) != 0) {
         return -1;
     }
     size_t need = 12 + (size_t)g_ntok * sizeof(token_t);
@@ -2830,22 +2842,19 @@ int basic_compile_source(const char *source, void *out, size_t cap, size_t *out_
 }
 
 int basic_compile_file(const char *path, const char *out_path) {
-    static char buf[BASIC_SRC_MAX];
-    static char bc[16384];
     size_t got = 0;
     size_t blen = 0;
-    if (gfs_read_file(path, buf, sizeof(buf) - 1, &got) != 0) {
+    if (gfs_read_file(path, g_src_buf, sizeof(g_src_buf) - 1, &got) != 0) {
         return -1;
     }
-    buf[got] = '\0';
-    if (basic_compile_source(buf, bc, sizeof(bc), &blen) != 0) {
+    g_src_buf[got] = '\0';
+    if (basic_compile_source(g_src_buf, g_bc_buf, sizeof(g_bc_buf), &blen) != 0) {
         return -1;
     }
-    return gfs_write_file(out_path, bc, blen);
+    return gfs_write_file(out_path, g_bc_buf, blen);
 }
 
 int basic_run_file(const char *path) {
-    static char buf[BASIC_SRC_MAX];
     static char pathbuf[128];
     size_t got = 0;
     size_t k = 0;
@@ -2864,18 +2873,18 @@ int basic_run_file(const char *path) {
     while (k > 0 && (pathbuf[k - 1] == ' ' || pathbuf[k - 1] == '\t')) {
         pathbuf[--k] = '\0';
     }
-    if (gfs_read_file(pathbuf, buf, sizeof(buf) - 1, &got) != 0) {
+    if (gfs_read_file(pathbuf, g_src_buf, sizeof(g_src_buf) - 1, &got) != 0) {
         console_set_color(GRID_COL_ERROR);
         console_write("GridBASIC: cannot read ");
         console_write_line(pathbuf);
         console_set_color(GRID_COL_DEFAULT);
         return -1;
     }
-    buf[got] = '\0';
-    if (bc_match(buf, got)) {
-        return basic_run_bytecode(buf, got);
+    g_src_buf[got] = '\0';
+    if (bc_match(g_src_buf, got)) {
+        return basic_run_bytecode(g_src_buf, got);
     }
-    return basic_run_source(buf);
+    return basic_run_source(g_src_buf);
 }
 
 void basic_print_version(void) {

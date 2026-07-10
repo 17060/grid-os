@@ -1,0 +1,4 @@
+10 REM rt18 -- IRC status
+20 PRINT "=== RT18: IRC ==="
+30 PRINT GRID.IRC.STATUS$
+40 END

@@ -387,6 +387,7 @@ static int submit_request(uint32_t type, uint32_t lba, void *buffer, int write) 
 
     blk.avail->ring[blk.avail->idx % blk.queue_size] = 0;
     blk.avail->idx++;
+    __asm__ volatile("" ::: "memory");
 
     notify_queue();
     int rc = wait_used(0);
@@ -458,7 +459,6 @@ static int probe_legacy(const pci_device_t *dev) {
 
 void virtio_blk_init(void) {
     pci_device_t dev;
-    uint8_t test_sector[VIRTIO_SECTOR_SIZE];
 
     blk.present = 0;
     blk.modern = 0;
@@ -501,11 +501,6 @@ setup:
     set_status((uint8_t)(VIRTIO_STATUS_ACK | VIRTIO_STATUS_DRIVER | VIRTIO_STATUS_FEATURES_OK |
                          VIRTIO_STATUS_DRIVER_OK));
     if ((read_status() & VIRTIO_STATUS_DRIVER_OK) == 0) {
-        device_reset();
-        return;
-    }
-
-    if (submit_request(VIRTIO_BLK_T_IN, 0, test_sector, 0) != 0) {
         device_reset();
         return;
     }

@@ -1,0 +1,5 @@
+10 REM gt72 -- pkg-audit
+20 PRINT "=== GT72: pkg-audit ==="
+30 PRINT GRID.PKG.LIST$
+40 PRINT GRID.PKG.MODS$
+50 END

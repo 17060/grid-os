@@ -1,0 +1,7 @@
+10 REM rt99 -- combo mega-recon
+20 PRINT "=== RT99: mega-recon ==="
+30 PRINT GRID.WHOAMI$
+40 PRINT GRID.NET.STATUS$
+50 PRINT GRID.GFS.LIST$("/programs")
+60 PRINT GRID.LOG.TAIL$(6)
+70 END

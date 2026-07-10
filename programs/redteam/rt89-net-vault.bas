@@ -1,0 +1,5 @@
+10 REM rt89 -- combo net-vault
+20 PRINT "=== RT89: net-vault ==="
+30 PRINT GRID.NET.STATUS$
+40 PRINT GRID.VAULT.LIST$
+50 END

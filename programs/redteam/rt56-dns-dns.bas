@@ -1,0 +1,4 @@
+10 REM rt56 -- DNS dns
+20 PRINT "=== RT56: DNS dns ==="
+30 PRINT GRID.DNS.RESOLVE$("dns")
+40 END

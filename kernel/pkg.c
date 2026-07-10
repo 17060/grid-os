@@ -512,12 +512,12 @@ int pkg_recv_gridlink(void) {
         while (line[i] == ' ') {
             i++;
         }
-        if (parse_uint(line + i, &size) != 0 || size == 0 || size > 16384) {
+        if (parse_uint(line + i, &size) != 0 || size == 0 || size > GFS_FILE_MAX) {
             continue;
         }
-        /* static: this 16 KiB buffer would otherwise inflate the stack frame;
+        /* static: this large buffer would otherwise inflate the stack frame;
          * the function is not reentrant (single serial receiver). */
-        static uint8_t buf[16384];
+        static uint8_t buf[GFS_FILE_MAX];
         uint32_t got = 0;
         while (got < size) {
             int b = serial_read_byte();

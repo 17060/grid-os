@@ -16,6 +16,8 @@
 #define GRIDLINK_FILE GRIDLINK_HDR "/FILE"
 #define GRIDLINK_END "#GRIDLINK/END"
 
+static uint8_t g_link_recv_buf[GFS_FILE_MAX];
+
 static int equals_prefix(const char *line, const char *prefix) {
     while (*prefix) {
         if (*line++ != *prefix++) {
@@ -82,7 +84,7 @@ int gridlink_import_vault(void) {
 int gridlink_recv_file(void) {
     char line[128];
     char path[GFS_PATH_MAX];
-    uint8_t buffer[16384];
+    uint8_t *buffer = g_link_recv_buf;
     uint32_t expected = 0;
     uint32_t received = 0;
     size_t len;
@@ -142,7 +144,7 @@ int gridlink_recv_file(void) {
         }
     }
 
-    if (expected == 0 || expected > sizeof(buffer)) {
+    if (expected == 0 || expected > sizeof(g_link_recv_buf)) {
         console_set_color(GRID_COL_ERROR);
         console_write_line("GridLink: invalid file size.");
         console_set_color(GRID_COL_DEFAULT);

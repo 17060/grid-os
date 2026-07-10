@@ -1,0 +1,5 @@
+10 REM dm17 -- audit-pack
+20 PRINT "=== DM17: audit-pack ==="
+30 PRINT GRID.LOG.TAIL$(12)
+40 PRINT GRID.WHOAMI$
+50 END

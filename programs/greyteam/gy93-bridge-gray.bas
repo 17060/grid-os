@@ -1,0 +1,5 @@
+10 REM gy93 -- bridge-gray
+20 PRINT "=== GY93: bridge-gray ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.AI.MODELS$
+50 END

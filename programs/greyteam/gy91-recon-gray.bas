@@ -1,0 +1,5 @@
+10 REM gy91 -- recon-gray
+20 PRINT "=== GY91: recon-gray ==="
+30 PRINT GRID.WHOAMI$
+40 PRINT GRID.NET.STATUS$
+50 END

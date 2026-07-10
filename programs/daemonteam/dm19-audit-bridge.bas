@@ -1,0 +1,5 @@
+10 REM dm19 -- audit-bridge
+20 PRINT "=== DM19: audit-bridge ==="
+30 PRINT GRID.BTC.STATUS$
+40 PRINT GRID.IRC.STATUS$
+50 END

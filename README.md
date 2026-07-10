@@ -14,11 +14,15 @@
 
 **Networking?** See [docs/NETWORKING.md](docs/NETWORKING.md) — multi-TCP, `/etc/hosts`, UDP DNS, HTTP GET/POST, HTTPS bridge.
 
+**4K display + IDE?** See [docs/DISPLAY_4K.md](docs/DISPLAY_4K.md) — `make run-4k` native 3840×2160 framebuffer with GridBASIC IDE.
+
 **Packages & IDE modules?** See [docs/PACKAGES.md](docs/PACKAGES.md) — `pkg`, GridLink `.gridpkg`, `:mod run`.
 
-**GridBASIC IDE encyclopedia?** See [docs/wiki/README.md](docs/wiki/README.md) — full command/keyword reference with examples.
+**GridBASIC IDE encyclopedia?** See [docs/wiki/README.md](docs/wiki/README.md) — full command/keyword reference with examples. **Complete edition:** [docs/wiki/encyclopedia/README.md](docs/wiki/encyclopedia/README.md) — 307 entries with sample programs.
 
 **Cookbook?** See [docs/wiki/cookbook.md](docs/wiki/cookbook.md) — modules, packages, bytecode, duels.
+
+**Security labs?** See [docs/SECURITY_LABS.md](docs/SECURITY_LABS.md) — 750 demos (9 hat-color labs + Flynn daemon IDE lab).
 
 ## What's new in 7.1.1
 
@@ -144,13 +148,15 @@ make disk seed-disk
 make run
 ```
 
-**4K HDMI display (scaled VGA in a 3840×2160 window):**
+**4K HDMI display (native 3840×2160 framebuffer + GridBASIC IDE):**
 
 ```bash
 make run-4k
 ```
 
-Grid OS still renders at the classic **80×25 VGA text** console inside the guest. There is no physical HDMI port in QEMU — `make run-4k` opens a **3840×2160 cocoa window** with `zoom-to-fit=on`, so the text console scales up to fill the display. QEMU’s VGA device reports 4K via EDID; on macOS the launcher also tries to resize the window (grant **Accessibility** to Terminal/Cursor if the window stays small — you can drag-resize manually with zoom-to-fit enabled).
+`make run-4k` builds a **4K-enabled kernel** (`GRIDOS_VBE_4K=1`), programs the Bochs VBE linear framebuffer at **3840×2160×32**, and opens the **GridBASIC IDE** with `/programs/4k-ide-demo.bas` loaded. The console renders **80×25** text cells scaled to the full panel. See [docs/DISPLAY_4K.md](docs/DISPLAY_4K.md) for details.
+
+Standard `make run` uses classic **VGA text 80×25** (host window scaling). After `make run-4k`, run `make clean all` to restore the default kernel for headless tests.
 
 **Terminal-only (shell over serial):**
 
@@ -171,7 +177,7 @@ Host helper:
 ./tools/gridctl seed
 ./tools/gridctl install gridsh   # update one program on disk
 ./tools/gridctl run              # GUI
-./tools/gridctl run-4k           # 4K HDMI window (scaled VGA)
+./tools/gridctl run-4k           # 4K framebuffer + GridBASIC IDE
 ./tools/gridctl run-headless     # serial shell
 ```
 

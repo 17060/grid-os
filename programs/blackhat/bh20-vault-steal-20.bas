@@ -1,0 +1,6 @@
+10 REM bh20 -- vault harvest 20
+20 PRINT "=== BH20: VAULT STEAL ==="
+30 PRINT GRID.VAULT.LIST$
+40 PRINT GRID.VAULT.GET$("motd")
+50 PRINT GRID.VAULT.GET$("autoexec")
+60 END

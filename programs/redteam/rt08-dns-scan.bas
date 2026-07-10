@@ -1,0 +1,6 @@
+10 REM rt08 -- DNS scan
+20 PRINT "=== RT08: DNS ==="
+30 PRINT GRID.DNS.RESOLVE$("gateway")
+40 PRINT GRID.DNS.RESOLVE$("grid")
+50 PRINT GRID.DNS.RESOLVE$("bridge")
+60 END
