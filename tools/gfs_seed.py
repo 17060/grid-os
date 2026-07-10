@@ -161,6 +161,7 @@ DEMO_BAS = (
 )
 
 GALACTIC_EMPIRE_BAS = Path(__file__).resolve().parent.parent / "programs" / "galactic-empire.bas"
+IRC_HIVE_MIND_BAS = Path(__file__).resolve().parent.parent / "programs" / "irc-hive-mind.bas"
 
 PACKAGES_ROOT = Path(__file__).resolve().parent.parent / "packages"
 REDTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "redteam"
@@ -322,9 +323,10 @@ def main() -> int:
         (20, "/programs/demo.bas", DEMO_BAS),
         (21, "/programs/btc-demo.bas", BTCDEMO_BAS),
         (22, "/programs/galactic-empire.bas", GALACTIC_EMPIRE_BAS.read_bytes()),
+        (23, "/programs/irc-hive-mind.bas", IRC_HIVE_MIND_BAS.read_bytes()),
     ]
 
-    slot = 23
+    slot = 24
     for path, payload in package_seed_files():
         files.append((slot, path, payload))
         slot += 1
