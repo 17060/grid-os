@@ -15,6 +15,18 @@
 #define USER_STACK_VADDR 0x0000000000700000UL
 #define USER_STACK_PAGES 4
 
+/* Runtime memory-allocator usage, for the `meminfo` observability command. */
+typedef struct {
+    size_t dma_used;        /* bytes handed out from the DMA bump allocator */
+    size_t dma_total;       /* total DMA pool size */
+    int    user_pt_used;    /* user page-table pool pages in use */
+    int    user_pt_total;
+    int    user_data_used;  /* user data (code/stack) pool pages in use */
+    int    user_data_total;
+} memory_stats_t;
+
+void memory_get_stats(memory_stats_t *out);
+
 void memory_init(void);
 void memory_map_kernel(void);
 

@@ -6,6 +6,8 @@
 
 **New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
 
+**Want to understand how it works?** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — a guided tour of the kernel from power-on to shell (boot, memory, scheduler, syscalls, filesystem, the virtio driver, GridBASIC), written to be read alongside the code.
+
 **Linux?** See [docs/LINUX.md](docs/LINUX.md) — `make release-linux` for distributable tarballs.
 
 **Apple Silicon Mac?** See [docs/MAC_SILICON.md](docs/MAC_SILICON.md) — `make save-macos-arm64` or `make release-mac` for distributable bundles.

@@ -16,6 +16,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `caps` | Granted capabilities |
 | `status` | Grid runtime status |
 | `cycles` | Same as `status` (elapsed cycles) |
+| `meminfo` | Kernel memory pools — DMA + user page pools, used vs total |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
 | `about` | About Grid OS 7.1.1 |

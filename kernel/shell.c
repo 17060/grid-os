@@ -13,6 +13,7 @@
 #include "irc.h"
 #include "link.h"
 #include "log.h"
+#include "memory.h"
 #include "net.h"
 #include "pkg.h"
 #include "program.h"
@@ -134,6 +135,7 @@ static void cmd_help(void) {
     console_write_line("  caps              Show granted capabilities");
     console_write_line("  status            Grid runtime status");
     console_write_line("  cycles            Show elapsed grid cycles");
+    console_write_line("  meminfo           Kernel memory pools (DMA + user pages)");
     console_write_line("  vision            Flynn's founding principles");
     console_write_line("  clear             Clear the screen");
     console_write_line("  echo <text>       Write text to the grid");
@@ -752,6 +754,49 @@ static void cmd_vision(void) {
     console_write_line("  3. Identity is explicit — every entity carries a disc, not a shared root key.");
     console_write_line("  4. Security fails closed: unknown actions are denied by default.");
     console_write_line("  5. Emergence is a feature. ISOs welcome. Anomalies are not enemies.");
+}
+
+static void shell_write_uint(unsigned long v) {
+    if (v == 0) { console_write_char('0'); return; }
+    char tmp[24];
+    int n = 0;
+    while (v > 0) { tmp[n++] = (char)('0' + (v % 10)); v /= 10; }
+    while (n > 0) { console_write_char(tmp[--n]); }
+}
+
+/* Observability: show the kernel's memory bookkeeping. GridOS uses fixed pools
+ * (a DMA bump allocator + owner-tagged page pools) rather than a general heap,
+ * so "used vs total" is exact and easy to reason about — a teaching view of
+ * where memory goes. */
+static void cmd_meminfo(void) {
+    memory_stats_t m;
+    memory_get_stats(&m);
+
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("Grid OS memory");
+    console_set_color(GRID_COL_DEFAULT);
+
+    console_write("  DMA pool:        ");
+    shell_write_uint((unsigned long)m.dma_used);
+    console_write(" / ");
+    shell_write_uint((unsigned long)m.dma_total);
+    console_write_line(" bytes  (virtio rings + request buffers)");
+
+    console_write("  User PT pool:    ");
+    shell_write_uint((unsigned long)m.user_pt_used);
+    console_write(" / ");
+    shell_write_uint((unsigned long)m.user_pt_total);
+    console_write_line(" pages  (per-program page tables)");
+
+    console_write("  User data pool:  ");
+    shell_write_uint((unsigned long)m.user_data_used);
+    console_write(" / ");
+    shell_write_uint((unsigned long)m.user_data_total);
+    console_write_line(" pages  (ring-3 code + stack)");
+
+    console_set_color(GRID_COL_DIM);
+    console_write_line("  Kernel stack 2 MiB; low 1 GiB RAM identity-mapped; no guard page.");
+    console_set_color(GRID_COL_DEFAULT);
 }
 
 static void shell_push_history(const char *line) {
@@ -2077,6 +2122,8 @@ void shell_dispatch_line(char *line) {
         cmd_caps();
     } else if (equals(argv[0], "status") || equals(argv[0], "cycles")) {
         cmd_cycles();
+    } else if (equals(argv[0], "meminfo")) {
+        cmd_meminfo();
     } else if (equals(argv[0], "vision")) {
         cmd_vision();
     } else if (equals(argv[0], "clear")) {

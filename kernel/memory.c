@@ -155,6 +155,25 @@ void *memory_dma_alloc(size_t size, size_t align) {
     return ptr;
 }
 
+void memory_get_stats(memory_stats_t *out) {
+    if (!out) {
+        return;
+    }
+    out->dma_used = dma_pool_used;
+    out->dma_total = sizeof(dma_pool);
+    out->user_pt_total = MAX_USER_PT;
+    out->user_data_total = MAX_USER_DATA;
+    int pt = 0, dt = 0;
+    for (int i = 0; i < MAX_USER_PT; ++i) {
+        if (user_pt_owner[i] != 0) pt++;
+    }
+    for (int i = 0; i < MAX_USER_DATA; ++i) {
+        if (user_data_owner[i] != 0) dt++;
+    }
+    out->user_pt_used = pt;
+    out->user_data_used = dt;
+}
+
 /* Physical address of the kernel PML4, read by the interrupt entry stubs
  * (interrupts.s). Handlers must switch to the full kernel mapping on entry:
  * user page tables only identity-map 0-4 MB of kernel memory, and kernel
