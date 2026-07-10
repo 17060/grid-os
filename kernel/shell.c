@@ -139,6 +139,7 @@ static void cmd_help(void) {
     console_write_line("  cycles            Show elapsed grid cycles");
     console_write_line("  meminfo           Kernel memory pools (DMA + user pages)");
     console_write_line("  syscalls          Recent ring-3 -> kernel calls (per program)");
+    console_write_line("  disklayout        GFS on-disk map (superblock/inodes/data by LBA)");
     console_write_line("  labs [done <n>]   OS internals labs — learn the kernel, earn disc XP");
     console_write_line("  vision            Flynn's founding principles");
     console_write_line("  clear             Clear the screen");
@@ -825,6 +826,48 @@ static void cmd_syscalls(void) {
         console_write(" -> sys_");
         console_write_line(syscall_trace_name(i));
     }
+}
+
+/* Observability: the physical on-disk map. `gfs`/`ls` show the *files*; this
+ * shows *where the bytes live* — the superblock, inode table, and data regions
+ * by sector (LBA). Makes the filesystem section of the architecture guide
+ * concrete. */
+static void cmd_disklayout(void) {
+    gfs_layout_t g;
+    gfs_get_layout(&g);
+
+    console_set_color(GRID_COL_TITLE);
+    console_write_line("GFS on-disk layout (512-byte sectors)");
+    console_set_color(GRID_COL_DEFAULT);
+
+    console_write("  superblock   LBA ");
+    shell_write_uint(g.super_lba);
+    console_write_line("");
+
+    console_write("  inode table  LBA ");
+    shell_write_uint(g.inode_lba);
+    console_write(" .. ");
+    shell_write_uint(g.inode_lba + g.inode_sectors - 1);
+    console_write("   (");
+    shell_write_uint(g.inode_max);
+    console_write(" inodes / ");
+    shell_write_uint(g.inode_sectors);
+    console_write_line(" sectors)");
+
+    console_write("  file data    LBA ");
+    shell_write_uint(g.data_base_lba);
+    console_write("+     (");
+    shell_write_uint(g.sectors_per_file);
+    console_write_line(" sectors/file, slot 0 reserved)");
+
+    console_write("    first file LBA ");
+    shell_write_uint(g.data_base_lba + g.sectors_per_file);
+    console_write_line("");
+
+    console_write("  Mounted: ");
+    console_set_color(g.mounted ? GRID_COL_OK : GRID_COL_WARN);
+    console_write_line(g.mounted ? "yes" : "no");
+    console_set_color(GRID_COL_DEFAULT);
 }
 
 /* ---- OS-internals labs: learn the kernel by reading/breaking/fixing it ----
@@ -2252,6 +2295,8 @@ void shell_dispatch_line(char *line) {
         cmd_meminfo();
     } else if (equals(argv[0], "syscalls")) {
         cmd_syscalls();
+    } else if (equals(argv[0], "disklayout")) {
+        cmd_disklayout();
     } else if (equals(argv[0], "labs")) {
         cmd_labs(argc, argv);
     } else if (equals(argv[0], "vision")) {

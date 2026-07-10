@@ -210,6 +210,19 @@ int gfs_present(void) {
     return mounted;
 }
 
+void gfs_get_layout(gfs_layout_t *out) {
+    if (!out) {
+        return;
+    }
+    out->super_lba = GFS_SUPER_LBA;
+    out->inode_lba = GFS_INODE_TABLE_LBA;
+    out->inode_sectors = GFS_INODE_TABLE_SECTORS;
+    out->inode_max = GFS_INODE_MAX;
+    out->data_base_lba = GFS_DATA_BASE_LBA;
+    out->sectors_per_file = GFS_SECTORS_PER_FILE;
+    out->mounted = mounted;
+}
+
 int gfs_format(void) {
     /* disk_read/disk_write transfer a full 512-byte sector, so the superblock
      * must live in a sector-sized, aligned buffer — writing from a bare

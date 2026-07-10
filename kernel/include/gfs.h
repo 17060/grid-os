@@ -22,4 +22,17 @@ void gfs_print_status(void);
 
 int gfs_seed_defaults(void);
 
+/* On-disk geometry (512-byte sectors), for the `disklayout` observability
+ * command — where the superblock, inode table, and file data physically sit. */
+typedef struct {
+    uint32_t super_lba;
+    uint32_t inode_lba;
+    uint32_t inode_sectors;
+    uint32_t inode_max;
+    uint32_t data_base_lba;
+    uint32_t sectors_per_file;
+    int mounted;
+} gfs_layout_t;
+void gfs_get_layout(gfs_layout_t *out);
+
 #endif
