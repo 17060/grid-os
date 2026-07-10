@@ -1343,12 +1343,19 @@ static value_t eval_primary_inner(void) {
             advance();
             value_t arg = eval_expr();
             match_op(')');
+            /* Save the caller's token position (just past the call's ")") and
+             * restore it after evaluating the function body. Setting g_cur to
+             * df->expr_end instead left the interpreter resuming at the end of
+             * the DEF FN *definition* line, whose next statement is the caller
+             * again -> infinite re-execution (a hang the gcc optimizer exposes
+             * cleanly, which clang happened to survive). */
+            int resume_cur = g_cur;
             var_t *pv = get_var(df->param, 0);
             num_t saved = pv ? pv->scalar.n : 0;
             if (pv) { pv->scalar.is_str = 0; pv->scalar.n = to_num(&arg); }
             g_cur = df->expr_start;
             value_t r = eval_expr();
-            g_cur = df->expr_end;
+            g_cur = resume_cur;
             if (pv) pv->scalar.n = saved;
             return r;
         }
