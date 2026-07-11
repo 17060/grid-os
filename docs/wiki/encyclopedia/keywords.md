@@ -428,9 +428,9 @@
 20 REM Where: GridBASIC program
 30 REM Purpose: Unconditional jump
 40 REM Action: Transfers control to line number
-50 GOTO 50
+50 GOTO 70
 60 PRINT "skip"
-70 50 PRINT "landed"
+70 PRINT "landed"
 80 END
 ```
 
@@ -452,9 +452,9 @@
 20 REM Where: GridBASIC program
 30 REM Purpose: Call subroutine
 40 REM Action: Pushes return address and jumps
-50 GOSUB 100
+50 GOSUB 70
 60 END
-70 100 PRINT "sub"
+70 PRINT "sub"
 80 RETURN
 90 END
 ```
@@ -477,9 +477,9 @@
 20 REM Where: GridBASIC program
 30 REM Purpose: Return from GOSUB
 40 REM Action: Pops return address and resumes
-50 GOSUB 100
+50 GOSUB 70
 60 END
-70 100 PRINT "back soon"
+70 PRINT "back soon"
 80 RETURN
 90 END
 ```
@@ -502,9 +502,9 @@
 20 REM Where: GridBASIC program
 30 REM Purpose: Branch table jump
 40 REM Action: 1-based index selects GOTO target
-50 ON 2 GOTO 100,200
-60 100 PRINT "one"
-70 200 PRINT "two"
+50 ON 2 GOTO 60,70
+60 PRINT "one"
+70 PRINT "two"
 80 END
 ```
 
@@ -526,9 +526,9 @@
 20 REM Where: GridBASIC program
 30 REM Purpose: Error handler
 40 REM Action: Jumps to line on runtime error
-50 ON ERROR GOTO 900
+50 ON ERROR GOTO 70
 60 X = 1/0
-70 900 PRINT ERR$
+70 PRINT ERR$
 80 END
 90 END
 ```
@@ -551,9 +551,9 @@
 20 REM Where: GridBASIC program
 30 REM Purpose: Resume after error
 40 REM Action: Continues after error handler
-50 ON ERROR GOTO 100
+50 ON ERROR GOTO 70
 60 X=1/0
-70 100 PRINT "err"
+70 PRINT "err"
 80 RESUME NEXT
 90 END
 ```
