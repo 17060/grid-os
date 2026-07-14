@@ -592,6 +592,49 @@ static void cmd_save(ide_t *e, const char *name) {
     ide_status(e, msg, GRID_COL_OK);
 }
 
+static void cmd_publish(ide_t *e, const char *name) {
+    if (!name[0]) {
+        ide_status(e, "usage: publish <name>", GRID_COL_ERROR);
+        return;
+    }
+    if (source_over_limit(e)) {
+        ide_status(e, "publish blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
+    char path[80];
+    size_t p = 0;
+    const char *pre = "/programs/mine/";
+    while (*pre && p + 1 < sizeof(path)) {
+        path[p++] = *pre++;
+    }
+    const char *s = name;
+    while (*s && p + 1 < sizeof(path)) {
+        path[p++] = *s++;
+    }
+    if (!(p >= 4 && path[p - 4] == '.' && path[p - 3] == 'b' && path[p - 2] == 'a' &&
+          path[p - 1] == 's')) {
+        const char *suf = ".bas";
+        while (*suf && p + 1 < sizeof(path)) {
+            path[p++] = *suf++;
+        }
+    }
+    path[p] = '\0';
+    if (serialize(e, g_ide_io_buf, sizeof(g_ide_io_buf)) != 0) {
+        ide_status(e, "publish blocked: program exceeds 65535 bytes", GRID_COL_ERROR);
+        return;
+    }
+    if (gfs_write_file(path, g_ide_io_buf, slen(g_ide_io_buf)) != 0) {
+        ide_status(e, "publish failed (GFS write denied)", GRID_COL_ERROR);
+        return;
+    }
+    scopy(e->path, sizeof(e->path), path);
+    e->dirty = 0;
+    char msg[96];
+    scopy(msg, sizeof(msg), "published ");
+    scopy(msg + 10, sizeof(msg) - 10, path);
+    ide_status(e, msg, GRID_COL_OK);
+}
+
 static void cmd_compile(ide_t *e, const char *name) {
     if (!name[0]) {
         ide_status(e, "usage: compile <name>", GRID_COL_ERROR);
@@ -1236,8 +1279,14 @@ static void cmd_help(void) {
     console_write_line("  :run [path]           run buffer, .grid path, or file");
     console_write_line("  :save <name>          write to /programs/<name>.bas");
     console_write_line("  :load <name>          read /programs/<name>.bas or .grid");
+    console_write_line("  :publish <name>       save buffer to /programs/mine/<name>.bas");
     console_write_line("  :new                  clear the buffer");
     console_write_line("  :list                 print the program");
+    console_write_line("  :dir                  list /programs on Flynn disk");
+    console_write_line("  :catalog              Flynn Everyday catalog");
+    console_write_line("  :games :apps :typeins list everyday program packs");
+    console_write_line("  :mine                 your published programs");
+    console_write_line("  :academy              advanced security labs menu");
     console_write_line("  :mods [category]      list IDE modules (optional filter)");
     console_write_line("  :mod run <name>       run installed IDE module");
     console_write_line("  :mod load <name>      load module into editor");
@@ -1245,6 +1294,7 @@ static void cmd_help(void) {
     console_write_line("  :find <text>          search buffer from cursor");
     console_write_line("  :goto <line>          jump to line number");
     console_write_line("  :samples              list /programs/*.bas samples");
+    console_write_line("  --- Flynn Academy (advanced) ---");
     console_write_line("  :redteam              red team lab (100 security demos)");
     console_write_line("  :blackhat             black hat lab (100 offensive demos)");
     console_write_line("  :whiteteam            white team lab (100 ethical demos)");
@@ -1314,6 +1364,15 @@ static int handle_ide_command(ide_t *e, const char *cmd) {
     if (starts_with(cmd, "mod run ")) { cmd_mod_run(e, cmd + 8); return 1; }
     if (starts_with(cmd, "mod load ")) { cmd_mod_load(e, cmd + 9); return 1; }
     if (sequal(cmd, "samples")) { run_shell_line(e, "samples"); return 1; }
+    if (sequal(cmd, "catalog")) { run_shell_line(e, "catalog"); return 1; }
+    if (sequal(cmd, "games")) { run_shell_line(e, "games"); return 1; }
+    if (sequal(cmd, "apps")) { run_shell_line(e, "apps"); return 1; }
+    if (sequal(cmd, "typeins")) { run_shell_line(e, "typeins"); return 1; }
+    if (sequal(cmd, "mine")) { run_shell_line(e, "mine"); return 1; }
+    if (sequal(cmd, "academy")) { run_shell_line(e, "academy"); return 1; }
+    if (sequal(cmd, "dir")) { run_shell_line(e, "ls /programs"); return 1; }
+    if (starts_with(cmd, "publish ")) { cmd_publish(e, cmd + 8); return 1; }
+    if (sequal(cmd, "publish")) { ide_status(e, "usage: publish <name>", GRID_COL_ERROR); return 1; }
     if (sequal(cmd, "redteam")) { run_shell_line(e, "redteam"); return 1; }
     if (sequal(cmd, "blackhat")) { run_shell_line(e, "blackhat"); return 1; }
     if (sequal(cmd, "whiteteam")) { run_shell_line(e, "whiteteam"); return 1; }

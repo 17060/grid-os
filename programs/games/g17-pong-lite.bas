@@ -1,0 +1,11 @@
+10 REM g17 -- pong bounce
+20 PRINT "=== Pong Lite ==="
+30 LET B = 10
+40 FOR I = 1 TO 30
+50   GRID.LOCATE 1, 20
+60   PRINT TAB(B); "|"
+70   LET B = B + 1
+80   IF B > 70 THEN LET B = 5
+90   GRID.WAIT 1
+100 NEXT I
+110 END

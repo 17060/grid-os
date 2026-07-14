@@ -32,7 +32,7 @@ void shell_run(void);
 
 void kernel_main(void) {
     serial_init();
-    serial_write("Grid OS 7.1.1 boot\n");
+    serial_write("Grid OS 7.2.0 boot\n");
     console_init();
     gdt_init();
     memory_init();
@@ -55,7 +55,7 @@ void kernel_main(void) {
     speaker_init();
     recognizer_init();
 
-    log_event("Grid OS 7.1.1 boot");
+    log_event("Grid OS 7.2.0 boot");
 
     disk_init();
     storage_init();

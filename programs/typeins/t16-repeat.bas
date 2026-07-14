@@ -1,0 +1,7 @@
+10 REM t16 -- type-in repeat
+20 LET K=0
+30 REPEAT
+40   LET K=K+1
+50   PRINT K
+60 UNTIL K>=3
+70 END

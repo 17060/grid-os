@@ -1,0 +1,4 @@
+10 REM t05 -- type-in rnd
+20 RANDOMIZE 42
+30 PRINT "RND(10)="; RND(10)
+40 END

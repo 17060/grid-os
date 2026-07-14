@@ -1,0 +1,7 @@
+10 REM t15 -- type-in while
+20 LET N=0
+30 WHILE N < 3
+40   LET N=N+1
+50   PRINT N
+60 WEND
+70 END

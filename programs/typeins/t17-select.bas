@@ -1,0 +1,7 @@
+10 REM t17 -- type-in select
+20 LET X=2
+30 SELECT CASE X
+40 CASE 2
+50   PRINT "two"
+60 END SELECT
+70 END

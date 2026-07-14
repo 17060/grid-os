@@ -1,0 +1,4 @@
+10 REM t03 -- type-in if
+20 LET X = 10
+30 IF X > 5 THEN PRINT "BIG"
+40 END

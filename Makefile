@@ -89,7 +89,7 @@ QEMU_NAME_HD    = -name "Grid OS — HDMI HD (1920x1080)"
 # -no-shutdown would make QEMU ignore isa-debug-exit, breaking `poweroff`.
 QEMU_COMMON   = -no-reboot -device isa-debug-exit,iobase=0xf4,iosize=0x04
 
-.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched lab-check test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
+.PHONY: all vbe-profile-check run run-hd run-4k run-vga run-headless run-legacy test test-host test-host-basic test-host-pp test-host-vault test-host-vault-disk test-host-tcp test-host-net test-host-spawn test-host-sched lab-check test-qemu-smoke test-e2e disk seed-disk gen-security-demos audit-security-demos gen-encyclopedia gen-everyday sync-basic-wiki install-prog ai-bridge btc-bridge https-bridge ws-bridge save-macos-arm64 standalone-macos release-mac save-windows-x64 standalone-windows release-windows save-termux standalone-termux release-termux save-linux-x64 standalone-linux release-linux clean
 
 all: vbe-profile-check $(TARGET)
 
@@ -119,7 +119,10 @@ audit-security-demos:
 gen-encyclopedia:
 	python3 tools/gen_basic_encyclopedia.py
 
-seed-disk: gen-security-demos gen-encyclopedia audit-security-demos $(TARGET) $(DISK_IMAGE)
+gen-everyday:
+	python3 tools/gen_everyday_pack.py
+
+seed-disk: gen-security-demos gen-encyclopedia gen-everyday audit-security-demos $(TARGET) $(DISK_IMAGE)
 	python3 tools/gfs_seed.py
 
 sync-basic-wiki:
@@ -209,7 +212,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.1.1'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.2.0'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'

@@ -1,0 +1,4 @@
+10 REM t07 -- type-in plot1
+20 GRID.PLOT 10, 10, 1
+30 GRID.PLOT 11, 10, 2
+40 END

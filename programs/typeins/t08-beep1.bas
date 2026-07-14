@@ -1,0 +1,5 @@
+10 REM t08 -- type-in beep1
+20 GRID.BEEP 5
+30 GRID.WAIT 3
+40 GRID.BEEP 8
+50 END
