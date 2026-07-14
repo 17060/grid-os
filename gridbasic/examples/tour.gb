@@ -1,0 +1,94 @@
+' GridBasic feature tour — exercises the language's headline features.
+PRINT "GridBasic Feature Tour"
+PRINT "========================"
+PRINT
+
+' --- variables, f-strings, ranges ---
+let name = "Flynn"
+let grid = [x^2 for x in 1..=5]
+print "Powers:   " + str(grid)
+print f"Hello, {name}! 3+4={3+4}"
+
+' --- functions and closures ---
+function add(a, b)
+  return a + b
+end function
+fn square = (x) => x * x
+function counter()
+  let n = 0
+  return () => { n = n + 1; return n }
+end function
+let c = counter()
+print "add(2,3): " + str(add(2,3))
+print "square(5): " + str(square(5))
+print "Count:    " + str([c(), c(), c()])
+
+' --- classes with inheritance ---
+CLASS Animal
+  PUBLIC name AS STRING
+  CONSTRUCTOR(name)
+    ME.name = name
+  END CONSTRUCTOR
+  FUNCTION speak()
+    RETURN "..."
+  END FUNCTION
+END CLASS
+
+CLASS Dog EXTENDS Animal
+  FUNCTION speak()
+    RETURN f"{ME.name} says Woof!"
+  END FUNCTION
+END CLASS
+
+let rex = NEW Dog("Rex")
+print rex.speak()
+
+' --- pattern matching ---
+function describe(x)
+  match x
+    case 0 => return "zero"
+    case n if n > 10 => return f"big: {n}"
+    case [a, b] => return f"pair {a},{b}"
+    case else => return "other"
+  end match
+end function
+print describe(0)
+print describe(42)
+print describe([1, 2])
+print describe("hi")
+
+' --- try/catch ---
+function safe_div(a, b)
+  try
+    if b == 0 then throw "div by zero"
+    return a / b
+  catch e
+    return f"caught: {e}"
+  end try
+end function
+print safe_div(10, 2)
+print safe_div(10, 0)
+
+' --- crypto ---
+import crypto
+let w = CRYPTO.wallet()
+print "Wallet address: " + left(w.address, 12) + "..."
+let sig = CRYPTO.sign(w, "hello grid")
+print "Signature verified: " + str(CRYPTO.verify(w.pub_compressed(), "hello grid", sig))
+let chain = CRYPTO.blockchain(2)
+chain.transfer(w, w.address, 5)
+chain.mine_pending(w)
+print f"Chain height: {chain.height()}, balance: {chain.balance_of(w.address)}"
+
+' --- AI ---
+import ai
+let m = AI.model("markov")
+m.train("GridBasic is the most advanced basic on earth. GridBasic rocks.")
+print "AI generated: " + AI.generate("GridBasic", length=8)
+
+' --- IRC config (don't connect in test) ---
+import irc
+print "IRC module: " + IRC.VERSION
+
+PRINT
+PRINT "Tour complete."
