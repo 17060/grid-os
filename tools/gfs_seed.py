@@ -30,7 +30,7 @@ WELCOME_GRID = (
 
 HELLO_BAS = (
     b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 7.1.1 online\"\n"
+    b"20 PRINT \"GridBASIC 7.2.0 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
@@ -96,15 +96,17 @@ ADVANCEDEMO_BAS = (
 )
 
 AUTOEXEC_BAS = (
-    b"10 REM Flynn Boot -- runs once at Grid OS startup\n"
+    b"10 REM Flynn Boot 2.0 -- runs once at Grid OS startup\n"
     b"20 PRINT \"\"\n"
     b"30 PRINT \"=== Welcome to Flynn's Grid ===\"\n"
     b"40 PRINT GRID.STATUS$\n"
-    b"50 PRINT \"Type 'tutorial' or Esc :load tutorial in IDE\"\n"
-    b"60 PRINT \"Samples: samples   Modules: pkg mods\"\n"
-    b"70 PRINT \"Disable boot script: vault put autoexec off\"\n"
-    b"80 PRINT \"\"\n"
-    b"90 END\n"
+    b"50 PRINT \"Games & apps: Esc :catalog :games\"\n"
+    b"60 PRINT \"Tutorial: tutorial  or  Esc :load tutorial\"\n"
+    b"70 PRINT \"Publish yours: Esc :publish myprog\"\n"
+    b"80 PRINT \"Academy labs: academy  (advanced)\"\n"
+    b"90 PRINT \"Disable boot: vault put autoexec off\"\n"
+    b"100 PRINT \"\"\n"
+    b"110 END\n"
 )
 
 TUTORIAL_BAS = (
@@ -124,8 +126,9 @@ TUTORIAL_BAS = (
     b"140 PRINT \"   \"; S$\n"
     b"150 PRINT \"5. GRID.WHOAMI$ = \"; GRID.WHOAMI$\n"
     b"160 PRINT \"Try: samples   basic run /programs/subdemo.bas\"\n"
-    b"170 PRINT \"End of line.\"\n"
-    b"180 END\n"
+    b"170 PRINT \"Next: Esc :catalog :games g01-guess\"\n"
+    b"180 PRINT \"End of line.\"\n"
+    b"190 END\n"
 )
 
 SUBDEMO_BAS = (
@@ -172,6 +175,13 @@ ORANGETEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "oranget
 GREYTEAM_ROOT = Path(__file__).resolve().parent.parent / "programs" / "greyteam"
 DAEMONTeam_ROOT = Path(__file__).resolve().parent.parent / "programs" / "daemonteam"
 ENCYCLOPEDIA_ROOT = Path(__file__).resolve().parent.parent / "programs" / "encyclopedia"
+EVERYDAY_ROOT = Path(__file__).resolve().parent.parent / "programs"
+EVERYDAY_SUBDIRS = (
+    ("games", "/programs/games"),
+    ("apps", "/programs/apps"),
+    ("typeins", "/programs/typeins"),
+    ("mine", "/programs/mine"),
+)
 
 
 def lab_seed_files(root: Path, vfs_dir: str) -> list[tuple[str, bytes]]:
@@ -225,6 +235,17 @@ def daemonteam_seed_files() -> list[tuple[str, bytes]]:
 
 def encyclopedia_seed_files() -> list[tuple[str, bytes]]:
     return lab_seed_files(ENCYCLOPEDIA_ROOT, "/programs/encyclopedia")
+
+
+def everyday_seed_files() -> list[tuple[str, bytes]]:
+    out: list[tuple[str, bytes]] = []
+    for subdir, vfs_dir in EVERYDAY_SUBDIRS:
+        out.extend(lab_seed_files(EVERYDAY_ROOT / subdir, vfs_dir))
+    for name in ("everyday.bas", "academy.bas"):
+        path = EVERYDAY_ROOT / name
+        if path.is_file():
+            out.append((f"/programs/{name}", path.read_bytes()))
+    return out
 
 
 def package_seed_files() -> list[tuple[str, bytes]]:
@@ -363,6 +384,10 @@ def main() -> int:
         slot += 1
 
     for path, payload in daemonteam_seed_files():
+        files.append((slot, path, payload))
+        slot += 1
+
+    for path, payload in everyday_seed_files():
         files.append((slot, path, payload))
         slot += 1
 

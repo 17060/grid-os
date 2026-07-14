@@ -1,0 +1,5 @@
+10 REM t13 -- type-in data
+20 DATA 1,2,3
+30 READ A,B,C
+40 PRINT A+B+C
+50 END

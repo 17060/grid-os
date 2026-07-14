@@ -106,8 +106,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 7.1.1 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1.1  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 7.2.0 ============/=");
+    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.2.0  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -144,14 +144,20 @@ static void cmd_help(void) {
     console_write_line("  vision            Flynn's founding principles");
     console_write_line("  clear             Clear the screen");
     console_write_line("  echo <text>       Write text to the grid");
+    console_write_line("  catalog           Flynn Everyday catalog (games, apps, type-ins)");
+    console_write_line("  games             20 arcade & puzzle GridBASIC programs");
+    console_write_line("  apps              10 everyday utility programs");
+    console_write_line("  typeins           20 magazine type-in snippets");
+    console_write_line("  mine              your published programs (/programs/mine/)");
+    console_write_line("  academy           Flynn Academy — advanced security labs");
     console_write_line("  spawn [name]      Run ring-3 program (foreground)");
+    console_write_line("  spawn list        Spawnable ring-3 programs");
     console_write_line("  spawn bg <name>   Load program as background job");
     console_write_line("  jobs              List background sandbox jobs");
     console_write_line("  kill <#>|all       Stop background job(s)");
     console_write_line("  fg <#>            Run background job in foreground");
     console_write_line("  wait              Wait for background jobs to finish");
     console_write_line("  poweroff          Exit QEMU (isa-debug-exit)");
-    console_write_line("  catalog           Spawnable ring-3 programs");
     console_write_line("  programs          Spawned program history");
     console_write_line("  ls [path]         GridFS listing");
     console_write_line("  cat <path>        GridFS read");
@@ -173,6 +179,7 @@ static void cmd_help(void) {
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
     console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
+    console_write_line("  --- Flynn Academy (advanced security labs) ---");
     console_write_line("  redteam           Red team lab — 100 demos (/programs/redteam/)");
     console_write_line("  blackhat          Black hat lab — 100 demos (/programs/blackhat/)");
     console_write_line("  whiteteam         White team lab — 100 demos (/programs/whiteteam/)");
@@ -1502,6 +1509,41 @@ static void cmd_daemonteam(void) {
     cmd_security_lab("/programs/daemonteam/", "=== Grid OS Flynn Daemon Lab (50 IDE demos) ===");
 }
 
+static void cmd_games(void) {
+    cmd_security_lab("/programs/games/", "=== Flynn Games Pack (20 programs) ===");
+}
+
+static void cmd_apps(void) {
+    cmd_security_lab("/programs/apps/", "=== Flynn Apps Pack (10 programs) ===");
+}
+
+static void cmd_typeins(void) {
+    cmd_security_lab("/programs/typeins/", "=== Flynn Type-In Library (20 snippets) ===");
+}
+
+static void cmd_mine(void) {
+    cmd_security_lab("/programs/mine/", "=== Your Programs (/programs/mine/) ===");
+}
+
+static int run_bas_program(const char *path, const char *missing_msg) {
+    char probe[8];
+    size_t got = 0;
+
+    if (gfs_read_file(path, probe, sizeof(probe), &got) != 0 || got == 0) {
+        console_set_color(GRID_COL_WARN);
+        console_write_line(missing_msg);
+        console_set_color(GRID_COL_DEFAULT);
+        return 0;
+    }
+    basic_run_file(path);
+    return 1;
+}
+
+static void cmd_academy(void) {
+    (void)run_bas_program("/programs/academy.bas",
+                          "Academy menu missing — run: make seed-disk");
+}
+
 static void cmd_samples(void) {
     char paths[32][GFS_PATH_MAX];
     int n = gfs_list_paths("/programs/", paths, 32);
@@ -1532,6 +1574,8 @@ static void cmd_samples(void) {
         console_set_color(GRID_COL_DEFAULT);
     }
     console_write_line("");
+    console_write_line("  everyday.bas   Flynn Everyday catalog (also: catalog)");
+    console_write_line("  games/ apps/ typeins/  50 everyday programs (also: games)");
     console_write_line("  tutorial.bas   Flynn Boot walkthrough (also: tutorial)");
     console_write_line("  hello.bas      intro loop + GRID.PING");
     console_write_line("  subdemo.bas    SUB / FUNCTION / CALL");
@@ -1980,7 +2024,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 7.1.1 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 7.2.0 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }
@@ -2047,7 +2091,10 @@ static void cmd_portal(int argc, char *argv[]) {
 }
 
 static void cmd_catalog(void) {
-    program_print_catalog();
+    if (!run_bas_program("/programs/everyday.bas",
+                         "Everyday catalog missing — run: make seed-disk")) {
+        program_print_catalog();
+    }
 }
 
 static void cmd_echo(int argc, char *argv[]) {
@@ -2312,6 +2359,16 @@ void shell_dispatch_line(char *line) {
         cmd_spawn(argc, argv);
     } else if (equals(argv[0], "catalog")) {
         cmd_catalog();
+    } else if (equals(argv[0], "games")) {
+        cmd_games();
+    } else if (equals(argv[0], "apps")) {
+        cmd_apps();
+    } else if (equals(argv[0], "typeins")) {
+        cmd_typeins();
+    } else if (equals(argv[0], "mine")) {
+        cmd_mine();
+    } else if (equals(argv[0], "academy")) {
+        cmd_academy();
     } else if (equals(argv[0], "portal")) {
         cmd_portal(argc, argv);
     } else if (equals(argv[0], "net")) {
@@ -2406,7 +2463,7 @@ void shell_run(void) {
             return;
         }
 #endif
-        basic_ide_set_boot_hint("Welcome — Esc: grid> tutorial | :load tutorial | :samples");
+        basic_ide_set_boot_hint("Welcome — Esc :catalog :games :publish | tutorial");
     }
     basic_ide(0);
 }

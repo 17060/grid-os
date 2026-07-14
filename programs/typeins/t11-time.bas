@@ -1,0 +1,3 @@
+10 REM t11 -- type-in time
+20 PRINT GRID.TIME
+30 END

@@ -1,5 +1,30 @@
 # Grid OS — Changelog
 
+## 7.2.0 — Flynn Everyday (GridBASIC like 1980)
+
+### Flynn Everyday pack
+- **55 programs** — 20 games, 10 apps, 20 type-ins, plus catalog/academy/mine welcome
+- **`tools/gen_everyday_pack.py`** — generates `programs/games/`, `apps/`, `typeins/`, `mine/`
+- **`make gen-everyday`** — regenerate pack; **`seed-disk`** includes everyday files on Flynn disk
+
+### Boot & UX (Flynn Boot 2.0)
+- **`autoexec.bas`** — points beginners to `:catalog`, `:games`, `:publish`; Academy under `academy`
+- **`tutorial.bas`** — links to games pack after basics
+- IDE boot hint: `Esc :catalog :games :publish | tutorial`
+
+### Shell commands
+- **`catalog`** — runs Flynn Everyday catalog (`everyday.bas`); fallback: spawn list
+- **`games`**, **`apps`**, **`typeins`**, **`mine`**, **`academy`** — list/run everyday packs
+- Help reorganized: everyday first, Flynn Academy section for security labs
+
+### GridBASIC IDE
+- **`:catalog`**, **`:games`**, **`:apps`**, **`:typeins`**, **`:mine`**, **`:academy`**, **`:dir`**
+- **`:publish <name>`** — save buffer to `/programs/mine/<name>.bas`
+
+### Docs
+- **`docs/FLYNN_EVERYDAY.md`** — everyday pack guide
+- **`docs/COOKBOOK_VOL1.md`** — first-hour recipes
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI

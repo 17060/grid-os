@@ -1,10 +1,14 @@
-# Grid OS 7.1.1
+# Grid OS 7.2.0
 
 [![Grid OS CI](https://github.com/17060/grid-os/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/17060/grid-os/actions/workflows/test.yml)
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
 **New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
+
+**Want everyday GridBASIC (games, apps, type-ins)?** See [docs/FLYNN_EVERYDAY.md](docs/FLYNN_EVERYDAY.md) — boot-to-BASIC like 1980, `:catalog`, `:publish`, `/programs/mine/`.
+
+**First programs?** See [docs/COOKBOOK_VOL1.md](docs/COOKBOOK_VOL1.md) — Volume 1 recipes.
 
 **Want to understand how it works?** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — a guided tour of the kernel from power-on to shell (boot, memory, scheduler, syscalls, filesystem, the virtio driver, GridBASIC), written to be read alongside the code.
 
@@ -28,7 +32,11 @@
 
 **Cookbook?** See [docs/wiki/cookbook.md](docs/wiki/cookbook.md) — modules, packages, bytecode, duels.
 
-**Security labs?** See [docs/SECURITY_LABS.md](docs/SECURITY_LABS.md) — 750 demos (9 hat-color labs + Flynn daemon IDE lab).
+**Security labs?** See [docs/SECURITY_LABS.md](docs/SECURITY_LABS.md) — 750 demos (9 hat-color labs + Flynn daemon IDE lab). Beginners: use `academy` when ready.
+
+## What's new in 7.2.0
+
+**Flynn Everyday** — 55 GridBASIC programs (20 games, 10 apps, 20 type-ins), Flynn Boot 2.0, `:catalog`/`:publish`, `/programs/mine/`, shell `games|apps|typeins`. See [docs/FLYNN_EVERYDAY.md](docs/FLYNN_EVERYDAY.md) and [CHANGELOG.md](CHANGELOG.md).
 
 ## What's new in 7.1.1
 
