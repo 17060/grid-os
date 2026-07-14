@@ -41,7 +41,7 @@ def parse_manifest(path: Path) -> tuple[str, str, str, list[tuple[str, str, str,
 def read_grid_status_version() -> str:
     text = BASIC_C.read_text(encoding="utf-8")
     m = re.search(r'GRID\.STATUS\$"\)\s*\{\s*return make_str\("([^"]+)"\)', text)
-    return m.group(1) if m else "Grid OS 7.1.1"
+    return m.group(1) if m else "Grid OS 7.2"
 
 
 def replace_block(path: Path, tag: str, content: str) -> None:

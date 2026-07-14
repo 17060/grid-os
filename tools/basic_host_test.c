@@ -133,6 +133,16 @@ int ai_models(char *out, size_t cap) {
     if (cap) { snprintf(out, cap, "stub"); }
     return 0;
 }
+int ai_run(const char *prompt, char *out, size_t cap) {
+    (void)prompt;
+    if (cap) { snprintf(out, cap, "run-stub"); }
+    return 0;
+}
+int ai_chat(const char *prompt, char *out, size_t cap) {
+    (void)prompt;
+    if (cap) { snprintf(out, cap, "chat-stub"); }
+    return 0;
+}
 
 /* ---- btc stubs (offline path only in host test) ---- */
 int btc_call(const char *method, const char *params, char *out, size_t cap) {

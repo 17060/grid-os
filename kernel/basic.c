@@ -27,7 +27,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* ===== GridBASIC interpreter ============================================
+/* ===== GridBASIC / AssimBASIC interpreter ================================
+ *
+ * AssimBASIC (Grid OS 7.2) assimilates features from across the language
+ * universe into GridBASIC: TRY/CATCH/FINALLY (Python/Java), MATCH/WHEN
+ * (Rust/Scala), UNLESS (Ruby/Perl), FOREACH (Python/JS), BREAK/LOOP (C/Go),
+ * ASSERT/SWAP, compound += -= *= /=, IIF/TYPEOF$/CLAMP/REPLACE$/FIELD$/XOR,
+ * plus GRID.AI.RUN$/CHAT$, GRID.BTC.SEND$/TX$/BLOCK$, GRID.IRC.CONNECTED.
  *
  * Tokenize the whole program into a flat token array (with NEWLINE tokens
  * preserving line structure), then walk it with a global cursor. GOTO and
@@ -52,7 +58,11 @@ typedef enum {
     KW_SELECT, KW_CASE, KW_EXIT, KW_LINE,
     KW_ELSEIF, KW_ON, KW_ERROR, KW_RESUME, KW_OPTION, KW_BASE,
     KW_DEF, KW_FN, KW_SUB, KW_FUNCTION, KW_LOCAL, KW_SHARED,
-    KW_CONTINUE, KW_CALL
+    KW_CONTINUE, KW_CALL,
+    /* AssimBASIC — assimilated control / structure keywords */
+    KW_TRY, KW_CATCH, KW_FINALLY, KW_MATCH, KW_WHEN, KW_OTHERWISE,
+    KW_UNLESS, KW_ASSERT, KW_SWAP, KW_BREAK, KW_LOOP, KW_FOREACH, KW_IN,
+    KW_XOR
 } kw_t;
 
 typedef struct {
@@ -143,6 +153,15 @@ typedef struct {
     int tok_index;     /* return point */
 } gosub_frame_t;
 
+/* AssimBASIC TRY/CATCH/FINALLY frame */
+typedef struct {
+    int catch_tok;     /* KW_CATCH token, or -1 */
+    int finally_tok;   /* KW_FINALLY token, or -1 */
+    int end_tok;       /* token after END TRY */
+    int phase;         /* 0=try body, 1=catch, 2=finally */
+    int had_error;     /* error diverted into this try */
+} try_frame_t;
+
 static token_t g_tokens[MAX_TOKENS];
 static int g_ntok;
 static volatile int g_cur;      /* cursor into tokens — volatile so the
@@ -184,6 +203,9 @@ static for_frame_t g_for_stack[MAX_FRAMES];
 static int g_for_sp;
 static gosub_frame_t g_gosub_stack[MAX_FRAMES];
 static int g_gosub_sp;
+static try_frame_t g_try_stack[MAX_FRAMES];
+static int g_try_sp;
+static int g_try_diverted; /* abort current stmt/expr after TRY divert */
 static sub_frame_t g_sub_stack[MAX_FRAMES];
 static int g_sub_sp;
 static int g_eval_depth;   /* current nested-expression recursion depth */
@@ -248,7 +270,42 @@ static int match_end_select(void);
 static void skip_to_next_case_or_end(void);
 static void skip_to_newline(void);
 
+static int try_divert_error(const char *msg) {
+    if (g_try_sp <= 0 || g_try_stack[g_try_sp - 1].phase != 0) {
+        return 0;
+    }
+    try_frame_t *tf = &g_try_stack[g_try_sp - 1];
+    size_t i;
+    for (i = 0; i < sizeof(g_errmsg) - 1 && msg[i]; ++i) {
+        g_errmsg[i] = msg[i];
+        g_errmsg[i + 1] = '\0';
+    }
+    tf->had_error = 1;
+    /* Keep g_error set so the current statement/expression aborts cleanly;
+     * run_loop clears it on the next iteration after repositioning. */
+    g_error = 1;
+    g_try_diverted = 1;
+    g_running = 1;
+    if (tf->catch_tok >= 0) {
+        tf->phase = 1;
+        g_cur = tf->catch_tok;
+        return 1;
+    }
+    if (tf->finally_tok >= 0) {
+        tf->phase = 2;
+        g_cur = tf->finally_tok;
+        return 1;
+    }
+    g_cur = tf->end_tok;
+    g_try_sp--;
+    g_try_diverted = 0;
+    return 0;
+}
+
 static void set_error(const char *msg) {
+    if (try_divert_error(msg)) {
+        return;
+    }
     if (!g_error) {
         g_error = 1;
         for (size_t i = 0; i < sizeof(g_errmsg) - 1 && msg[i]; ++i) {
@@ -350,6 +407,20 @@ static kw_t match_keyword(const char *w) {
     if (strequal(w, "SHARED")) return KW_SHARED;
     if (strequal(w, "CONTINUE")) return KW_CONTINUE;
     if (strequal(w, "CALL")) return KW_CALL;
+    if (strequal(w, "TRY")) return KW_TRY;
+    if (strequal(w, "CATCH")) return KW_CATCH;
+    if (strequal(w, "FINALLY")) return KW_FINALLY;
+    if (strequal(w, "MATCH")) return KW_MATCH;
+    if (strequal(w, "WHEN")) return KW_WHEN;
+    if (strequal(w, "OTHERWISE")) return KW_OTHERWISE;
+    if (strequal(w, "UNLESS")) return KW_UNLESS;
+    if (strequal(w, "ASSERT")) return KW_ASSERT;
+    if (strequal(w, "SWAP")) return KW_SWAP;
+    if (strequal(w, "BREAK")) return KW_BREAK;
+    if (strequal(w, "LOOP")) return KW_LOOP;
+    if (strequal(w, "FOREACH")) return KW_FOREACH;
+    if (strequal(w, "IN")) return KW_IN;
+    if (strequal(w, "XOR")) return KW_XOR;
     return KW_NONE;
 }
 
@@ -515,15 +586,23 @@ static int tokenize(const char *src) {
             continue;
         }
 
-        /* two-char operators */
+        /* two-char operators (incl. AssimBASIC compound assign) */
         if ((c == '<' && (src[i+1] == '>' || src[i+1] == '=')) ||
             (c == '>' && src[i+1] == '=') ||
-            (c == ':' && src[i+1] == '=')) {
+            (c == ':' && src[i+1] == '=') ||
+            (c == '+' && src[i+1] == '=') ||
+            (c == '-' && src[i+1] == '=') ||
+            (c == '*' && src[i+1] == '=') ||
+            (c == '/' && src[i+1] == '=')) {
             token_t t = {0}; t.type = T_OP; t.line_no = line_no;
             if (c == '<' && src[i+1] == '>') t.op = '#';
             else if (c == '<' && src[i+1] == '=') t.op = 'L';
             else if (c == '>' && src[i+1] == '=') t.op = 'G';
-            else t.op = 'E'; /* := assignment, treat as = */
+            else if (c == ':' && src[i+1] == '=') t.op = 'E'; /* := assignment */
+            else if (c == '+' && src[i+1] == '=') t.op = 'P'; /* += */
+            else if (c == '-' && src[i+1] == '=') t.op = 'M'; /* -= */
+            else if (c == '*' && src[i+1] == '=') t.op = 'T'; /* *= */
+            else t.op = 'D'; /* /= */
             t.text[0] = t.op; t.text[1] = '\0';
             push_tok(&t);
             i += 2;
@@ -601,6 +680,8 @@ static void reset_state(void) {
     g_nvars = 0;
     g_for_sp = 0;
     g_gosub_sp = 0;
+    g_try_sp = 0;
+    g_try_diverted = 0;
     g_sub_sp = 0;
     g_eval_depth = 0;
     g_pool_used = 0;
@@ -1027,12 +1108,82 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
         return make_str(g_errmsg);
     }
     if (strequal(name, "PI"))      return make_num(3141593LL);  /* 3.141593 * SCALE */
+    /* AssimBASIC builtins — assimilated from VB/Excel, JS, Python, Rust, … */
+    if (strequal(name, "IIF")) {
+        if (argc < 3) return make_num(0);
+        return to_bool(&argv[0]) ? argv[1] : argv[2];
+    }
+    if (strequal(name, "TYPEOF$")) {
+        if (argc < 1) return make_str("nil");
+        return make_str(argv[0].is_str ? "string" : "number");
+    }
+    if (strequal(name, "CLAMP")) {
+        if (argc < 3) return make_num(argc > 0 ? to_num(&argv[0]) : 0);
+        num_t x = to_num(&argv[0]), lo = to_num(&argv[1]), hi = to_num(&argv[2]);
+        if (x < lo) x = lo;
+        if (x > hi) x = hi;
+        return make_num(x);
+    }
+    if (strequal(name, "BETWEEN")) {
+        if (argc < 3) return make_num(0);
+        num_t x = to_num(&argv[0]), lo = to_num(&argv[1]), hi = to_num(&argv[2]);
+        return make_num((x >= lo && x <= hi) ? BASIC_SCALE : 0);
+    }
+    if (strequal(name, "REPLACE$")) {
+        if (!(argc >= 3 && argv[0].is_str && argv[1].is_str && argv[2].is_str)) {
+            return make_str(argc > 0 && argv[0].is_str ? argv[0].s : "");
+        }
+        char out[1024];
+        size_t oi = 0;
+        const char *s = argv[0].s;
+        const char *find = argv[1].s;
+        const char *rep = argv[2].s;
+        size_t flen = 0; while (find[flen]) flen++;
+        if (flen == 0) return make_str(s);
+        while (*s && oi + 1 < sizeof(out)) {
+            size_t j = 0;
+            while (j < flen && s[j] && s[j] == find[j]) j++;
+            if (j == flen) {
+                size_t r = 0;
+                while (rep[r] && oi + 1 < sizeof(out)) out[oi++] = rep[r++];
+                s += flen;
+            } else {
+                out[oi++] = *s++;
+            }
+        }
+        out[oi] = '\0';
+        return make_str(out);
+    }
+    if (strequal(name, "FIELD$")) {
+        /* FIELD$(s$, delim$, n) — nth 1-based field (Python split / awk $n) */
+        if (!(argc >= 3 && argv[0].is_str && argv[1].is_str)) return make_str("");
+        int want = (int)(to_num(&argv[2]) / BASIC_SCALE);
+        if (want < 1) return make_str("");
+        char delim = argv[1].s[0] ? argv[1].s[0] : ',';
+        const char *s = argv[0].s;
+        int field = 1;
+        char out[1024];
+        size_t oi = 0;
+        while (*s) {
+            if (*s == delim) {
+                if (field == want) { out[oi] = '\0'; return make_str(out); }
+                field++;
+                oi = 0;
+                s++;
+                continue;
+            }
+            if (field == want && oi + 1 < sizeof(out)) out[oi++] = *s;
+            s++;
+        }
+        if (field == want) { out[oi] = '\0'; return make_str(out); }
+        return make_str("");
+    }
     /* GRID.* bindings exposed as functions */
     if (strequal(name, "GRID.TIME"))    return make_num((num_t)timer_ticks() * BASIC_SCALE);
     if (strequal(name, "GRID.RND"))     { int m=(int)(argc>0?to_num(&argv[0])/BASIC_SCALE:100); if(m<=0)m=100; return make_num((num_t)(rnd_local()%m) * BASIC_SCALE); }
     if (strequal(name, "GRID.PING"))    { if(!(argc>0&&argv[0].is_str)) return make_num(0); uint32_t ip; if(net_resolve_host(argv[0].s,&ip)!=0) return make_num(0); return make_num(net_ping(ip) == 0 ? BASIC_SCALE : 0); }
     if (strequal(name, "GRID.SERIAL.READ$")) { char b[128]; size_t got=serial_read_line(b,sizeof(b),200000); (void)got; return make_str(b); }
-    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 7.1.1 — GridBASIC online"); }
+    if (strequal(name, "GRID.STATUS$")) { return make_str("Grid OS 7.2 — AssimBASIC online"); }
     if (strequal(name, "GRID.CAP"))     {
         if (argc > 0) {
             uint32_t cap = (uint32_t)(to_num(&argv[0]) / BASIC_SCALE);
@@ -1119,11 +1270,21 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     if (strequal(name, "GRID.AI.MODELS$")) {
         char b[160]; ai_models(b, sizeof(b)); return make_str(b);
     }
+    if (strequal(name, "GRID.AI.RUN$") || strequal(name, "GRID.AI.CHAT$")) {
+        if (!(argc > 0 && argv[0].is_str)) { return make_str(""); }
+        char b[1024];
+        if (strequal(name, "GRID.AI.CHAT$")) ai_chat(argv[0].s, b, sizeof(b));
+        else ai_run(argv[0].s, b, sizeof(b));
+        return make_str(b);
+    }
     if (strequal(name, "GRID.IRC.READ$")) {
         char b[IRC_LINE_MAX]; irc_read(b, sizeof(b)); return make_str(b);
     }
     if (strequal(name, "GRID.IRC.STATUS$")) {
         char b[IRC_LINE_MAX]; irc_status(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.IRC.CONNECTED")) {
+        return make_num(irc_is_connected() ? BASIC_SCALE : 0);
     }
     if (strequal(name, "GRID.IRC.CONNECT$")) {
         if (!(argc >= 3 && argv[0].is_str && argv[2].is_str)) { return make_str("error: bad args"); }
@@ -1157,6 +1318,28 @@ static value_t eval_builtin(const char *name, int argc, value_t *argv) {
     }
     if (strequal(name, "GRID.BTC.STATUS$")) {
         char b[BTC_RESP_MAX]; btc_status(b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.SEND$")) {
+        if (!(argc >= 2)) return make_str("error: need addr,amount");
+        char ab[128], mb[64], rb[BTC_RESP_MAX];
+        if (argv[0].is_str) { size_t j=0; while(argv[0].s[j]&&j<sizeof(ab)-1){ab[j]=argv[0].s[j];j++;} ab[j]='\0'; }
+        else num_to_string(argv[0].n, ab, sizeof(ab));
+        if (argv[1].is_str) { size_t j=0; while(argv[1].s[j]&&j<sizeof(mb)-1){mb[j]=argv[1].s[j];j++;} mb[j]='\0'; }
+        else num_to_string(argv[1].n, mb, sizeof(mb));
+        btc_send(ab, mb, rb, sizeof(rb));
+        return make_str(rb);
+    }
+    if (strequal(name, "GRID.BTC.TX$")) {
+        if (!(argc >= 1 && argv[0].is_str)) return make_str("");
+        char b[BTC_RESP_MAX]; btc_tx(argv[0].s, b, sizeof(b)); return make_str(b);
+    }
+    if (strequal(name, "GRID.BTC.BLOCK$")) {
+        if (!(argc >= 1)) return make_str("");
+        char key[128], b[BTC_RESP_MAX];
+        if (argv[0].is_str) { size_t j=0; while(argv[0].s[j]&&j<sizeof(key)-1){key[j]=argv[0].s[j];j++;} key[j]='\0'; }
+        else num_to_string(argv[0].n, key, sizeof(key));
+        btc_block(key, b, sizeof(b));
+        return make_str(b);
     }
     if (strequal(name, "GRID.DNS.RESOLVE$")) {
         char b[32];
@@ -1244,6 +1427,9 @@ static int is_builtin_name(const char *name) {
         strequal(name, "RTRIM$") || strequal(name, "SPACE$") || strequal(name, "STRING$") ||
         strequal(name, "ERR$") ||
         strequal(name, "PI") ||
+        strequal(name, "IIF") || strequal(name, "TYPEOF$") ||
+        strequal(name, "CLAMP") || strequal(name, "BETWEEN") ||
+        strequal(name, "REPLACE$") || strequal(name, "FIELD$") ||
         strequal(name, "GRID.TIME") || strequal(name, "GRID.RND") ||
         strequal(name, "GRID.PING") || strequal(name, "GRID.SERIAL.READ$") ||
         strequal(name, "GRID.STATUS$") || strequal(name, "GRID.CAP") ||
@@ -1253,14 +1439,16 @@ static int is_builtin_name(const char *name) {
         strequal(name, "GRID.HTTP.GET$") || strequal(name, "GRID.HTTP.POST$") ||
         strequal(name, "GRID.AI.ASK$") || strequal(name, "GRID.AI.COMPLETE$") ||
         strequal(name, "GRID.AI.EXPLAIN$") || strequal(name, "GRID.AI.FIX$") ||
-        strequal(name, "GRID.AI.MODELS$") ||
+        strequal(name, "GRID.AI.MODELS$") || strequal(name, "GRID.AI.RUN$") ||
+        strequal(name, "GRID.AI.CHAT$") ||
         strequal(name, "GRID.IRC.READ$") || strequal(name, "GRID.IRC.STATUS$") ||
-        strequal(name, "GRID.IRC.CONNECT$") ||
+        strequal(name, "GRID.IRC.CONNECT$") || strequal(name, "GRID.IRC.CONNECTED") ||
         strequal(name, "GRID.BTC.CALL$") || strequal(name, "GRID.BTC.INFO$") ||
         strequal(name, "GRID.BTC.BLOCKCHAIN$") || strequal(name, "GRID.BTC.NETWORK$") ||
         strequal(name, "GRID.BTC.WALLET$") || strequal(name, "GRID.BTC.BALANCE$") ||
         strequal(name, "GRID.BTC.ADDRESS$") || strequal(name, "GRID.BTC.HELP$") ||
-        strequal(name, "GRID.BTC.STATUS$") ||
+        strequal(name, "GRID.BTC.STATUS$") || strequal(name, "GRID.BTC.SEND$") ||
+        strequal(name, "GRID.BTC.TX$") || strequal(name, "GRID.BTC.BLOCK$") ||
         strequal(name, "GRID.DNS.RESOLVE$") || strequal(name, "GRID.NET.STATUS$") ||
         strequal(name, "GRID.LOG.TAIL$") || strequal(name, "GRID.WHOAMI$") ||
         strequal(name, "GRID.CAPS$") || strequal(name, "GRID.JOBS.LIST$") ||
@@ -1480,7 +1668,20 @@ static value_t eval_and(void) {
 
 static value_t eval_or(void) {
     value_t lhs = eval_and();
-    while (match_kw(KW_OR)) { value_t r = eval_and(); lhs = make_num(to_bool(&lhs) || to_bool(&r) ? BASIC_SCALE : 0); }
+    for (;;) {
+        if (match_kw(KW_OR)) {
+            value_t r = eval_and();
+            lhs = make_num(to_bool(&lhs) || to_bool(&r) ? BASIC_SCALE : 0);
+            continue;
+        }
+        if (match_kw(KW_XOR)) {
+            value_t r = eval_and();
+            int a = to_bool(&lhs), b = to_bool(&r);
+            lhs = make_num((a && !b) || (!a && b) ? BASIC_SCALE : 0);
+            continue;
+        }
+        break;
+    }
     return lhs;
 }
 
@@ -1560,9 +1761,34 @@ static void exec_assign(void) {
             if (!cell) return;
         }
     }
-    if (!match_op('=') && !match_op('E')) { basic_error("LET: expected ="); return; }
+    int compound = 0; /* '+', '-', '*', '/' or 0 for plain = */
+    if (match_op('P')) compound = '+';
+    else if (match_op('M')) compound = '-';
+    else if (match_op('T')) compound = '*';
+    else if (match_op('D')) compound = '/';
+    else if (!match_op('=') && !match_op('E')) { basic_error("LET: expected ="); return; }
     value_t val = eval_expr();
     if (g_error) return;
+    if (compound) {
+        if (compound == '+' && (cell->is_str || val.is_str || v->is_str)) {
+            char lb[512], rb[512], out[1024];
+            if (cell->is_str) { size_t j=0; while(cell->s[j]&&j<sizeof(lb)-1){lb[j]=cell->s[j];j++;} lb[j]='\0'; }
+            else num_to_string(cell->n, lb, sizeof(lb));
+            if (val.is_str) { size_t j=0; while(val.s[j]&&j<sizeof(rb)-1){rb[j]=val.s[j];j++;} rb[j]='\0'; }
+            else num_to_string(val.n, rb, sizeof(rb));
+            size_t p = 0;
+            const char *x = lb; while (*x && p + 1 < sizeof(out)) out[p++] = *x++;
+            x = rb; while (*x && p + 1 < sizeof(out)) out[p++] = *x++;
+            out[p] = '\0';
+            val = make_str(out);
+        } else {
+            num_t a = to_num(cell), b = to_num(&val);
+            if (compound == '+') val = make_num(a + b);
+            else if (compound == '-') val = make_num(a - b);
+            else if (compound == '*') val = make_num((num_t)((__int128)a * b / BASIC_SCALE));
+            else val = make_num(fdiv_local(a, b));
+        }
+    }
     assign_from_value(v, cell, val);
 }
 
@@ -1879,9 +2105,21 @@ static void exec_grid_stmt(void) {
         if (irc_nick(nb) != 0) { set_error("IRC: nick failed"); }
         return;
     }
-    if (strequal(name, "GRID.IRC.QUIT")) { irc_quit("GridBASIC"); return; }
+    if (strequal(name, "GRID.IRC.QUIT")) { irc_quit("AssimBASIC"); return; }
     if (strequal(name, "GRID.IRC.POLL")) { irc_poll(); return; }
     if (strequal(name, "GRID.IRC.DISCONNECT")) { irc_disconnect(); return; }
+    if (strequal(name, "GRID.IRC.PRIVMSG")) {
+        /* alias for SAY — IRC PRIVMSG */
+        value_t tgt = eval_expr(); if (!match_op(',')) { set_error("IRC.PRIVMSG: need ,"); return; }
+        value_t msg = eval_expr();
+        char tbuf[64], mbuf[256];
+        if (tgt.is_str) { size_t j=0; while(tgt.s[j]&&j<sizeof(tbuf)-1){tbuf[j]=tgt.s[j];j++;} tbuf[j]='\0'; }
+        else { num_to_string(tgt.n, tbuf, sizeof(tbuf)); }
+        if (msg.is_str) { size_t j=0; while(msg.s[j]&&j<sizeof(mbuf)-1){mbuf[j]=msg.s[j];j++;} mbuf[j]='\0'; }
+        else { num_to_string(msg.n, mbuf, sizeof(mbuf)); }
+        if (irc_say(tbuf, mbuf) != 0) { set_error("IRC: privmsg failed"); }
+        return;
+    }
     if (strequal(name, "GRID.BTC.SEND")) {
         value_t addr = eval_expr(); if (!match_op(',')) { set_error("BTC.SEND: need ,"); return; }
         value_t amt = eval_expr();
@@ -1910,6 +2148,8 @@ static void exec_grid_stmt(void) {
         else if (strequal(mode, "FIX")) { ai_fix(pb, b, sizeof(b)); }
         else if (strequal(mode, "COMPLETE")) { ai_complete(pb, b, sizeof(b)); }
         else if (strequal(mode, "MODELS")) { ai_models(b, sizeof(b)); }
+        else if (strequal(mode, "RUN")) { ai_run(pb, b, sizeof(b)); }
+        else if (strequal(mode, "CHAT")) { ai_chat(pb, b, sizeof(b)); }
         else { ai_ask(pb, b, sizeof(b)); }
         console_print_long(b);
         return;
@@ -2336,7 +2576,11 @@ static int match_end_select(void) {
     }
     int saved = g_cur;
     advance();
-    if (cur()->type == T_ID && strequal(cur()->text, "SELECT")) {
+    if (cur()->type == T_KW && (cur()->kw == KW_SELECT || cur()->kw == KW_MATCH)) {
+        advance();
+        return 1;
+    }
+    if (cur()->type == T_ID && (strequal(cur()->text, "SELECT") || strequal(cur()->text, "MATCH"))) {
         advance();
         return 1;
     }
@@ -2344,34 +2588,317 @@ static int match_end_select(void) {
     return 0;
 }
 
-static void skip_select_block(void) {
+static int match_end_try(void) {
+    if (!(cur()->type == T_KW && cur()->kw == KW_END)) return 0;
+    int saved = g_cur;
+    advance();
+    if (cur()->type == T_KW && cur()->kw == KW_TRY) {
+        advance();
+        return 1;
+    }
+    if (cur()->type == T_ID && strequal(cur()->text, "TRY")) {
+        advance();
+        return 1;
+    }
+    g_cur = saved;
+    return 0;
+}
+
+static int match_end_loop(void) {
+    if (!(cur()->type == T_KW && cur()->kw == KW_END)) return 0;
+    int saved = g_cur;
+    advance();
+    if (cur()->type == T_KW && cur()->kw == KW_LOOP) {
+        advance();
+        return 1;
+    }
+    if (cur()->type == T_ID && strequal(cur()->text, "LOOP")) {
+        advance();
+        return 1;
+    }
+    g_cur = saved;
+    return 0;
+}
+
+static int match_case_or_when(void) {
+    if (cur()->type == T_KW && (cur()->kw == KW_CASE || cur()->kw == KW_WHEN)) {
+        return 1;
+    }
+    return 0;
+}
+
+/* Scan TRY body for CATCH / FINALLY / END TRY (nesting-aware). */
+static int scan_try_block(int start, int *catch_tok, int *finally_tok, int *end_tok) {
     int depth = 1;
-    while (cur()->type != T_EOF && depth > 0) {
-        while (cur()->type == T_NEWLINE) {
-            advance();
+    int i = start;
+    *catch_tok = -1;
+    *finally_tok = -1;
+    *end_tok = -1;
+    while (i < g_ntok && g_tokens[i].type != T_EOF) {
+        if (g_tokens[i].type == T_KW && g_tokens[i].kw == KW_TRY) {
+            depth++;
+            i++;
+            continue;
         }
-        if (cur()->type == T_EOF) {
+        if (g_tokens[i].type == T_KW && g_tokens[i].kw == KW_END) {
+            if (i + 1 < g_ntok &&
+                ((g_tokens[i + 1].type == T_KW && g_tokens[i + 1].kw == KW_TRY) ||
+                 (g_tokens[i + 1].type == T_ID && strequal(g_tokens[i + 1].text, "TRY")))) {
+                depth--;
+                if (depth == 0) {
+                    *end_tok = i + 2;
+                    return 0;
+                }
+                i += 2;
+                continue;
+            }
+        }
+        if (depth == 1 && g_tokens[i].type == T_KW && g_tokens[i].kw == KW_CATCH && *catch_tok < 0) {
+            *catch_tok = i;
+        }
+        if (depth == 1 && g_tokens[i].type == T_KW && g_tokens[i].kw == KW_FINALLY && *finally_tok < 0) {
+            *finally_tok = i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+static void exec_try(void) {
+    int catch_tok = -1, finally_tok = -1, end_tok = -1;
+    if (scan_try_block(g_cur, &catch_tok, &finally_tok, &end_tok) != 0) {
+        set_error("TRY: missing END TRY");
+        return;
+    }
+    if (g_try_sp >= MAX_FRAMES) { set_error("TRY: too deep"); return; }
+    try_frame_t *tf = &g_try_stack[g_try_sp++];
+    tf->catch_tok = catch_tok;
+    tf->finally_tok = finally_tok;
+    tf->end_tok = end_tok;
+    tf->phase = 0;
+    tf->had_error = 0;
+}
+
+static void exec_catch(void) {
+    if (g_try_sp <= 0) { set_error("CATCH: without TRY"); return; }
+    try_frame_t *tf = &g_try_stack[g_try_sp - 1];
+    if (tf->phase == 0) {
+        /* Successful try body reached CATCH — skip to FINALLY or END TRY. */
+        if (tf->finally_tok >= 0) {
+            tf->phase = 2;
+            g_cur = tf->finally_tok;
             return;
         }
-        if (cur()->type == T_KW && cur()->kw == KW_SELECT) {
-            advance();
-            skip_to_newline();
-            depth++;
-            continue;
-        }
-        if (match_end_select()) {
-            depth--;
-            continue;
-        }
-        if (cur()->type == T_KW && cur()->kw == KW_CASE) {
-            skip_to_newline();
-            continue;
-        }
-        skip_to_newline();
+        g_cur = tf->end_tok;
+        g_try_sp--;
+        return;
+    }
+    /* phase == 1: error diverted here; consume CATCH and run body. */
+    tf->phase = 1;
+}
+
+static void exec_finally(void) {
+    if (g_try_sp <= 0) { set_error("FINALLY: without TRY"); return; }
+    try_frame_t *tf = &g_try_stack[g_try_sp - 1];
+    tf->phase = 2;
+}
+
+static void finish_try(void) {
+    if (g_try_sp <= 0) { set_error("END TRY: without TRY"); return; }
+    try_frame_t *tf = &g_try_stack[g_try_sp - 1];
+    int rethrow = tf->had_error && tf->catch_tok < 0;
+    char saved[160];
+    size_t i;
+    for (i = 0; i < sizeof(saved) - 1 && g_errmsg[i]; ++i) saved[i] = g_errmsg[i];
+    saved[i] = '\0';
+    g_try_sp--;
+    if (rethrow) {
+        basic_error(saved[0] ? saved : "TRY error");
     }
 }
 
+static void exec_unless(void) {
+    value_t cond = eval_expr();
+    if (!match_kw(KW_THEN)) { set_error("UNLESS: missing THEN"); return; }
+    if (!to_bool(&cond)) {
+        if (cur()->type == T_NUM) {
+            int ln = (int)(cur()->num / BASIC_SCALE); advance();
+            int target = find_label(ln);
+            if (target < 0) { set_error("GOTO: no such line"); return; }
+            g_cur = target; return;
+        }
+        exec_statement();
+        while (cur()->type == T_OP && cur()->op == ':') {
+            advance();
+            exec_statement();
+        }
+        skip_to_newline();
+        return;
+    }
+    skip_if_false_branch();
+    if (cur()->type == T_KW && cur()->kw == KW_ELSE) {
+        advance();
+        exec_statement();
+        while (cur()->type == T_OP && cur()->op == ':') {
+            advance();
+            exec_statement();
+        }
+    }
+}
+
+static void exec_assert(void) {
+    value_t cond = eval_expr();
+    if (!to_bool(&cond)) {
+        basic_error("ASSERT failed");
+    }
+}
+
+static void exec_swap(void) {
+    if (cur()->type != T_ID) { set_error("SWAP: need var"); return; }
+    char a[64], b[64];
+    size_t k = 0;
+    while (cur()->text[k] && k < sizeof(a) - 1) { a[k] = cur()->text[k]; k++; }
+    a[k] = '\0';
+    advance();
+    if (!match_op(',')) { set_error("SWAP: need ,"); return; }
+    if (cur()->type != T_ID) { set_error("SWAP: need var"); return; }
+    k = 0;
+    while (cur()->text[k] && k < sizeof(b) - 1) { b[k] = cur()->text[k]; k++; }
+    b[k] = '\0';
+    advance();
+    var_t *va = get_var(a, name_is_str(a));
+    var_t *vb = get_var(b, name_is_str(b));
+    if (!va || !vb) return;
+    if (va->is_const || vb->is_const) { basic_error("SWAP: CONST"); return; }
+    value_t tmp = va->scalar;
+    va->scalar = vb->scalar;
+    vb->scalar = tmp;
+}
+
+static void exec_foreach(void) {
+    /* FOREACH I IN ARR  — I walks indices from OPTION BASE .. ARR.dim */
+    if (cur()->type != T_ID) { set_error("FOREACH: need index var"); return; }
+    char iname[64], aname[64];
+    size_t k = 0;
+    while (cur()->text[k] && k < sizeof(iname) - 1) { iname[k] = cur()->text[k]; k++; }
+    iname[k] = '\0';
+    advance();
+    if (!match_kw(KW_IN)) { set_error("FOREACH: need IN"); return; }
+    if (cur()->type != T_ID) { set_error("FOREACH: need array"); return; }
+    k = 0;
+    while (cur()->text[k] && k < sizeof(aname) - 1) { aname[k] = cur()->text[k]; k++; }
+    aname[k] = '\0';
+    advance();
+    var_t *arr = find_var(aname);
+    if (!arr || !arr->is_array) { set_error("FOREACH: not an array"); return; }
+    var_t *iv = get_var(iname, 0);
+    if (!iv) return;
+    int lo = g_option_base;
+    int hi = arr->dim + g_option_base;
+    iv->scalar.is_str = 0;
+    iv->scalar.n = (num_t)lo * BASIC_SCALE;
+    if (g_for_sp >= MAX_FRAMES) { set_error("FOREACH: too deep"); return; }
+    for_frame_t *f = &g_for_stack[g_for_sp++];
+    f->var_index = (int)(iv - g_vars);
+    f->end_val = (num_t)hi * BASIC_SCALE;
+    f->step_val = BASIC_SCALE;
+    f->tok_index = g_cur;
+}
+
+static void exec_loop(void) {
+    /* LOOP ... END LOOP  — infinite loop (BREAK / EXIT to leave) */
+    if (g_for_sp >= MAX_FRAMES) { set_error("LOOP: too deep"); return; }
+    for_frame_t *f = &g_for_stack[g_for_sp++];
+    f->tok_index = g_cur;
+    f->var_index = -3; /* LOOP sentinel */
+    f->end_val = 0;
+    f->step_val = 0;
+}
+
+static void exec_end_loop(void) {
+    if (g_for_sp <= 0 || g_for_stack[g_for_sp - 1].var_index != -3) {
+        set_error("END LOOP: without LOOP");
+        return;
+    }
+    g_cur = g_for_stack[g_for_sp - 1].tok_index;
+}
+
+static void exec_break(void) {
+    /* BREAK — exit innermost FOR/WHILE/REPEAT/LOOP (C/JS style) */
+    if (match_kw(KW_FOR) || match_kw(KW_WHILE) || match_kw(KW_LOOP)) {
+        /* optional qualifier consumed */
+    }
+    for (int i = g_for_sp - 1; i >= 0; --i) {
+        int kind = g_for_stack[i].var_index;
+        if (kind >= 0 || kind == -1 || kind == -2 || kind == -3) {
+            /* skip to end of this loop */
+            if (kind >= 0) {
+                /* FOR/FOREACH: skip to matching NEXT */
+                int depth = 1;
+                g_for_sp = i;
+                while (cur()->type != T_EOF && depth > 0) {
+                    if (cur()->type == T_KW && cur()->kw == KW_FOR) depth++;
+                    else if (cur()->type == T_KW && cur()->kw == KW_FOREACH) depth++;
+                    else if (cur()->type == T_KW && cur()->kw == KW_NEXT) {
+                        depth--;
+                        if (depth == 0) { advance(); return; }
+                    }
+                    advance();
+                }
+                set_error("BREAK: missing NEXT");
+                return;
+            }
+            if (kind == -1) {
+                int depth = 1;
+                g_for_sp = i;
+                while (cur()->type != T_EOF && depth > 0) {
+                    if (cur()->type == T_KW && cur()->kw == KW_WHILE) depth++;
+                    else if (cur()->type == T_KW && cur()->kw == KW_WEND) {
+                        depth--;
+                        if (depth == 0) { advance(); return; }
+                    }
+                    advance();
+                }
+                set_error("BREAK: missing WEND");
+                return;
+            }
+            if (kind == -2) {
+                g_for_sp = i;
+                while (cur()->type != T_EOF) {
+                    if (cur()->type == T_KW && cur()->kw == KW_UNTIL) {
+                        advance();
+                        while (cur()->type != T_NEWLINE && cur()->type != T_EOF) advance();
+                        return;
+                    }
+                    advance();
+                }
+                set_error("BREAK: missing UNTIL");
+                return;
+            }
+            if (kind == -3) {
+                g_for_sp = i;
+                int depth = 1;
+                while (cur()->type != T_EOF && depth > 0) {
+                    if (cur()->type == T_KW && cur()->kw == KW_LOOP) depth++;
+                    else if (match_end_loop()) {
+                        depth--;
+                        if (depth == 0) return;
+                        continue;
+                    }
+                    advance();
+                }
+                set_error("BREAK: missing END LOOP");
+                return;
+            }
+        }
+    }
+    set_error("BREAK: no loop");
+}
+
 static void skip_to_next_case_or_end(void) {
+    /* Skip (do not execute) statements until the next CASE/WHEN/OTHERWISE
+     * or END SELECT/MATCH. Nested SELECT/MATCH blocks are skipped whole. */
+    int depth = 0;
     while (cur()->type != T_EOF) {
         while (cur()->type == T_NEWLINE) {
             advance();
@@ -2379,36 +2906,58 @@ static void skip_to_next_case_or_end(void) {
         if (cur()->type == T_EOF) {
             return;
         }
-        if (cur()->type == T_KW && cur()->kw == KW_CASE) {
-            return;
+        if (depth == 0) {
+            if (cur()->type == T_KW &&
+                (cur()->kw == KW_CASE || cur()->kw == KW_WHEN || cur()->kw == KW_OTHERWISE)) {
+                return;
+            }
+            if (match_end_select()) {
+                /* Rewind so the caller can see END SELECT/MATCH. */
+                g_cur -= 2;
+                return;
+            }
         }
-        if (match_end_select()) {
-            return;
-        }
-        if (cur()->type == T_KW && cur()->kw == KW_SELECT) {
+        if (cur()->type == T_KW && (cur()->kw == KW_SELECT || cur()->kw == KW_MATCH)) {
             advance();
+            depth++;
             skip_to_newline();
-            skip_select_block();
-            return;
+            continue;
         }
-        exec_statement();
-        while (cur()->type == T_OP && cur()->op == ':') {
+        if (cur()->type == T_KW && cur()->kw == KW_END) {
+            int saved = g_cur;
             advance();
-            exec_statement();
+            if (cur()->type == T_KW && (cur()->kw == KW_SELECT || cur()->kw == KW_MATCH)) {
+                advance();
+                if (depth > 0) {
+                    depth--;
+                    continue;
+                }
+                g_cur = saved;
+                return;
+            }
+            if (cur()->type == T_ID &&
+                (strequal(cur()->text, "SELECT") || strequal(cur()->text, "MATCH"))) {
+                advance();
+                if (depth > 0) {
+                    depth--;
+                    continue;
+                }
+                g_cur = saved;
+                return;
+            }
+            g_cur = saved;
         }
-        if (cur()->type == T_NEWLINE) {
-            advance();
-        }
-        if (g_error || !g_running) {
-            return;
-        }
+        skip_to_newline();
     }
 }
 
 static void exec_select_case(void) {
-    if (!match_kw(KW_CASE)) {
-        set_error("SELECT: need CASE expr");
-        return;
+    /* SELECT CASE expr  — also used by MATCH expr (AssimBASIC) */
+    int match_mode = 0;
+    if (match_kw(KW_CASE)) {
+        /* classic SELECT CASE */
+    } else {
+        match_mode = 1; /* MATCH expr */
     }
     value_t sel = eval_expr();
     skip_to_newline();
@@ -2421,8 +2970,30 @@ static void exec_select_case(void) {
         if (match_end_select()) {
             return;
         }
-        if (!(cur()->type == T_KW && cur()->kw == KW_CASE)) {
-            set_error("SELECT: expected CASE or END SELECT");
+        if (cur()->type == T_KW && cur()->kw == KW_OTHERWISE) {
+            advance();
+            skip_to_newline();
+            if (!executed) {
+                executed = 1;
+                while (!g_error && g_running && cur()->type != T_EOF) {
+                    while (cur()->type == T_NEWLINE) advance();
+                    if (match_end_select()) return;
+                    if (match_case_or_when() || (cur()->type == T_KW && cur()->kw == KW_OTHERWISE)) break;
+                    exec_statement();
+                    while (cur()->type == T_OP && cur()->op == ':') {
+                        advance();
+                        exec_statement();
+                    }
+                    if (cur()->type == T_NEWLINE) advance();
+                }
+            } else {
+                skip_to_next_case_or_end();
+            }
+            if (match_end_select()) return;
+            continue;
+        }
+        if (!match_case_or_when()) {
+            set_error(match_mode ? "MATCH: expected WHEN or END MATCH" : "SELECT: expected CASE or END SELECT");
             return;
         }
         advance();
@@ -2455,7 +3026,7 @@ static void exec_select_case(void) {
                 if (match_end_select()) {
                     return;
                 }
-                if (cur()->type == T_KW && cur()->kw == KW_CASE) {
+                if (match_case_or_when() || (cur()->type == T_KW && cur()->kw == KW_OTHERWISE)) {
                     break;
                 }
                 exec_statement();
@@ -2604,6 +3175,16 @@ static void exec_statement(void) {
         case KW_RESTORE: advance(); exec_restore(); return;
         case KW_RANDOMIZE: advance(); exec_randomize(); return;
         case KW_SELECT: advance(); exec_select_case(); return;
+        case KW_MATCH: advance(); exec_select_case(); return;
+        case KW_TRY: advance(); exec_try(); return;
+        case KW_CATCH: advance(); exec_catch(); return;
+        case KW_FINALLY: advance(); exec_finally(); return;
+        case KW_UNLESS: advance(); exec_unless(); return;
+        case KW_ASSERT: advance(); exec_assert(); return;
+        case KW_SWAP: advance(); exec_swap(); return;
+        case KW_BREAK: advance(); exec_break(); return;
+        case KW_FOREACH: advance(); exec_foreach(); return;
+        case KW_LOOP: advance(); exec_loop(); return;
         case KW_EXIT:  advance(); exec_exit_loop(); return;
         case KW_CONTINUE: advance(); exec_continue_loop(); return;
         case KW_ON: advance(); exec_on_computed(); return;
@@ -2618,11 +3199,14 @@ static void exec_statement(void) {
         case KW_REM:   skip_to_newline(); return;
         case KW_END: {
             if (match_end_select()) return;
+            if (match_end_try()) { finish_try(); return; }
+            if (match_end_loop()) { exec_end_loop(); return; }
             advance(); g_running = 0; return;
         }
         case KW_STOP: advance(); g_running = 0; return;
         case KW_THEN: case KW_ELSE: case KW_ELSEIF: case KW_TO: case KW_STEP: case KW_CASE:
-        case KW_AND: case KW_OR: case KW_NOT: case KW_MOD: case KW_DIV:
+        case KW_WHEN: case KW_OTHERWISE: case KW_IN:
+        case KW_AND: case KW_OR: case KW_NOT: case KW_MOD: case KW_DIV: case KW_XOR:
         case KW_ERROR: case KW_BASE: case KW_FN:
             set_error("SYNTAX: unexpected keyword"); return;
         case KW_NONE: break;
@@ -2646,13 +3230,21 @@ static void exec_statement(void) {
 }
 
 static void run_loop(void) {
-    while (g_running && !g_error) {
+    while (g_running) {
+        if (g_try_diverted) {
+            g_try_diverted = 0;
+            g_error = 0;
+            g_running = 1;
+            continue;
+        }
+        if (g_error) break;
         if (g_cur >= g_ntok) break;
         token_t *t = cur();
         if (t->type == T_EOF) break;
         if (t->type == T_NEWLINE) { g_cur++; continue; }
         if (t->type == T_OP && t->op == ':') { g_cur++; continue; }  /* statement separator */
         exec_statement();
+        if (g_try_diverted) continue;
         if (g_error) break;
     }
 }
@@ -2896,17 +3488,17 @@ int basic_run_file(const char *path) {
 
 void basic_print_version(void) {
     console_set_color(GRID_COL_TITLE);
-    console_write_line("GridBASIC 7.1.1 — Elite BASIC for the Grid");
+    console_write_line("AssimBASIC 7.2 — best-of-universe BASIC for the Grid");
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("SHARED #IF/#INCLUDE bytecode .grid compile SHARED SUB/FUNCTION");
-    console_write_line("DEF FN SUB/FUNCTION LOCAL CALL ELSEIF ON ERROR GOTO");
-    console_write_line("ON GOTO/GOSUB OPTION BASE CONTINUE MIN MAX TRIM$ 2D DIM");
-    console_write_line("PRINT LET CONST DIM DATA/READ RESTORE RANDOMIZE INSTR$");
-    console_write_line("IF/THEN/ELSE SELECT CASE EXIT/CONTINUE FOR/WHILE LINE INPUT");
-    console_write_line("GRID.PLOT/LINE/CIRCLE BEEP NOTE DISC.* RECOGNIZER.* PORTAL.*");
-    console_write_line("GRID.DNS.* GRID.JOBS.* GRID.ISO.* GRID.WORKSHOP.SPAWN");
-    console_write_line("GRID.VAULT.* GRID.GFS.* GRID.HTTP.* GRID.LOCATE GRID.INKEY$");
-    console_write_line("GRID.* / GRID.AI.* / GRID.IRC.* / GRID.BTC.* bindings");
+    console_write_line("Assimilated: TRY/CATCH/FINALLY MATCH/WHEN UNLESS FOREACH");
+    console_write_line("  BREAK LOOP ASSERT SWAP +=/-=/*=/= IIF TYPEOF$ CLAMP");
+    console_write_line("  REPLACE$ FIELD$ BETWEEN XOR  (Python/Rust/Ruby/JS/Go/…)");
+    console_write_line("Classic: SHARED #IF/#INCLUDE bytecode SUB/FUNCTION DEF FN");
+    console_write_line("  IF/SELECT CASE FOR/WHILE ON ERROR CONST DATA/READ");
+    console_write_line("AI models: GRID.AI.RUN$ CHAT$ ASK$ EXPLAIN$ FIX$ MODELS$");
+    console_write_line("IRC: GRID.IRC.CONNECT JOIN SAY PRIVMSG READ$ CONNECTED");
+    console_write_line("Crypto: GRID.BTC.BALANCE$ SEND$ TX$ BLOCK$ CALL$ STATUS$");
+    console_write_line("Grid: PLOT/LINE/CIRCLE BEEP DISC.* VAULT.* HTTP.* PKG.*");
 }
 
 /* keep append_char referenced */

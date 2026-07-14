@@ -1,10 +1,12 @@
-# Grid OS 7.1.1
+# Grid OS 7.2
 
 [![Grid OS CI](https://github.com/17060/grid-os/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/17060/grid-os/actions/workflows/test.yml)
 
 **Flynn's Grid** — a real x86_64 operating environment inspired by *Tron*. Open, creative, user-first. Not CLU's "perfect system."
 
-**New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, GridBASIC, IRC, AI/BTC bridges, CI, backups).
+**New here?** See [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) for a full walkthrough (boot, AssimBASIC, IRC, AI/BTC bridges, CI, backups).
+
+**AssimBASIC?** See [docs/ASSIMBASIC.md](docs/ASSIMBASIC.md) — best-of-universe BASIC with IRC, cryptocurrency, and AI model running.
 
 **Want to understand how it works?** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — a guided tour of the kernel from power-on to shell (boot, memory, scheduler, syscalls, filesystem, the virtio driver, GridBASIC), written to be read alongside the code.
 

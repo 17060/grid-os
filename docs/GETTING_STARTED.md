@@ -1,6 +1,8 @@
-# Getting Started with Grid OS 7.1.1
+# Getting Started with Grid OS 7.2
 
-Flynn's Grid — a bootable x86_64 hobby OS with GridBASIC IDE, ring-3 sandboxes, multi-session TCP networking, and host bridges for AI and Bitcoin.
+Flynn's Grid — a bootable x86_64 hobby OS with **AssimBASIC** IDE, ring-3 sandboxes, multi-session TCP networking, and host bridges for AI and Bitcoin.
+
+> Full AssimBASIC language guide (TRY/MATCH, IRC, crypto, AI models): [ASSIMBASIC.md](ASSIMBASIC.md)
 
 ## Prerequisites
 
@@ -31,7 +33,7 @@ You land in the **GridBASIC IDE**. Press **Esc** to open the embedded `grid>` sh
 | `make run-4k` | 3840×2160 HDMI (scaled VGA text) |
 | `make run-headless` | Serial-only shell (no window) |
 
-## Hello GridBASIC
+## Hello AssimBASIC
 
 1. Boot with `make run` — IDE opens with a blank buffer.
 2. Type:
@@ -42,6 +44,7 @@ You land in the **GridBASIC IDE**. Press **Esc** to open the embedded `grid>` sh
 3. Press **Esc**, type `:run`, Enter.
 4. Press **Esc**, type `:save hello`, Enter — writes `/programs/hello.bas`.
 5. Later from `grid>`: `basic run /programs/hello.bas`
+6. Showcase: `basic run /programs/assimdemo.bas` (TRY/MATCH/AI/BTC/IRC)
 
 Try the seeded samples:
 

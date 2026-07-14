@@ -106,8 +106,8 @@ static int parse_args(char *line, char *argv[], int max_args) {
 
 static void print_banner(void) {
     console_set_color(GRID_COL_DEFAULT);
-    console_write_line("=\\========== GRID OS 7.1.1 ============/=");
-    console_write_line(" FLYNN'S GRID  |  GridBASIC 7.1.1  |  CODE THE GRID");
+    console_write_line("=\\========== GRID OS 7.2 ============/=");
+    console_write_line(" FLYNN'S GRID  |  AssimBASIC 7.2  |  CODE THE GRID");
     console_write_line("=/======= BASIC // IDE // END OF LINE =====\\=");
     console_set_color(GRID_COL_DIM);
     console_write_line(" On-disk GridFS. Grid Workbench — GEM desktop + AmigaDOS (ide).");
@@ -169,7 +169,7 @@ static void cmd_help(void) {
     console_write_line("  irc nick|quit|disconnect        Nick change / quit / drop");
     console_write_line("  irc <ip> <port> <nick> <#ch>   One-shot join + listen");
     console_write_line("  pkg [list|mods|info|install|remove|recv]  Grid package manager");
-    console_write_line("  basic [ide|run|compile|samples|mod|help]  GridBASIC language + IDE");
+    console_write_line("  basic [ide|run|compile|samples|mod|help]  AssimBASIC language + IDE");
     console_write_line("  recognizer [start|stop|status]  Patrol background service");
     console_write_line("  tutorial          Run Flynn Boot tutorial (/programs/tutorial.bas)");
     console_write_line("  samples           List GridBASIC sample programs on Flynn disk");
@@ -1508,7 +1508,7 @@ static void cmd_samples(void) {
     int shown = 0;
 
     console_set_color(GRID_COL_TITLE);
-    console_write_line("=== GridBASIC samples (/programs/*.bas) ===");
+    console_write_line("=== AssimBASIC samples (/programs/*.bas) ===");
     console_set_color(GRID_COL_DEFAULT);
     if (n == 0) {
         console_set_color(GRID_COL_DIM);
@@ -1538,6 +1538,7 @@ static void cmd_samples(void) {
     console_write_line("  grid2d.bas     2D DIM arrays");
     console_write_line("  advancedemo.bas CONST / DATA / SELECT CASE");
     console_write_line("  netdemo.bas vaultdemo.bas aidemo.bas httpdemo.bas btc-demo.bas");
+    console_write_line("  assimdemo.bas  (AssimBASIC showcase — TRY/MATCH/AI/BTC/IRC)");
     console_write_line("");
     console_write_line("Run: basic run /programs/hello.bas   or   Esc :load hello");
 }
@@ -1980,7 +1981,7 @@ static void cmd_basictest(void) {
 }
 
 static void cmd_about(void) {
-    console_write_line("Grid OS 7.1.1 — Flynn's real digital frontier.");
+    console_write_line("Grid OS 7.2 — Flynn's real digital frontier.");
     console_write_line("GridBASIC + IDE · TCP/IRC · ARP/ICMP · true preemptive · GFS2FLYN");
     console_write_line("virtio-blk · serial shell · bg jobs · Ctrl+C · GEM Workbench");
 }

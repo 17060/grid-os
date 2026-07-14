@@ -1,5 +1,30 @@
 # Grid OS — Changelog
 
+## 7.2 — AssimBASIC (best-of-universe BASIC)
+
+### AssimBASIC language
+- **TRY / CATCH / FINALLY / END TRY** — structured exceptions (Python/Java), integrates with `ERR$`
+- **MATCH / WHEN / OTHERWISE / END MATCH** — Rust/Scala-style dispatch (alongside `SELECT CASE`)
+- **UNLESS … THEN** — Ruby/Perl inverted conditionals
+- **FOREACH I IN ARR** — Python/JS-style array index iteration
+- **LOOP / END LOOP + BREAK** — C/Go-style infinite loops
+- **ASSERT**, **SWAP**, compound **`+=` `-=` `*=` `/=`**
+- Builtins: **IIF**, **TYPEOF$**, **CLAMP**, **BETWEEN**, **REPLACE$**, **FIELD$**, **XOR**
+
+### AI model running
+- **`GRID.AI.RUN$`**, **`GRID.AI.CHAT$`** — run prompts / chat against the host LLM
+- **`GRID.AI.PRINT …, "RUN"|"CHAT"`** — full-length console modes
+- Host bridge (`make ai-bridge`) understands RUN/CHAT actions; offline stubs included
+
+### Cryptocurrency & IRC
+- **`GRID.BTC.SEND$`**, **`GRID.BTC.TX$`**, **`GRID.BTC.BLOCK$`** — wallet send + tx/block lookup
+- **`GRID.IRC.CONNECTED`**, **`GRID.IRC.PRIVMSG`** — connection predicate + PRIVMSG alias
+
+### Samples & docs
+- **`/programs/assimdemo.bas`** — full AssimBASIC showcase
+- **`docs/ASSIMBASIC.md`** — language manifesto + IRC/BTC/AI guide
+- Runtime banners / `GRID.STATUS$` → **Grid OS 7.2 — AssimBASIC online**
+
 ## 7.1.1 — IDE polish, module categories, second package
 
 ### Release & CI
