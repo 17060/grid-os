@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GridBasic IDE</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div id="app">
+  <header id="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <span class="title">GridBasic</span>
+      <span class="sub" id="version">IDE</span>
+    </div>
+    <div class="toolbar">
+      <button id="btn-run" class="primary">▶ Run</button>
+      <button id="btn-stop">■ Stop</button>
+      <span class="divider"></span>
+      <button id="btn-new">New</button>
+      <button id="btn-save">Save</button>
+      <button id="btn-open">Open</button>
+      <select id="examples"></select>
+      <span class="spacer"></span>
+      <span id="status" class="status">ready</span>
+    </div>
+  </header>
+
+  <div id="main">
+    <aside id="sidebar">
+      <div class="side-head">Files</div>
+      <div id="filetree" class="filetree"></div>
+    </aside>
+
+    <section id="editor-pane">
+      <div id="tabs" class="tabs"></div>
+      <div id="editor-wrap">
+        <pre id="highlight" class="highlight" aria-hidden="true"></pre>
+        <textarea id="editor" spellcheck="false" autocapitalize="off" autocorrect="off"
+                  wrap="off" placeholder="; Write GridBasic here…&#10;PRINT &quot;Hello, GridBasic!&quot;"></textarea>
+      </div>
+      <div id="current-file" class="current-file">untitled.gb</div>
+    </section>
+
+    <aside id="panels">
+      <div class="panel-tabs">
+        <button class="ptab active" data-panel="console">Console</button>
+        <button class="ptab" data-panel="canvas">Canvas</button>
+        <button class="ptab" data-panel="irc">IRC</button>
+        <button class="ptab" data-panel="crypto">Crypto</button>
+        <button class="ptab" data-panel="ai">AI</button>
+      </div>
+      <div class="panel-body">
+        <div id="panel-console" class="panel active">
+          <div id="console" class="console"></div>
+          <div class="input-row">
+            <span class="prompt">&gt;</span>
+            <input id="stdin" type="text" placeholder="program input — type and press Enter" autocomplete="off">
+          </div>
+        </div>
+        <div id="panel-canvas" class="panel">
+          <div class="canvas-tools">
+            <button id="canvas-clear">Clear</button>
+            <span class="hint">GRID.plot / .line / .circle / .text / .color draw here</span>
+          </div>
+          <canvas id="canvas" width="520" height="420"></canvas>
+        </div>
+        <div id="panel-irc" class="panel">
+          <div class="form">
+            <label>Host <input id="irc-host" value="irc.libera.chat"></label>
+            <label>Port <input id="irc-port" value="6697" size="6"></label>
+            <label>Nick <input id="irc-nick" value="GridBot"></label>
+            <label>TLS <input id="irc-tls" type="checkbox" checked></label>
+            <button id="irc-connect">Connect</button>
+          </div>
+          <div class="form">
+            <label>Channel <input id="irc-channel" value="#gridbasic"></label>
+            <button id="irc-join">Join</button>
+          </div>
+          <div id="irc-log" class="log"></div>
+          <div class="input-row">
+            <span class="prompt">›</span>
+            <input id="irc-input" placeholder="message — Enter to send" autocomplete="off">
+          </div>
+        </div>
+        <div id="panel-crypto" class="panel">
+          <div class="form">
+            <button id="crypto-new-wallet">New Wallet</button>
+            <button id="crypto-mine">Mine a Block</button>
+          </div>
+          <pre id="crypto-info" class="info">Click “New Wallet” to generate a secp256k1 keypair.</pre>
+        </div>
+        <div id="panel-ai" class="panel">
+          <div class="form">
+            <label>Prompt</label>
+            <input id="ai-prompt" value="GridBasic is">
+            <button id="ai-generate">Generate</button>
+          </div>
+          <div class="form">
+            <label>Corpus</label>
+            <textarea id="ai-corpus" rows="3" placeholder="train the markov model on this text"></textarea>
+            <button id="ai-train">Train</button>
+          </div>
+          <pre id="ai-output" class="info"></pre>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <footer id="statusbar">
+    <span id="cursor">Ln 1, Col 1</span>
+    <span class="spacer"></span>
+    <span id="run-state">idle</span>
+  </footer>
+</div>
+<script src="/static/app.js"></script>
+</body>
+</html>

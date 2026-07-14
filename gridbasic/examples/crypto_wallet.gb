@@ -1,0 +1,42 @@
+' GridBasic cryptocurrency demo — wallets, signed transfers, a mined ledger.
+import crypto
+
+print "=== Gridcoin (GRID) wallet demo ==="
+print
+
+' Make two wallets.
+let alice = CRYPTO.wallet()
+let bob = CRYPTO.wallet()
+print f"Alice address: {alice.address}"
+print f"Bob   address: {bob.address}"
+print
+
+' A signed message + verification.
+let msg = "transfer 5 GRID to bob"
+let sig = CRYPTO.sign(alice, msg)
+print f"Signature:    {left(sig, 24)}..."
+print f"Verified:     {CRYPTO.verify(alice.pub_compressed(), msg, sig)}"
+print f"Wrong msg ok: {CRYPTO.verify(alice.pub_compressed(), "tampered", sig)}"
+print
+
+' A blockchain with proof-of-work mining.
+let chain = CRYPTO.blockchain(3)   ' difficulty 3 (3 leading zero bytes)
+print f"Mining difficulty: 3 (genesis already mined)"
+print f"Genesis hash: {chain.last().hash}"
+print
+
+' Mining reward: 10 GRID per block to Alice.
+chain.mine_pending(alice)
+print f"Mined block 1 -> reward 10 GRID to Alice"
+print f"  hash: {chain.last().hash}"
+print f"  Alice balance: {chain.balance_of(alice.address)} GRID"
+print
+
+' Transfer 3 GRID from Alice to Bob, signed by Alice.
+chain.transfer(alice, bob.address, 3)
+chain.mine_pending(alice)   ' also pays a reward
+print f"Transferred 3 GRID Alice->Bob, then mined block 2"
+print f"  Alice balance: {chain.balance_of(alice.address)} GRID"
+print f"  Bob   balance: {chain.balance_of(bob.address)} GRID"
+print f"  Chain height:  {chain.height()}"
+print f"  Chain valid:   {chain.is_valid()}"

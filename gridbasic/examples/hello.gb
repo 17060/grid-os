@@ -1,0 +1,5 @@
+' Hello, GridBasic! — the canonical first program.
+print "Hello, GridBasic!"
+print "The most advanced BASIC on Earth."
+print f"2 + 2 = {2 + 2}"
+print f"Today's powers of two: {[2 ^ i for i in 0..8]}"

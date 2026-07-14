@@ -1,0 +1,41 @@
+' GridBasic AI demo — local markov text, a perceptron, and a tiny MLP.
+import ai
+
+print "=== GridBasic AI demo ==="
+print
+
+' --- Markov text generation ---
+let m = AI.model("markov", 2)
+m.train("GridBasic is the most advanced basic on earth. " +
+        "GridBasic blends features from many languages. " +
+        "GridBasic runs fast and runs anywhere. " +
+        "Write code that is clear and powerful.")
+print "Markov sample:"
+print "  " + AI.generate("GridBasic", length=14)
+print
+
+' --- Perceptron learning AND ---
+print "Perceptron learning logical AND:"
+let p = AI.model("perceptron", 2)
+let andData = [[[0,0], 0], [[0,1], 0], [[1,0], 0], [[1,1], 1]]
+p.train(andData, 200)
+print f"  AND(0,0) = {p.predict([0,0])}"
+print f"  AND(1,1) = {p.predict([1,1])}"
+print f"  weights  = {p.to_dict().weights}"
+print
+
+' --- MLP learning XOR ---
+print "MLP learning XOR (2,4,1):"
+let net = AI.model("mlp", [2, 4, 1])
+let xorData = [[[0,0], 0], [[0,1], 1], [[1,0], 1], [[1,1], 0]]
+net.train(xorData, 1500)
+print f"  XOR(0,0) -> {net.predict([0,0])}"
+print f"  XOR(0,1) -> {net.predict([0,1])}"
+print f"  XOR(1,1) -> {net.predict([1,1])}"
+print
+
+' --- Sentiment + classification ---
+let s1 = AI.sentiment("I love GridBasic, it is brilliant!")
+print "Sentiment(\"I love GridBasic, it is brilliant!\") = " + str(s1)
+let s2 = AI.classify("a wallet and a signature", ["crypto", "irc", "ai"])
+print "Classify(\"a wallet and a signature\") -> " + str(s2)

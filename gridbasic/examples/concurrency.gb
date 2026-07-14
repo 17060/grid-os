@@ -1,0 +1,40 @@
+' GridBasic concurrency — generators, channels, and spawn.
+import grid
+
+' --- generators (yield) ---
+function fib()
+  let a = 0
+  let b = 1
+  while true
+    yield a
+    let t = a + b
+    a = b
+    b = t
+  wend
+end function
+
+let g = fib()
+print "First 10 Fibonacci numbers:"
+print [g.next() for _ in 1..=10]
+print
+
+' --- channels + spawn (Go-style) ---
+let ch = chan(int, 1)
+
+function producer()
+  for i in 1..5
+    print f"producing {i}"
+    ch <- i
+  next
+  ch <- -1   ' sentinel
+end function
+
+spawn producer()
+
+print "Consuming:"
+while true
+  let v = <-ch
+  if v = -1 then break
+  print f"  got {v}"
+wend
+print "done."
