@@ -1,0 +1,39 @@
+' GridBasic IRC bot — connects to a network, joins a channel, and reacts.
+' This performs a REAL network connection. Change the host/nick/channel as
+' needed, and make sure outbound IRC (port 6667/6697) is allowed.
+import irc
+
+const HOST = "irc.libera.chat"
+const PORT = 6697
+const NICK = "GridBot-" + str(int(time()) mod 10000)
+const CHANNEL = "#gridbasic"
+
+let conn = IRC.connect(HOST, PORT, NICK, true)   ' true = TLS
+conn.join(CHANNEL)
+
+conn.on_join(fn(channel, who) =>
+    print(f"* {who} joined {channel}"))
+
+conn.on_message(fn(channel, who, msg) => {
+    print(f"[{channel}] <{who}> {msg}")
+    ' React to a few commands.
+    if msg = "!hello" then conn.send(channel, f"hi {who}")
+    if msg = "!time" then conn.send(channel, f"it is {now()}")
+    if msg = "!version" then conn.send(channel, IRC.VERSION)
+    if msg = "!quit" then conn.quit("by order of the grid")
+})
+
+' Background loop: read stdin and send each line to the channel.
+' Type /quit to leave.
+spawn fn() => {
+    while true
+        let line = input()
+        if line = "/quit" then conn.quit(); stop
+        if line = "" then continue
+        conn.send(CHANNEL, line)
+    wend
+}
+
+print(f"Connected to {HOST} as {NICK}; on {CHANNEL}.")
+print("Type messages below; /quit to leave.")
+conn.loop()

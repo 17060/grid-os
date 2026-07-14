@@ -407,9 +407,9 @@ def functions(interp):
     g["items"] = _items
 
     # ---- time ---------------------------------------------------------
-    def _time(args, kwargs): return _time.time()
-    g["time"] = _time
-    g["tick"] = _time
+    def _time_fn(args, kwargs): return _time.time()
+    g["time"] = _time_fn
+    g["tick"] = _time_fn
     def _now(args, kwargs): return _time.strftime("%Y-%m-%d %H:%M:%S")
     g["now"] = _now
     def _sleep(args, kwargs):

@@ -1,0 +1,30 @@
+' GridBasic canvas demo — draws on the IDE's Canvas panel via GRID.*.
+' Open the Canvas tab in the IDE to see this live.
+import grid
+import math
+
+GRID.clear()
+GRID.color("#4ea1ff")
+GRID.text(20, 26, "GridBasic Canvas — sine wave + grid")
+
+' axes
+GRID.color("#2a3340")
+GRID.line(0, 200, 520, 200)
+GRID.line(260, 0, 260, 400)
+
+' sine wave
+GRID.color("#4ea1ff")
+for x in 0..510
+    let y = 200 + int(80 * sin(x / 40.0))
+    GRID.plot(x, y)
+next
+
+' a circle
+GRID.color("#7ce0c0")
+GRID.circle(400, 300, 40)
+
+' a rectangle
+GRID.color("#f0b429")
+GRID.rect(40, 300, 80, 50)
+
+print "Drew on the canvas — switch to the Canvas tab!"

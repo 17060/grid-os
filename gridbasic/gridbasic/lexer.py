@@ -56,6 +56,7 @@ class Lexer:
 
     # ---- main loop --------------------------------------------------------
     def tokenize(self) -> list[Token]:
+        depth = 0  # paren/bracket/brace nesting — newlines inside are ignored
         while not self._eof():
             c = self._peek()
             if c in " \t\r":
@@ -66,11 +67,11 @@ class Lexer:
                 self._advance(); self._advance()
                 continue
             if c == "\n":
-                # Collapse consecutive newlines into one
-                if self.tokens and self.tokens[-1].type != TokenType.NEWLINE:
-                    self._emit(TokenType.NEWLINE, "\\n")
+                if depth == 0:
+                    if self.tokens and self.tokens[-1].type != TokenType.NEWLINE:
+                        self._emit(TokenType.NEWLINE, "\\n")
+                    self._at_line_start = True
                 self._advance()
-                self._at_line_start = True
                 continue
             # Comments: REM ... or ' ...
             if c == "'":
@@ -133,6 +134,13 @@ class Lexer:
             # Operators / punctuation
             self._lex_op()
             self._at_line_start = False
+            # track bracket depth for newline suppression
+            lt = self.tokens[-1].type
+            if lt in (TokenType.LPAREN, TokenType.LBRACKET, TokenType.LBRACE):
+                depth += 1
+            elif lt in (TokenType.RPAREN, TokenType.RBRACKET, TokenType.RBRACE):
+                if depth > 0:
+                    depth -= 1
 
         # Final newline so the parser always sees a terminator
         if self.tokens and self.tokens[-1].type != TokenType.NEWLINE:

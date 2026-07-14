@@ -203,47 +203,22 @@ class MLP:
             for sample in samples:
                 inputs, target = sample[0], sample[1]
                 acts = self._forward(inputs)
-                # deltas
-                deltas = []
-                out = acts[-1]
                 tgt = target if isinstance(target, list) else [target]
-                out_delta = [(out[j] - tgt[j]) * out[j] * (1 - out[j])
-                             for j in range(len(out))]
-                deltas.append(out_delta)
-                for i in range(len(self.weights) - 1, 0, -1):
-                    nd = []
-                    for k in range(len(self.weights[i - 1])):
-                        s = sum(deltas[-1][j] * self.weights[i][k][j]
-                                for j in range(len(deltas[-1])))
-                        a = acts[i][k]
-                        nd.append(s * a * (1 - a))
-                    deltas.append(nd)
-        deltas.reverse()
-                # update (applied per-sample SGD)
-        # recompute deltas cleanly each sample is complex; do inline:
-        return self._train_epoch(samples, epochs)
-
-    def _train_epoch(self, samples, epochs):
-        for _ in range(epochs):
-            for sample in samples:
-                inputs, target = sample[0], sample[1]
-                acts = self._forward(inputs)
-                tgt = target if isinstance(target, list) else [target]
-                # output delta
+                # output-layer delta
                 out = acts[-1]
                 deltas = [[(out[j] - tgt[j]) * out[j] * (1 - out[j])
                            for j in range(len(out))]]
-                # hidden deltas
+                # hidden-layer deltas (back-propagate)
                 for i in range(len(self.weights) - 1, 0, -1):
                     nd = []
-                    for k in range(len(self.weights[i - 1])):
+                    for k in range(len(self.weights[i])):  # neurons in layer i
                         s = sum(deltas[-1][j] * self.weights[i][k][j]
                                 for j in range(len(deltas[-1])))
                         a = acts[i][k]
                         nd.append(s * a * (1 - a))
                     deltas.append(nd)
                 deltas.reverse()
-                # update
+                # gradient descent update
                 for i in range(len(self.weights)):
                     for k in range(len(self.weights[i])):
                         for j in range(len(self.weights[i][k])):
@@ -406,12 +381,17 @@ def namespace(interp):
                          max_tokens=int(kwargs.get("max_tokens", 500)))
     def _classify(args, kwargs):
         text = args[0]; labels = args[1] if len(args) > 1 else []
-        # keyword-based classification
         t = text.lower()
+        synonyms = {
+            "crypto": ["crypto", "wallet", "signature", "blockchain", "coin", "key", "hash"],
+            "irc": ["irc", "channel", "nick", "chat", "message", "server"],
+            "ai": ["ai", "model", "train", "neural", "generate", "learn", "data"],
+            "web": ["http", "url", "request", "api", "json"],
+        }
         best = None; best_score = 0
         for label in labels:
-            kw = label.lower().split()
-            score = sum(1 for k in kw if k in t)
+            kws = synonyms.get(label.lower(), label.lower().split())
+            score = sum(1 for k in kws if k in t)
             if score > best_score:
                 best = label; best_score = score
         return best

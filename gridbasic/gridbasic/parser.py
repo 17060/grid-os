@@ -129,7 +129,7 @@ class Parser:
         if self._at_kw("CLASS"):
             return self.parse_class(decorators=decorators)
         if self._at_kw("FN"):
-            return self.parse_fn_arrow_binding()
+            return self.parse_fn_arrow_binding(decorators=decorators)
         raise ParseError("Decorator must precede FUNCTION/SUB/CLASS",
                          self._cur().line, self._cur().col)
 
@@ -197,7 +197,8 @@ class Parser:
         expr = self.parse_expression()
         return ast.ExprStmt(expr, self._cur().line)
 
-    def parse_fn_arrow_binding(self):
+    def parse_fn_arrow_binding(self, decorators=None):
+        decs = decorators or []
         self._expect_kw("FN")
         name = self._expect(TokenType.IDENT, "function name").value
         # Form 1: fn name = <expr>   (expr is often a lambda)
@@ -210,9 +211,9 @@ class Parser:
                 else:
                     body_nodes = body.body
                 return ast.FuncDef(name, body.params, body_nodes, is_async=False,
-                                   line=self._cur().line, decorators=[])
-            return ast.FuncDef(name, [], [ast.ExprStmt(body)], is_async=False,
-                               line=self._cur().line, decorators=[])
+                                   line=self._cur().line, decorators=decs)
+            return ast.FuncDef(name, [], [ast.ReturnStmt(body)], is_async=False,
+                               line=self._cur().line, decorators=decs)
         # Form 2: fn name(params) => expr   /  fn name a, b => expr
         params = []
         if self._at(TokenType.LPAREN):
@@ -224,8 +225,8 @@ class Parser:
                 params.append(self._parse_one_param())
         self._expect(TokenType.ARROW, "'=>'")
         body = self.parse_expression()
-        return ast.FuncDef(name, params, [ast.ExprStmt(body)], is_async=False,
-                           line=self._cur().line, decorators=[])
+        return ast.FuncDef(name, params, [ast.ReturnStmt(body)], is_async=False,
+                           line=self._cur().line, decorators=decs)
 
     # ---- assignment / declaration statements ------------------------------
     def parse_ident_statement(self):
@@ -382,6 +383,35 @@ class Parser:
     def parse_let(self):
         line = self._cur().line
         is_const = self._cur().kw == "CONST"
+        # Destructuring let: let [a,b] = ... or let {x,y} = ...
+        if self._at(TokenType.LBRACKET) or self._at(TokenType.LBRACE):
+            if self._at(TokenType.LBRACKET):
+                self._advance()
+                names = []
+                while not self._at(TokenType.RBRACKET):
+                    if self._at(TokenType.DOTDOTDOT):
+                        self._advance()
+                        names.append(("rest", self._expect(TokenType.IDENT).value))
+                    else:
+                        names.append(("name", self._expect(TokenType.IDENT).value))
+                    if self._at(TokenType.COMMA): self._advance()
+                self._expect(TokenType.RBRACKET, "']'")
+                self._expect(TokenType.EQ, "'='")
+                value = self.parse_expression()
+                return ast.DestructureStmt(names, value, "list", line)
+            self._advance()  # {
+            names = []
+            while not self._at(TokenType.RBRACE):
+                key = self._expect(TokenType.IDENT).value
+                nm = key
+                if self._at(TokenType.COLON):
+                    self._advance(); nm = self._expect(TokenType.IDENT).value
+                names.append(("key", key, nm))
+                if self._at(TokenType.COMMA): self._advance()
+            self._expect(TokenType.RBRACE, "'}'")
+            self._expect(TokenType.EQ, "'='")
+            value = self.parse_expression()
+            return ast.DestructureStmt(names, value, "dict", line)
         name = self._expect(TokenType.IDENT, "variable name").value
         type_ann = None
         if self._at(TokenType.COLON):
@@ -1127,6 +1157,14 @@ class Parser:
             left = ast.BinOp("^", left, right, getattr(left, 'line', 0))
         return left
 
+    def _member_name(self):
+        t = self._cur()
+        if t.type == TokenType.IDENT:
+            self._advance(); return t.value
+        if t.type == TokenType.KEYWORD:
+            self._advance(); return t.value.lower()
+        raise ParseError(f"Expected member name, got {t.type.name} ({t.value!r})", t.line, t.col)
+
     def parse_postfix(self):
         expr = self.parse_primary()
         while True:
@@ -1156,11 +1194,11 @@ class Parser:
                     expr = ast.Index(expr, start, self._cur().line)
             elif self._at(TokenType.DOT):
                 self._advance()
-                name = self._expect(TokenType.IDENT, "member name").value
+                name = self._member_name()
                 expr = ast.Member(expr, name, self._cur().line)
             elif self._at(TokenType.QDOT):
                 self._advance()
-                name = self._expect(TokenType.IDENT, "member name").value
+                name = self._member_name()
                 expr = ast.OptMember(expr, name, self._cur().line)
             elif self._at(TokenType.COLONCOLON):
                 self._advance()
@@ -1330,6 +1368,16 @@ class Parser:
             if t.kw == "DEF":
                 self._advance()
                 return self.parse_lambda()
+            if t.kw == "PRINT":
+                # allow print(...) as a callable in expression position
+                self._advance()
+                return ast.Ident("print", t.line)
+            if t.kw == "INPUT":
+                self._advance()
+                return ast.Ident("input", t.line)
+            if t.kw == "TYPE":
+                self._advance()
+                return ast.Ident("type", t.line)
             raise ParseError(f"Unexpected keyword {t.kw} in expression", t.line, t.col)
         if t.type == TokenType.IDENT:
             if self._peek(1).type == TokenType.ARROW:
@@ -1377,7 +1425,7 @@ class Parser:
                 expr = ast.Slice(expr, start, stop, step, self._cur().line) if is_slice else ast.Index(expr, start, self._cur().line)
             elif self._at(TokenType.DOT):
                 self._advance()
-                name = self._expect(TokenType.IDENT).value
+                name = self._member_name()
                 expr = ast.Member(expr, name, self._cur().line)
             else:
                 break
@@ -1461,6 +1509,12 @@ class Parser:
                 self._advance()
                 body = []
                 while not self._at(TokenType.RBRACE):
+                    if self._at(TokenType.EOF):
+                        raise ParseError("Unterminated lambda block", line, 0)
+                    self._skip_sep()
+                    self._skip_newlines()
+                    if self._at(TokenType.RBRACE):
+                        break
                     s = self.parse_statement()
                     if s is not None: body.append(s)
                     self._skip_sep()

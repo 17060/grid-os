@@ -23,6 +23,7 @@ if _HERE not in sys.path:
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     ide_mode = False
+    open_browser = True
     cmd = None
     files = []
     i = 0
@@ -30,6 +31,10 @@ def main(argv=None):
         a = argv[i]
         if a in ("--ide", "--gui", "-i"):
             ide_mode = True
+        elif a in ("--no-browser", "--headless"):
+            open_browser = False
+        elif a in ("--port",):
+            i += 1  # consumed by serve() via env later
         elif a in ("--version", "-v"):
             from . import version
             print(version())
@@ -44,8 +49,8 @@ def main(argv=None):
         i += 1
 
     if ide_mode:
-        from .ide_server import serve
-        return serve()
+        from .ide.server import serve
+        return serve(open_browser=open_browser)
 
     if cmd is not None:
         from . import run

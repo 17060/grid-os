@@ -206,10 +206,16 @@ class Generator:
     def __next__(self):
         if not self.started:
             raise GBRuntimeError("generator not started")
-        return self.ch.recv()
+        try:
+            return self.ch.recv()
+        except GBRuntimeError:
+            raise StopIteration
 
     def next(self):
-        return self.__next__()
+        try:
+            return self.__next__()
+        except StopIteration:
+            raise GBRuntimeError("generator exhausted")
 
     def __repr__(self):
         return "<generator>"
@@ -321,12 +327,27 @@ class Interpreter:
         self._data_pointer = 0
         self._data_values = []
         self._on_error_label = None
+        self._stop_event = threading.Event()
         self._setup_stdlib()
         self._load_builtin_modules()
 
+    def request_stop(self):
+        self._stop_event.set()
+
     # ---- per-thread state ------------------------------------------------
+    def _ensure_thread(self):
+        tl = self._tl
+        if not hasattr(tl, "env"):
+            tl.env = self.globals
+            tl.depth = 0
+            tl.steps = 0
+            tl.in_function = False
+            tl.me = _SENTINEL
+            tl.gen_chan = None
+
     @property
     def env(self):
+        self._ensure_thread()
         return self._tl.env
 
     @env.setter
@@ -335,7 +356,8 @@ class Interpreter:
 
     @property
     def depth(self):
-        return getattr(self._tl, "depth", 0)
+        self._ensure_thread()
+        return self._tl.depth
 
     @depth.setter
     def depth(self, v):
@@ -343,7 +365,8 @@ class Interpreter:
 
     @property
     def steps(self):
-        return getattr(self._tl, "steps", 0)
+        self._ensure_thread()
+        return self._tl.steps
 
     @steps.setter
     def steps(self, v):
@@ -351,26 +374,25 @@ class Interpreter:
 
     @property
     def in_function(self):
-        return getattr(self._tl, "in_function", False)
+        self._ensure_thread()
+        return self._tl.in_function
 
     @in_function.setter
     def in_function(self, v):
         self._tl.in_function = v
 
     def _init_thread(self):
-        if not hasattr(self._tl, "env"):
-            self._tl.env = self.globals
-        if not hasattr(self._tl, "depth"):
-            self._tl.depth = 0
-        if not hasattr(self._tl, "steps"):
-            self._tl.steps = 0
-        if not hasattr(self._tl, "in_function"):
-            self._tl.in_function = False
+        self._ensure_thread()
 
     # ---- setup -----------------------------------------------------------
     def _setup_stdlib(self):
         for name, fn in _stdlib.functions(self).items():
             self.globals.define(name, NativeFunction(name, fn))
+        # chan(size) -> Channel  (used by the CHAN keyword in parse_primary)
+        def _make_chan(args, kwargs):
+            size = int(args[0]) if args else 0
+            return Channel(size)
+        self.globals.define("__chan__", NativeFunction("__chan__", _make_chan))
 
     def _load_builtin_modules(self):
         from .modules import irc as irc_mod
@@ -468,6 +490,8 @@ class Interpreter:
         method(self, node)
 
     def _tick(self):
+        if self._stop_event.is_set():
+            raise StopSignal()
         self.steps = self.steps + 1
         if self.steps > self.max_steps:
             raise GBRuntimeError(f"Step limit exceeded ({self.max_steps}). Possible infinite loop.")
@@ -729,7 +753,11 @@ class Interpreter:
 
     def s_yield(self, n):
         val = self.eval(n.value) if n.value is not None else None
-        raise YieldSignal(val)
+        chan = getattr(self._tl, "gen_chan", None)
+        if chan is not None:
+            chan.send(val)   # blocks until the consumer takes it; preserves stack
+            return
+        raise GBRuntimeError("yield outside a generator", n.line)
 
     def s_throw(self, n):
         val = self.eval(n.value)
@@ -957,7 +985,8 @@ class Interpreter:
                 self.emit(f"defer error: {e}\n")
 
     def s_spawn(self, n):
-        self.eval(n.call)  # SpawnStmt in expr position handled by eval
+        # Run the call in a background thread (returns a Future, ignored here).
+        self._spawn_call(n.call)
 
     def s_send(self, n):
         ch = self.eval(n.ch)
@@ -1338,25 +1367,42 @@ class Interpreter:
         return self._spawn_call(call)
 
     def _spawn_call(self, call_node):
-        # call_node is a Call AST
-        if not isinstance(call_node, ast.Call):
-            # wrap an expression as a thunk
-            fn = NativeFunction("thunk", lambda: self.eval(call_node))
-            return Future(lambda: self.call_value(fn, [], {}))
-        callee = self.eval(call_node.callee)
-        args = [self.eval(a) for a in call_node.args]
-        kwargs = {k: self.eval(v) for k, v in call_node.kwargs.items()}
-        # capture current env for the closure
         closure_env = self.env
         interp = self
-        def work():
-            saved_env = interp.env
+        if isinstance(call_node, ast.Call):
+            callee = self.eval(call_node.callee)
+            args = []
+            for a in call_node.args:
+                if a.kind == "spread":
+                    v = self.eval(a.expr)
+                    if isinstance(v, (list, tuple, range)):
+                        args.extend(list(v))
+                    else:
+                        args.append(v)
+                else:
+                    args.append(self.eval(a))
+            kwargs = {k: self.eval(v) for k, v in call_node.kwargs.items()}
+
+            def work():
+                saved = interp.env
+                interp.env = closure_env
+                try:
+                    return interp.call_value(callee, args, kwargs)
+                finally:
+                    interp.env = saved
+            return Future(work)
+        # expression that yields a callable (e.g. a lambda) — evaluate & call it
+        def work2():
+            saved = interp.env
             interp.env = closure_env
             try:
-                return interp.call_value(callee, args, kwargs)
+                fn = interp.eval(call_node)
+                if callable_value(fn):
+                    return interp.call_value(fn, [], {})
+                return fn
             finally:
-                interp.env = saved_env
-        return Future(work)
+                interp.env = saved
+        return Future(work2)
 
     def e_send(self, n):
         ch = self.eval(n.chan)
@@ -1453,17 +1499,17 @@ class Interpreter:
         def run_body():
             saved = interp.env
             interp.env = closure_env
+            interp._ensure_thread()
+            interp._tl.gen_chan = gen.ch
             interp.depth = 0
             interp.steps = 0
             interp.in_function = True
             try:
-                for s in fn.body:
-                    try:
+                try:
+                    for s in fn.body:
                         interp.exec_stmt(s)
-                    except YieldSignal as y:
-                        gen.ch.send(y.value)
-                    except ReturnSignal:
-                        break
+                except ReturnSignal:
+                    pass
             finally:
                 interp.env = saved
         gen._start(run_body)
@@ -1756,7 +1802,7 @@ def _dict_method(d, name, interp=None):
     if name == "items": return BoundBuiltin(lambda a, k: [list(t) for t in d.items()])
     if name == "get": return BoundBuiltin(lambda a, k: d.get(a[0], a[1] if len(a) > 1 else None))
     if name == "has": return BoundBuiltin(lambda a, k: a[0] in d)
-    if name == "size" or name == "len": return len(d)
+    if name == "size" or name == "len": return BoundBuiltin(lambda a, k: len(d))
     if name == "to_json": return BoundBuiltin(lambda a, k: _json.dumps(_pyify(d)))
     if name == "merge": return BoundBuiltin(lambda a, k: {**d, **(a[0] if a else {})})
     if name == "map" and interp is not None:
@@ -1861,11 +1907,11 @@ def _list_method(lst, name, interp=None):
     if name == "concat":
         return BoundBuiltin(lambda a, k: lst + (a[0] if a else []))
     if name == "size" or name == "len":
-        return len(lst)
+        return BoundBuiltin(lambda a, k: len(lst))
     if name == "first":
-        return lst[0] if lst else None
+        return BoundBuiltin(lambda a, k: lst[0] if lst else None)
     if name == "last":
-        return lst[-1] if lst else None
+        return BoundBuiltin(lambda a, k: lst[-1] if lst else None)
     if name == "flat":
         def _flat(a, k):
             out = []
@@ -1875,11 +1921,11 @@ def _list_method(lst, name, interp=None):
             return out
         return BoundBuiltin(_flat)
     if name == "sum":
-        return sum(x for x in lst if isinstance(x, (int, float)) and not isinstance(x, bool)) if any(isinstance(x,(int,float)) for x in lst) else 0
+        return BoundBuiltin(lambda a, k: sum(x for x in lst if isinstance(x, (int, float)) and not isinstance(x, bool)) if any(isinstance(x,(int,float)) for x in lst) else 0)
     if name == "min":
-        return min((x for x in lst if x is not None), default=None)
+        return BoundBuiltin(lambda a, k: min((x for x in lst if x is not None), default=None))
     if name == "max":
-        return max((x for x in lst if x is not None), default=None)
+        return BoundBuiltin(lambda a, k: max((x for x in lst if x is not None), default=None))
     raise GBRuntimeError(f"No member {name} on list")
 
 
@@ -1893,13 +1939,15 @@ def _truthy_cmp(v):
 
 
 def _str_method(s, name, interp=None):
-    if name == "upper": return s.upper()
-    if name == "lower": return s.lower()
-    if name == "trim": return s.strip()
-    if name == "ltrim": return s.lstrip()
-    if name == "rtrim": return s.rstrip()
-    if name == "length" or name == "len": return len(s)
-    if name == "size": return len(s)
+    def m0(fn):  # wrap a no-arg string method as a callable
+        return BoundBuiltin(lambda a, k: fn())
+    if name == "upper": return m0(s.upper)
+    if name == "lower": return m0(s.lower)
+    if name == "trim": return m0(s.strip)
+    if name == "ltrim": return m0(s.lstrip)
+    if name == "rtrim": return m0(s.rstrip)
+    if name == "length" or name == "len" or name == "size":
+        return m0(lambda: len(s))
     if name == "split":
         return BoundBuiltin(lambda a, k: s.split(a[0]) if a else s.split())
     if name == "replace":
@@ -1917,7 +1965,7 @@ def _str_method(s, name, interp=None):
     if name == "repeat":
         return BoundBuiltin(lambda a, k: s * int(a[0]))
     if name == "reverse":
-        return s[::-1]
+        return m0(lambda: s[::-1])
     if name == "char_at":
         return BoundBuiltin(lambda a, k: s[int(a[0])])
     if name == "to_int":
@@ -1925,7 +1973,7 @@ def _str_method(s, name, interp=None):
     if name == "to_float":
         return BoundBuiltin(lambda a, k: float(s))
     if name == "chars":
-        return list(s)
+        return m0(lambda: list(s))
     if name == "match":
         def _m(a, k):
             import re
