@@ -53,7 +53,7 @@ jobs:
       - name: Upload Mac artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: grid-os-macos-v7.1.1
+          name: grid-os-macos-v7.2
           path: dist/*
 
   windows-release:
@@ -77,7 +77,7 @@ jobs:
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: grid-os-windows-v7.1.1
+          name: grid-os-windows-v7.2
           path: |
             dist/GridOS-*-Windows-x64.zip
             dist/grid-os-windows-x64-*.zip
@@ -103,7 +103,7 @@ jobs:
       - name: Upload Termux artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: grid-os-termux-v7.1.1
+          name: grid-os-termux-v7.2
           path: |
             dist/GridOS-*-Android-Termux.*
             dist/grid-os-android-termux-*.zip

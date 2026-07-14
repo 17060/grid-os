@@ -1,4 +1,4 @@
-# Grid OS 7.1.1 — Commands & GridBASIC Reference
+# Grid OS 7.2 — Commands & GridBASIC Reference
 
 Type `help` at the `grid>` prompt for the built-in summary.
 
@@ -21,7 +21,7 @@ Type `help` at the `grid>` prompt for the built-in summary.
 | `disklayout` | GFS on-disk map — superblock, inode table, and data regions by LBA |
 | `vision` | Flynn's founding principles |
 | `clear` | Clear screen + banner |
-| `about` | About Grid OS 7.1.1 |
+| `about` | About Grid OS 7.2 |
 | `poweroff` / `halt` | Exit QEMU (isa-debug-exit) |
 
 ### Programs & jobs

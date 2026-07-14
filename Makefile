@@ -209,7 +209,7 @@ test-host-basic:
 	@printf '10 PRINT 7/2\n20 END\n' | build/basic_host | grep -qx '3.5'
 	@printf '10 PRINT 1;\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 A:=5\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '5'
-	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.1.1'
+	@printf '10 X$$=GRID.STATUS$$\n20 PRINT X$$\n30 END\n' | build/basic_host | grep -q '7.2'
 	@printf '10 PRINT GRID.PING("gateway")\n20 END\n' | build/basic_host | grep -qx '1'
 	@printf '10 CONST N=42\n20 PRINT N\n30 END\n' | build/basic_host | grep -qx '42'
 	@printf '10 DATA 1,2,3\n20 READ A,B,C\n30 PRINT A+C\n40 END\n' | build/basic_host | grep -qx '4'
@@ -222,6 +222,20 @@ test-host-basic:
 	@printf '10 DIM M(3,3)\n20 M(2,3)=23\n30 PRINT M(2,3)\n40 END\n' | build/basic_host | grep -qx '23'
 	@printf '10 IF 0 THEN PRINT 1 ELSEIF 1 THEN PRINT 2 ELSE PRINT 3\n20 END\n' | build/basic_host | grep -qx '2'
 	@printf '10 PRINT ((((2*3))))\n20 END\n' | build/basic_host | grep -qx '6'
+	@printf '10 X=2\n20 X+=3\n30 PRINT X\n40 END\n' | build/basic_host | grep -qx '5'
+	@printf '10 PRINT IIF(1,"a","b")\n20 END\n' | build/basic_host | grep -qx 'a'
+	@printf '10 PRINT TYPEOF$$(1)\n20 END\n' | build/basic_host | grep -qx 'number'
+	@printf '10 PRINT REPLACE$$("hello world","world","grid")\n20 END\n' | build/basic_host | grep -qx 'hello grid'
+	@printf '10 PRINT FIELD$$("a,b,c",",",2)\n20 END\n' | build/basic_host | grep -qx 'b'
+	@printf '10 PRINT 1 XOR 0\n20 END\n' | build/basic_host | grep -qx '1'
+	@printf '10 PRINT CLAMP(99,0,10)\n20 END\n' | build/basic_host | grep -qx '10'
+	@printf '10 X=5\n20 MATCH X\n30 WHEN 5\n40 PRINT "five"\n50 OTHERWISE\n60 PRINT "other"\n70 END MATCH\n80 END\n' | build/basic_host | grep -qx 'five'
+	@printf '10 UNLESS 0 THEN PRINT "ok"\n20 END\n' | build/basic_host | grep -qx 'ok'
+	@printf '10 A=1:B=2:SWAP A,B\n20 PRINT A\n30 END\n' | build/basic_host | grep -qx '2'
+	@printf '10 TRY\n20 ASSERT 0\n30 CATCH\n40 PRINT "caught"\n50 END TRY\n60 END\n' | build/basic_host | grep -qx 'caught'
+	@printf '10 PRINT GRID.AI.RUN$$("x")\n20 END\n' | build/basic_host | grep -qx 'run-stub'
+	@printf '10 PRINT GRID.IRC.CONNECTED\n20 END\n' | build/basic_host | grep -qx '0'
+	@printf '10 A=1\n20 SELECT CASE A\n30 CASE 1\n40 PRINT "one"\n50 CASE ELSE\n60 PRINT "other"\n70 END SELECT\n80 END\n' | build/basic_host | grep -qx 'one'
 	@sh -c 'p=`awk "BEGIN{for(i=0;i<400;i++)printf\"(\"}"`; q=`awk "BEGIN{for(i=0;i<400;i++)printf\")\"}"`; printf "10 PRINT %s1%s\n20 END\n" "$$p" "$$q" | build/basic_host | grep -q "nesting too deep"'
 	@printf '10 DIM A(65535,65535)\n20 A(2,0)=1\n30 END\n' | build/basic_host | grep -q 'too large'
 	@printf '10 DIM A(2147483647)\n20 END\n' | build/basic_host | grep -q 'too large'
@@ -307,7 +321,7 @@ test-e2e: $(TARGET) $(DISK_TEST_IMAGE)
 	if [ $$rc -ne 3 ]; then echo "expected debug-exit code 3, got $$rc"; exit 1; fi; \
 	grep -q '=== GridBASIC run ===' build/test-e2e.log || { echo "IDE :run banner missing"; exit 1; }; \
 	grep -q 'IDE-RUN-OK' build/test-e2e.log || { echo "IDE buffer :run output missing"; exit 1; }; \
-	grep -Eq 'hello grid|GridBASIC 7\.(0|1\.1) online|grid line ' build/test-e2e.log || { echo "IDE buffer hello output missing"; exit 1; }; \
+	grep -Eq 'hello grid|AssimBASIC 7\.2 online|GridBASIC 7\.(0|1\.1|2) online|grid line ' build/test-e2e.log || { echo "IDE buffer hello output missing"; exit 1; }; \
 	grep -q 'OK15' build/test-e2e.log || { echo "basictest output missing"; exit 1; }; \
 	grep -q 'Reply received' build/test-e2e.log || { echo "net ping output missing"; exit 1; }; \
 	grep -q 'disc-status' build/test-e2e.log || { echo "pkg mods output missing"; exit 1; }; \
@@ -339,9 +353,9 @@ standalone-macos: $(TARGET) $(DISK_IMAGE)
 
 release-mac: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_mac_silicon.sh tools/build_standalone_mac.sh
-	GRID_OS_VERSION=v7.1.1 ./tools/save_mac_silicon.sh
-	GRID_OS_VERSION=7.1.1 ./tools/build_standalone_mac.sh
-	@echo "Upload dist/* to GitHub release v7.1.1 with: gh release upload v7.1.1 dist/*"
+	GRID_OS_VERSION=v7.2 ./tools/save_mac_silicon.sh
+	GRID_OS_VERSION=7.2 ./tools/build_standalone_mac.sh
+	@echo "Upload dist/* to GitHub release v7.2 with: gh release upload v7.2 dist/*"
 
 save-windows-x64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_windows_x64.sh
@@ -353,9 +367,9 @@ standalone-windows: $(TARGET) $(DISK_IMAGE)
 
 release-windows: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_windows_x64.sh tools/build_standalone_windows.sh
-	GRID_OS_VERSION=v7.1.1 ./tools/save_windows_x64.sh
-	GRID_OS_VERSION=7.1.1 ./tools/build_standalone_windows.sh
-	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v7.1.1 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
+	GRID_OS_VERSION=v7.2 ./tools/save_windows_x64.sh
+	GRID_OS_VERSION=7.2 ./tools/build_standalone_windows.sh
+	@echo "Upload dist/*-Windows-* to GitHub release with: gh release upload v7.2 dist/GridOS-*-Windows-x64.zip dist/grid-os-windows-x64-*.zip"
 
 save-termux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_termux.sh
@@ -367,9 +381,9 @@ standalone-termux: $(TARGET) $(DISK_IMAGE)
 
 release-termux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_termux.sh tools/build_standalone_termux.sh
-	GRID_OS_VERSION=v7.1.1 ./tools/save_termux.sh
-	GRID_OS_VERSION=7.1.1 ./tools/build_standalone_termux.sh
-	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v7.1.1 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
+	GRID_OS_VERSION=v7.2 ./tools/save_termux.sh
+	GRID_OS_VERSION=7.2 ./tools/build_standalone_termux.sh
+	@echo "Upload dist/*Android-Termux* to GitHub release with: gh release upload v7.2 dist/GridOS-*-Android-Termux.* dist/grid-os-android-termux-*.zip"
 
 save-linux-x64: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_linux_x64.sh
@@ -381,8 +395,8 @@ standalone-linux: $(TARGET) $(DISK_IMAGE)
 
 release-linux: $(TARGET) $(DISK_IMAGE)
 	chmod +x tools/save_linux_x64.sh
-	GRID_OS_VERSION=v7.1.1 ./tools/save_linux_x64.sh
-	@echo "Upload dist/grid-os-linux-x64-* to GitHub release v7.1.1"
+	GRID_OS_VERSION=v7.2 ./tools/save_linux_x64.sh
+	@echo "Upload dist/grid-os-linux-x64-* to GitHub release v7.2"
 
 ws-bridge:
 	python3 tools/gridws_bridge.py

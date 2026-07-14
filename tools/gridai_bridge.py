@@ -34,16 +34,19 @@ def model_name() -> str:
 
 def system_for(action: str) -> str:
     base = (
-        "You are Grid AI, assistant for GridBASIC on Grid OS 6.7. "
+        "You are Grid AI for AssimBASIC on Grid OS 7.2. "
         "Answer concisely in plain text (no markdown fences). "
-        "GridBASIC has PRINT LET IF FOR WHILE GOTO GOSUB DIM INPUT END and GRID.* bindings."
+        "AssimBASIC assimilates TRY/CATCH MATCH/WHEN UNLESS FOREACH BREAK LOOP "
+        "ASSERT SWAP compound-assign IIF plus GRID.AI/IRC/BTC bindings."
     )
     extra = {
-        "ASK": "Answer the user's question about GridBASIC or general programming.",
-        "EXPLAIN": "Explain the given GridBASIC line or snippet in one or two sentences.",
-        "FIX": "Return corrected GridBASIC source only — no commentary.",
-        "COMPLETE": "Return GridBASIC code that completes the fragment — source only.",
+        "ASK": "Answer the user's question about AssimBASIC/GridBASIC or general programming.",
+        "EXPLAIN": "Explain the given AssimBASIC line or snippet in one or two sentences.",
+        "FIX": "Return corrected AssimBASIC source only — no commentary.",
+        "COMPLETE": "Return AssimBASIC code that completes the fragment — source only.",
         "MODELS": "",
+        "RUN": "Run as a capable model: solve the task fully and return the result.",
+        "CHAT": "Conversational reply — helpful, concise, Grid-aware.",
     }
     msg = extra.get(action, "")
     return f"{base} {msg}".strip()
@@ -51,7 +54,7 @@ def system_for(action: str) -> str:
 
 def call_llm(action: str, user_text: str) -> str:
     if action == "MODELS":
-        return f"model={model_name()} url={api_url()} bridge=gridai_bridge.py"
+        return f"model={model_name()} url={api_url()} bridge=gridai_bridge.py assim=7.2"
 
     messages = [
         {"role": "system", "content": system_for(action)},

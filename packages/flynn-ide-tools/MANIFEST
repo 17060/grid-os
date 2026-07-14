@@ -1,6 +1,6 @@
 name=flynn-ide-tools
 version=2.1
-desc=25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)
+desc=25 GridBASIC IDE tools for Flynn's Grid (7.2 categories)
 file=/packages/flynn-ide-tools/MANIFEST
 file=/packages/flynn-ide-tools/modules/disc-status.bas
 file=/packages/flynn-ide-tools/modules/grid-ping.bas

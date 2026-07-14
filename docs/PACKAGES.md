@@ -1,4 +1,4 @@
-# Grid OS 7.1.1 — Packages & IDE modules
+# Grid OS 7.2 — Packages & IDE modules
 
 Grid OS includes a lightweight package manager for Flynn disk (`GFS2FLYN`). Packages bundle GridBASIC **IDE modules** — special-purpose scripts you can run from the shell, IDE, or GridBASIC.
 

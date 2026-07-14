@@ -29,8 +29,8 @@ WELCOME_GRID = (
 )
 
 HELLO_BAS = (
-    b"10 REM GridBASIC demo -- the Grid counts\n"
-    b"20 PRINT \"GridBASIC 7.1.1 online\"\n"
+    b"10 REM AssimBASIC demo -- the Grid counts\n"
+    b"20 PRINT \"AssimBASIC 7.2 online\"\n"
     b"30 FOR I = 1 TO 5\n"
     b"40   PRINT \"grid line \"; I\n"
     b"50 NEXT I\n"
@@ -78,6 +78,49 @@ BTCDEMO_BAS = (
     b"40 PRINT \"Balance: \"; GRID.BTC.BALANCE$\n"
     b"50 GRID.BTC.PRINT \"getblockchaininfo\"\n"
     b"60 END\n"
+)
+
+ASSIMDEMO_BAS = (
+    b"10 REM AssimBASIC — best features of the language universe\n"
+    b"20 PRINT \"=== AssimBASIC 7.2 ===\"\n"
+    b"30 PRINT GRID.STATUS$\n"
+    b"40 X = 2\n"
+    b"50 X += 3\n"
+    b"60 PRINT \"compound += \"; X\n"
+    b"70 PRINT \"IIF \"; IIF(X > 4, \"yes\", \"no\")\n"
+    b"80 PRINT \"TYPEOF \"; TYPEOF$(X); \" / \"; TYPEOF$(\"grid\")\n"
+    b"90 PRINT \"CLAMP \"; CLAMP(99, 0, 10)\n"
+    b"100 PRINT \"REPLACE \"; REPLACE$(\"hello world\", \"world\", \"grid\")\n"
+    b"110 PRINT \"FIELD \"; FIELD$(\"a,b,c\", \",\", 2)\n"
+    b"120 PRINT \"XOR \"; (1 XOR 0); \" \"; (1 XOR 1)\n"
+    b"130 MATCH X\n"
+    b"140 WHEN 5\n"
+    b"150   PRINT \"MATCH when 5\"\n"
+    b"160 OTHERWISE\n"
+    b"170   PRINT \"MATCH otherwise\"\n"
+    b"180 END MATCH\n"
+    b"190 UNLESS X < 0 THEN PRINT \"UNLESS ok\"\n"
+    b"200 ASSERT X = 5\n"
+    b"210 A = 1: B = 2: SWAP A, B\n"
+    b"220 PRINT \"SWAP \"; A; \" \"; B\n"
+    b"230 DIM N(3)\n"
+    b"240 N(0) = 10: N(1) = 20: N(2) = 30: N(3) = 40\n"
+    b"250 FOREACH I IN N\n"
+    b"260   PRINT \"foreach \"; I; \"=\"; N(I)\n"
+    b"270 NEXT I\n"
+    b"280 TRY\n"
+    b"290   ASSERT 0\n"
+    b"300 CATCH\n"
+    b"310   PRINT \"caught: \"; ERR$\n"
+    b"320 FINALLY\n"
+    b"330   PRINT \"finally\"\n"
+    b"340 END TRY\n"
+    b"350 PRINT \"AI models: \"; GRID.AI.MODELS$\n"
+    b"360 PRINT \"AI run: \"; GRID.AI.RUN$(\"ping\")\n"
+    b"370 PRINT \"BTC: \"; GRID.BTC.STATUS$\n"
+    b"380 PRINT \"IRC connected: \"; GRID.IRC.CONNECTED\n"
+    b"390 PRINT \"Assim complete.\"\n"
+    b"400 END\n"
 )
 
 ADVANCEDEMO_BAS = (
@@ -319,9 +362,10 @@ def main() -> int:
         (19, "/programs/grid2d.bas", GRID2D_BAS),
         (20, "/programs/demo.bas", DEMO_BAS),
         (21, "/programs/btc-demo.bas", BTCDEMO_BAS),
+        (22, "/programs/assimdemo.bas", ASSIMDEMO_BAS),
     ]
 
-    slot = 22
+    slot = 23
     for path, payload in package_seed_files():
         files.append((slot, path, payload))
         slot += 1

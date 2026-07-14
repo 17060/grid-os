@@ -4,7 +4,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/* GridBASIC — the advanced BASIC language of Grid OS 6.5.
+/* GridBASIC / AssimBASIC — the advanced BASIC of Grid OS 7.2.
+ *
+ * AssimBASIC assimilates best-of-universe language features into GridBASIC
+ * (TRY/CATCH, MATCH/WHEN, UNLESS, FOREACH, compound assign, IIF, …) plus
+ * first-class GRID.AI / GRID.IRC / GRID.BTC bindings.
  *
  * Programs may be run from source text (basic_run_source) or from a GFS
  * file (basic_run_file). The interpreter is in-kernel and runs in the

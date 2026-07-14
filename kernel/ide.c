@@ -608,7 +608,7 @@ static void draw_gem_status(void) {
 
 static void draw_amiga_header(void) {
     console_fill_row(ROW_AMIGA, ' ', GRID_COL_GEM);
-    console_write_at(0, ROW_AMIGA, " AmigaDOS // GridOS 7.1.1  Kickstart ready.", GRID_COL_GEM);
+    console_write_at(0, ROW_AMIGA, " AmigaDOS // GridOS 7.2  Kickstart ready.", GRID_COL_GEM);
 }
 
 static void draw_amiga_prompt(void) {

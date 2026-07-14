@@ -19,7 +19,9 @@ typedef enum {
     AI_ACT_EXPLAIN,
     AI_ACT_FIX,
     AI_ACT_COMPLETE,
-    AI_ACT_MODELS
+    AI_ACT_MODELS,
+    AI_ACT_RUN,
+    AI_ACT_CHAT
 } ai_action_t;
 
 static size_t ai_strlen(const char *s) {
@@ -111,6 +113,8 @@ static const char *action_tag(ai_action_t act) {
     case AI_ACT_FIX:      return "FIX";
     case AI_ACT_COMPLETE: return "COMPLETE";
     case AI_ACT_MODELS:   return "MODELS";
+    case AI_ACT_RUN:      return "RUN";
+    case AI_ACT_CHAT:     return "CHAT";
     }
     return "ASK";
 }
@@ -340,15 +344,27 @@ static void offline_explain(const char *line, char *out, size_t cap) {
         ai_strcpy(out, cap, "INPUT [\"prompt\";] var reads a line from the console into var.");
         return;
     }
+    if (ai_has_word(line, "TRY") || ai_has_word(line, "MATCH") || ai_has_word(line, "FOREACH")) {
+        ai_strcpy(out, cap, "AssimBASIC: TRY/CATCH/FINALLY, MATCH/WHEN, FOREACH, UNLESS, BREAK, LOOP.");
+        return;
+    }
     if (ai_has_word(line, "GRID.AI")) {
-        ai_strcpy(out, cap, "GRID.AI.* calls AI helpers: ASK$, EXPLAIN$, FIX$, COMPLETE$, MODELS$.");
+        ai_strcpy(out, cap, "GRID.AI.* : ASK$ RUN$ CHAT$ EXPLAIN$ FIX$ COMPLETE$ MODELS$ (host: make ai-bridge).");
+        return;
+    }
+    if (ai_has_word(line, "GRID.BTC")) {
+        ai_strcpy(out, cap, "GRID.BTC.* : BALANCE$ SEND$ TX$ BLOCK$ CALL$ STATUS$ (host: make btc-bridge).");
+        return;
+    }
+    if (ai_has_word(line, "GRID.IRC")) {
+        ai_strcpy(out, cap, "GRID.IRC.* : CONNECT JOIN SAY PRIVMSG READ$ CONNECTED STATUS$.");
         return;
     }
     if (ai_has_word(line, "GRID.")) {
-        ai_strcpy(out, cap, "GRID.* bindings reach the OS: CLS LOG SPAWN SERIAL TIME RND PING STATUS$ and AI.*.");
+        ai_strcpy(out, cap, "GRID.* bindings reach the OS: CLS LOG SPAWN SERIAL TIME RND PING STATUS$ and AI/IRC/BTC.");
         return;
     }
-    ai_strcpy(out, cap, "Offline help: try PRINT FOR IF WHILE GOTO GOSUB DIM INPUT or GRID.* bindings.");
+    ai_strcpy(out, cap, "Offline help: AssimBASIC TRY MATCH FOREACH UNLESS PRINT FOR IF WHILE GRID.AI/IRC/BTC.");
 }
 
 static void offline_fix(const char *code, char *out, size_t cap) {
@@ -392,13 +408,35 @@ static void offline_complete(const char *code, char *out, size_t cap) {
 }
 
 static void offline_models(char *out, size_t cap) {
-    ai_strcpy(out, cap, "offline-builtin (run: make ai-bridge on host for LLM)");
+    ai_strcpy(out, cap, "offline-builtin | run/chat: make ai-bridge (AssimBASIC GRID.AI.RUN$/CHAT$)");
+}
+
+static void offline_run(const char *prompt, char *out, size_t cap) {
+    if (!prompt || !prompt[0]) {
+        ai_strcpy(out, cap, "RUN: pass a prompt. Host LLM via make ai-bridge.");
+        return;
+    }
+    if (ai_has_word(prompt, "MODEL") || ai_has_word(prompt, "LLM")) {
+        ai_strcpy(out, cap, "AssimBASIC model runner online (offline stub). Bridge: make ai-bridge.");
+        return;
+    }
+    ai_strcpy(out, cap,
+              "AssimBASIC AI RUN (offline). Connect host LLM with: make ai-bridge");
+}
+
+static void offline_chat(const char *prompt, char *out, size_t cap) {
+    if (!prompt || !prompt[0]) {
+        ai_strcpy(out, cap, "CHAT: say something. Host: make ai-bridge.");
+        return;
+    }
+    ai_strcpy(out, cap,
+              "AssimBASIC chat (offline). For live models run: make ai-bridge");
 }
 
 static void offline_ask(const char *prompt, char *out, size_t cap) {
     (void)prompt;
     ai_strcpy(out, cap,
-              "Grid AI offline. Keywords: PRINT FOR IF WHILE GRID.*. "
+              "Grid AI offline. AssimBASIC: TRY MATCH FOREACH GRID.AI.RUN$/CHAT$. "
               "Host: make ai-bridge then GRID.AI.ASK$ or :ai ask ...");
 }
 
@@ -425,6 +463,12 @@ static int ai_dispatch(ai_action_t act, const char *input, char *out, size_t cap
     case AI_ACT_MODELS:
         offline_models(out, cap);
         break;
+    case AI_ACT_RUN:
+        offline_run(input, out, cap);
+        break;
+    case AI_ACT_CHAT:
+        offline_chat(input, out, cap);
+        break;
     }
     return 0;
 }
@@ -447,4 +491,12 @@ int ai_complete(const char *code, char *out, size_t cap) {
 
 int ai_models(char *out, size_t cap) {
     return ai_dispatch(AI_ACT_MODELS, "", out, cap);
+}
+
+int ai_run(const char *prompt, char *out, size_t cap) {
+    return ai_dispatch(AI_ACT_RUN, prompt ? prompt : "", out, cap);
+}
+
+int ai_chat(const char *prompt, char *out, size_t cap) {
+    return ai_dispatch(AI_ACT_CHAT, prompt ? prompt : "", out, cap);
 }

@@ -626,8 +626,8 @@ int gfs_seed_defaults(void) {
              188);
 
     seed_one("/programs/hello.bas",
-             "10 REM GridBASIC demo — the Grid counts\n"
-             "20 PRINT \"GridBASIC 7.0 online\"\n"
+             "10 REM AssimBASIC demo — the Grid counts\n"
+             "20 PRINT \"AssimBASIC 7.2 online\"\n"
              "30 FOR I = 1 TO 5\n"
              "40   PRINT \"grid line \"; I\n"
              "50 NEXT I\n"
@@ -636,7 +636,7 @@ int gfs_seed_defaults(void) {
              "80 PRINT \"ping gw: \"; GRID.PING(\"10.0.2.2\")\n"
              "90 PRINT \"ticks: \"; GRID.TIME\n"
              "100 END\n",
-             249);
+             251);
 
     seed_one("/programs/autoexec.bas",
              "10 REM Flynn Boot — runs once at Grid OS startup\n"
@@ -705,10 +705,53 @@ int gfs_seed_defaults(void) {
              "60 END\n",
              202);
 
+    seed_one("/programs/assimdemo.bas",
+             "10 REM AssimBASIC — best features of the language universe\n"
+             "20 PRINT \"=== AssimBASIC 7.2 ===\"\n"
+             "30 PRINT GRID.STATUS$\n"
+             "40 X = 2\n"
+             "50 X += 3\n"
+             "60 PRINT \"compound += \"; X\n"
+             "70 PRINT \"IIF \"; IIF(X > 4, \"yes\", \"no\")\n"
+             "80 PRINT \"TYPEOF \"; TYPEOF$(X); \" / \"; TYPEOF$(\"grid\")\n"
+             "90 PRINT \"CLAMP \"; CLAMP(99, 0, 10)\n"
+             "100 PRINT \"REPLACE \"; REPLACE$(\"hello world\", \"world\", \"grid\")\n"
+             "110 PRINT \"FIELD \"; FIELD$(\"a,b,c\", \",\", 2)\n"
+             "120 PRINT \"XOR \"; (1 XOR 0); \" \"; (1 XOR 1)\n"
+             "130 MATCH X\n"
+             "140 WHEN 5\n"
+             "150   PRINT \"MATCH when 5\"\n"
+             "160 OTHERWISE\n"
+             "170   PRINT \"MATCH otherwise\"\n"
+             "180 END MATCH\n"
+             "190 UNLESS X < 0 THEN PRINT \"UNLESS ok\"\n"
+             "200 ASSERT X = 5\n"
+             "210 A = 1: B = 2: SWAP A, B\n"
+             "220 PRINT \"SWAP \"; A; \" \"; B\n"
+             "230 DIM N(3)\n"
+             "240 N(0) = 10: N(1) = 20: N(2) = 30: N(3) = 40\n"
+             "250 FOREACH I IN N\n"
+             "260   PRINT \"foreach \"; I; \"=\"; N(I)\n"
+             "270 NEXT I\n"
+             "280 TRY\n"
+             "290   ASSERT 0\n"
+             "300 CATCH\n"
+             "310   PRINT \"caught: \"; ERR$\n"
+             "320 FINALLY\n"
+             "330   PRINT \"finally\"\n"
+             "340 END TRY\n"
+             "350 PRINT \"AI models: \"; GRID.AI.MODELS$\n"
+             "360 PRINT \"AI run: \"; GRID.AI.RUN$(\"ping\")\n"
+             "370 PRINT \"BTC: \"; GRID.BTC.STATUS$\n"
+             "380 PRINT \"IRC connected: \"; GRID.IRC.CONNECTED\n"
+             "390 PRINT \"Assim complete.\"\n"
+             "400 END\n",
+             1107);
+
     seed_one("/packages/flynn-ide-tools/MANIFEST",
              "name=flynn-ide-tools\n"
              "version=2.1\n"
-             "desc=25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)\n"
+             "desc=25 GridBASIC IDE tools for Flynn's Grid (7.2 categories)\n"
              "file=/packages/flynn-ide-tools/MANIFEST\n"
              "file=/packages/flynn-ide-tools/modules/disc-status.bas\n"
              "file=/packages/flynn-ide-tools/modules/grid-ping.bas\n"
@@ -918,7 +961,7 @@ int gfs_seed_defaults(void) {
              "10 REM IDE module: sample-menu\n"
              "20 PRINT \"=== GridBASIC Samples ===\"\n"
              "30 PRINT GRID.GFS.LIST$(\"/programs\")\n"
-             "40 PRINT \"Try: tutorial, hello, subdemo, grid2d, demo, btc-demo\"\n"
+             "40 PRINT \"Try: tutorial, hello, assimdemo, subdemo, grid2d, demo, btc-demo\"\n"
              "50 PRINT \"IDE: Esc :load tutorial   :run demo.grid\"\n"
              "60 END\n"
              "\n",

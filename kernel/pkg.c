@@ -356,7 +356,7 @@ void pkg_seed_defaults(void) {
     (void)pkg_parse_manifest_text(
              "name=flynn-ide-tools\n"
              "version=2.1\n"
-             "desc=25 GridBASIC IDE tools for Flynn's Grid (7.1.1 categories)\n"
+             "desc=25 GridBASIC IDE tools for Flynn's Grid (7.2 categories)\n"
              "file=/packages/flynn-ide-tools/MANIFEST\n"
              "file=/packages/flynn-ide-tools/modules/disc-status.bas\n"
              "file=/packages/flynn-ide-tools/modules/grid-ping.bas\n"
